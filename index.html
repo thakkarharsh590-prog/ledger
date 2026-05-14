@@ -4,35 +4,42 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      1.0.0
-  Last edited:  2026-05-13
+  Version:      2.0.0
+  Last edited:  2026-05-14
   Storage:      localStorage (device-local, never sent to cloud)
-  Schema ver:   1
+  Schema ver:   2 (auto-migrates from v1)
   
-  COMPLETED FEATURES:
-  - Income/expense tracking with 18 categories
-  - Custom categories (add your own)
+  COMPLETED FEATURES (v1.0):
+  - Income/expense tracking with 18 categories + custom categories
   - Budgets with progress bars (yellow at 80%, red over)
-  - Loans with payment history & progress bars
-  - Per-loan toggle: deduct payments from balance or not
+  - Loans with payment history & per-loan deduct toggle
   - Insights: 7-day chart, monthly net, category breakdown
-  - Multi-currency (AUD default, USD, EUR, GBP, INR, JPY, CAD, NZD)
-  - Search across descriptions/notes/categories
-  - Filter pills (All, Income, Expenses, This Week, This Month)
-  - Export JSON & CSV
+  - Multi-currency, search, filters, JSON/CSV export, import
   - localStorage with versioned schema + auto-migration
-  - Auto-backup before any migration
-  - PWA installable (Add to Home Screen)
-  - Offline support via service worker
+  - PWA installable, offline-capable
   
-  PLANNED (next versions):
-  - Streaks & gamification (daily logging streak)
-  - Recurring transactions (auto-add fortnightly pay)
-  - Calendar heatmap (GitHub-style spending intensity)
+  NEW IN v2.0:
+  - Payroll setup: multiple jobs/income sources with custom pay cycles
+    (weekly, fortnightly, monthly, or custom interval)
+  - Financial Compass tab (replaces Budgets in nav)
+      • Affordability Check ("Can I afford $X?") with green/yellow/red verdict
+      • Cash Flow Forecast (30-day predicted balance with upcoming pay events)
+      • Budget Health Score (0-100)
+      • 50/30/20 mirror
+      • Smart insights (subscriptions, day-of-week patterns)
+      • Decision journal (track past affordability checks)
+  - Budgets section moved into Insights tab
+  - Confidence indicators on predictions (low data = honest about it)
+  
+  PLANNED (v3+):
+  - Streaks & gamification
+  - Recurring transactions (auto-log payday)
+  - Calendar heatmap
   - Savings goals with progress rings
   - Mood log per purchase
-  - Receipt photo attachments
+  - Receipt photo OCR
   - Passcode lock
+  - iOS Shortcut for fast-logging
   
   HOW TO RESUME IN A NEW CHAT:
   1. Download/save this HTML file when chat ends
@@ -1050,10 +1057,339 @@
   .install-banner-text { flex: 1; }
   .install-banner-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
   .install-banner-sub { font-size: 11px; color: var(--text-dim); }
-  .install-banner-close {
-    background: none; border: none; color: var(--text-dim);
-    font-size: 16px; cursor: pointer; padding: 4px;
+  /* ============ v2 COMPASS STYLES ============ */
+  
+  /* Verdict zones */
+  .verdict-card {
+    padding: 22px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
   }
+  .verdict-card.green {
+    background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04));
+    border: 1px solid rgba(74,222,128,0.3);
+  }
+  .verdict-card.yellow {
+    background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.04));
+    border: 1px solid rgba(251,191,36,0.3);
+  }
+  .verdict-card.red {
+    background: linear-gradient(135deg, rgba(255,107,107,0.12), rgba(255,107,107,0.04));
+    border: 1px solid rgba(255,107,107,0.3);
+  }
+  .verdict-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .verdict-card.green .verdict-label { color: var(--income); }
+  .verdict-card.yellow .verdict-label { color: var(--warning); }
+  .verdict-card.red .verdict-label { color: var(--expense); }
+  .verdict-title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+  .verdict-reasoning {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .verdict-reasoning ul {
+    list-style: none;
+    margin-top: 8px;
+  }
+  .verdict-reasoning li {
+    padding: 4px 0;
+    padding-left: 16px;
+    position: relative;
+  }
+  .verdict-reasoning li::before {
+    content: '·';
+    position: absolute;
+    left: 4px;
+    color: var(--text-muted);
+    font-size: 18px;
+    line-height: 1;
+  }
+  
+  .compass-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 12px;
+  }
+  .compass-card-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .compass-card-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+  
+  /* Health Score */
+  .score-ring-wrap {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 4px 0;
+  }
+  .score-ring {
+    width: 90px; height: 90px;
+    flex-shrink: 0;
+  }
+  .score-text {
+    flex: 1;
+  }
+  .score-value {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .score-grade {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  
+  /* 50/30/20 bars */
+  .ratio-row {
+    margin-bottom: 14px;
+  }
+  .ratio-row:last-child { margin-bottom: 0; }
+  .ratio-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .ratio-name {
+    font-weight: 500;
+  }
+  .ratio-vals {
+    font-family: 'Geist Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .ratio-bar-wrap {
+    width: 100%;
+    height: 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+  .ratio-bar-target {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    background: var(--text-muted);
+    z-index: 2;
+  }
+  .ratio-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width .5s cubic-bezier(.2,.9,.3,1);
+  }
+  .ratio-bar-fill.needs { background: #60a5fa; }
+  .ratio-bar-fill.wants { background: #f472b6; }
+  .ratio-bar-fill.savings { background: var(--income); }
+  
+  /* Forecast chart */
+  .forecast-chart {
+    height: 160px;
+    position: relative;
+    margin: 12px 0;
+  }
+  .forecast-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .forecast-legend {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: 'Geist Mono', monospace;
+    margin-top: 6px;
+  }
+  .forecast-event {
+    position: absolute;
+    font-size: 14px;
+    transform: translate(-50%, -120%);
+    pointer-events: none;
+  }
+  
+  /* Income source cards */
+  .income-src-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .income-src-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .income-src-name {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .income-src-amount {
+    font-family: 'Geist Mono', monospace;
+    font-size: 14px;
+    color: var(--income);
+    font-weight: 500;
+  }
+  .income-src-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  
+  /* Insights list */
+  .insight-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 12px;
+    margin-bottom: 8px;
+  }
+  .insight-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border-radius: 8px;
+  }
+  .insight-body {
+    flex: 1;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .insight-body strong {
+    font-weight: 500;
+    color: var(--text);
+  }
+  
+  /* Decision journal */
+  .decision-item {
+    padding: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 8px;
+  }
+  .decision-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .decision-what {
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .decision-verdict-dot {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 100px;
+  }
+  .decision-verdict-dot.green { background: rgba(74,222,128,0.15); color: var(--income); }
+  .decision-verdict-dot.yellow { background: rgba(251,191,36,0.15); color: var(--warning); }
+  .decision-verdict-dot.red { background: rgba(255,107,107,0.15); color: var(--expense); }
+  .decision-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .decision-outcome {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  
+  /* Confidence indicator */
+  .confidence {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 8px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 100px;
+    display: inline-block;
+    margin-top: 8px;
+  }
+  
+  /* Affordability inline button */
+  .compass-cta {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+    color: #0a0a0f;
+    border: none;
+    border-radius: 16px;
+    padding: 18px;
+    width: 100%;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .compass-cta:active { transform: scale(0.98); }
+  
+  /* Pay cycle picker */
+  .cycle-picker {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .cycle-opt {
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .cycle-opt.selected {
+    border-color: var(--accent);
+    background: rgba(201,255,61,0.08);
+  }
+  .cycle-opt .opt-name { font-weight: 500; }
+  .cycle-opt .opt-sub { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+  
 </style>
 </head>
 <body>
@@ -1142,6 +1478,12 @@
     <div class="chart-title">Spending by Category</div>
     <div id="categoryBreakdown"></div>
   </div>
+  
+  <div class="section-title" style="margin-top:24px;">
+    <h2>Budgets</h2>
+    <span class="link" onclick="openBudgetModal()">+ New</span>
+  </div>
+  <div id="budgetList"></div>
 </div>
 
 <!-- LOANS PAGE -->
@@ -1163,13 +1505,63 @@
   <div id="loanDetailContent"></div>
 </div>
 
-<!-- BUDGETS PAGE -->
-<div class="page" id="page-budgets">
+<!-- COMPASS PAGE -->
+<div class="page" id="page-compass">
   <div class="section-title">
-    <h2>Budgets</h2>
-    <span class="link" onclick="openBudgetModal()">+ New</span>
+    <h2>Compass</h2>
+    <span class="link" onclick="goPage('decisions')">History →</span>
   </div>
-  <div id="budgetList"></div>
+  
+  <button class="compass-cta" onclick="openAffordabilityModal()">
+    <span style="font-size:18px;">⚖</span> Can I afford this?
+  </button>
+  
+  <div class="compass-card">
+    <div class="compass-card-title">Budget Health</div>
+    <div class="compass-card-sub">How your money is performing this month</div>
+    <div class="score-ring-wrap">
+      <svg class="score-ring" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8"/>
+        <circle id="scoreRingFill" cx="50" cy="50" r="42" fill="none" stroke="var(--accent)" stroke-width="8"
+                stroke-dasharray="263.9" stroke-dashoffset="263.9" stroke-linecap="round"
+                transform="rotate(-90 50 50)" style="transition: stroke-dashoffset .8s cubic-bezier(.2,.9,.3,1);"/>
+        <text id="scoreRingText" x="50" y="58" text-anchor="middle" font-family="Fraunces, serif" font-size="22" font-weight="500" fill="var(--text)">—</text>
+      </svg>
+      <div class="score-text">
+        <div class="score-value" id="scoreLabel">—</div>
+        <div class="score-grade" id="scoreSub">Add transactions to get your score</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="compass-card">
+    <div class="compass-card-title">Cash Flow Forecast</div>
+    <div class="compass-card-sub">Predicted balance over next 30 days</div>
+    <div class="forecast-chart" id="forecastChart"></div>
+    <div class="forecast-legend" id="forecastLegend"></div>
+    <div id="forecastConfidence"></div>
+  </div>
+  
+  <div class="compass-card">
+    <div class="compass-card-title">50/30/20 Mirror</div>
+    <div class="compass-card-sub">Your spending vs. the classic benchmark</div>
+    <div id="ratioBars"></div>
+  </div>
+  
+  <div class="compass-card">
+    <div class="compass-card-title">Smart Insights</div>
+    <div class="compass-card-sub">Patterns from your data</div>
+    <div id="smartInsights"></div>
+  </div>
+</div>
+
+<!-- DECISION HISTORY PAGE -->
+<div class="page" id="page-decisions">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <button class="back-btn" onclick="goPage('compass')">← Back</button>
+  </div>
+  <div class="section-title"><h2>Decision Journal</h2></div>
+  <div id="decisionList"></div>
 </div>
 
 <!-- SETTINGS PAGE -->
@@ -1179,6 +1571,11 @@
   <div class="setting-row" onclick="openCurrencyModal()">
     <span class="setting-label">Currency</span>
     <span class="setting-value" id="currencyLabel">AUD (A$)</span>
+  </div>
+
+  <div class="setting-row" onclick="goPage('income-sources')">
+    <span class="setting-label">Income Sources</span>
+    <span class="setting-value" id="incomeSourcesCount">—</span>
   </div>
 
   <div class="setting-row" onclick="exportData()">
@@ -1212,6 +1609,19 @@
     <div>All data stored on this device</div>
     <div id="lastBackup" style="margin-top: 4px;"></div>
   </div>
+</div>
+
+<!-- INCOME SOURCES PAGE -->
+<div class="page" id="page-income-sources">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <button class="back-btn" onclick="goPage('settings')">← Back</button>
+    <span class="link" onclick="openIncomeSrcModal()">+ Add</span>
+  </div>
+  <div class="section-title"><h2>Income Sources</h2></div>
+  <div style="color:var(--text-dim);font-size:12px;line-height:1.6;margin-bottom:16px;padding:12px 14px;background:var(--bg-card);border-radius:12px;border:1px solid var(--border);">
+    Set up your paychecks for cash flow forecasting. Supports multiple jobs with different pay cycles.
+  </div>
+  <div id="incomeSrcList"></div>
 </div>
 
 <!-- ADD/EDIT TX MODAL -->
@@ -1404,6 +1814,96 @@
   </div>
 </div>
 
+<!-- AFFORDABILITY MODAL -->
+<div class="modal-backdrop" id="affordModal" onclick="closeModalOnBg(event, 'affordModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Can I afford it?</div>
+    <div class="modal-sub">Get an honest verdict based on your data</div>
+    
+    <div id="affordInputView">
+      <div class="field">
+        <label>Amount</label>
+        <div class="amount-input-wrap" id="affordAmtWrap">
+          <input type="number" inputmode="decimal" id="inpAffordAmount" class="amount-input" placeholder="0.00" step="0.01">
+        </div>
+      </div>
+      
+      <div class="field">
+        <label>What for? (optional)</label>
+        <input type="text" id="inpAffordWhat" placeholder="e.g. New iPad, weekend trip">
+      </div>
+      
+      <button class="btn-primary" onclick="runAffordabilityCheck()">Run Check</button>
+      <button class="btn-secondary" onclick="closeModal('affordModal')">Cancel</button>
+    </div>
+    
+    <div id="affordResultView" style="display:none;">
+      <div id="affordVerdict"></div>
+      <button class="btn-primary" onclick="saveDecision('yes')" style="margin-top:12px;">I'm buying it</button>
+      <button class="btn-secondary" onclick="saveDecision('no')">I'll wait / skip</button>
+      <button class="btn-secondary" onclick="closeModal('affordModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- INCOME SOURCE MODAL -->
+<div class="modal-backdrop" id="incomeSrcModal" onclick="closeModalOnBg(event, 'incomeSrcModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="incSrcModalTitle">Add Income Source</div>
+    <div class="modal-sub">Set up a paycheck</div>
+    
+    <div class="field">
+      <label>Source Name</label>
+      <input type="text" id="inpIncSrcName" placeholder="e.g. Grant Guru, Freelance Client">
+    </div>
+    
+    <div class="field">
+      <label>Amount per pay</label>
+      <div class="amount-input-wrap" id="incSrcAmtWrap">
+        <input type="number" inputmode="decimal" id="inpIncSrcAmount" class="amount-input" placeholder="0.00" step="0.01">
+      </div>
+    </div>
+    
+    <div class="field">
+      <label>Pay Cycle</label>
+      <div class="cycle-picker" id="cyclePicker">
+        <div class="cycle-opt" data-cycle="weekly" onclick="selectCycle('weekly')">
+          <div class="opt-name">Weekly</div>
+          <div class="opt-sub">Every 7 days</div>
+        </div>
+        <div class="cycle-opt selected" data-cycle="fortnightly" onclick="selectCycle('fortnightly')">
+          <div class="opt-name">Fortnightly</div>
+          <div class="opt-sub">Every 14 days</div>
+        </div>
+        <div class="cycle-opt" data-cycle="monthly" onclick="selectCycle('monthly')">
+          <div class="opt-name">Monthly</div>
+          <div class="opt-sub">Same date each month</div>
+        </div>
+        <div class="cycle-opt" data-cycle="irregular" onclick="selectCycle('irregular')">
+          <div class="opt-name">Irregular</div>
+          <div class="opt-sub">Variable / ad-hoc</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="field" id="nextPayField">
+      <label>Next pay date</label>
+      <input type="date" id="inpIncSrcNextPay">
+    </div>
+    
+    <div class="field">
+      <label>Note (optional)</label>
+      <input type="text" id="inpIncSrcNote" placeholder="e.g. After tax, gross">
+    </div>
+    
+    <button class="btn-primary" onclick="saveIncomeSource()">Save</button>
+    <button class="btn-danger" id="deleteIncSrcBtn" style="display:none" onclick="deleteCurrentIncomeSource()">Delete</button>
+    <button class="btn-secondary" onclick="closeModal('incomeSrcModal')">Cancel</button>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"><span id="toastIcon">✓</span><span id="toastMsg">Saved</span></div>
 
@@ -1421,8 +1921,8 @@
   <button class="nav-item" data-page="loans" onclick="goPage('loans')">
     <span class="nav-icon">◉</span> Loans
   </button>
-  <button class="nav-item" data-page="budgets" onclick="goPage('budgets')">
-    <span class="nav-icon">◐</span> Budgets
+  <button class="nav-item" data-page="compass" onclick="goPage('compass')">
+    <span class="nav-icon">◈</span> Compass
   </button>
 </div>
 
@@ -1431,8 +1931,8 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '1.0.0';
-const SCHEMA_VERSION = 1;
+const APP_VERSION = '2.0.0';
+const SCHEMA_VERSION = 2;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
 
@@ -1481,6 +1981,8 @@ let state = {
   budgets: {},
   loans: [],
   customCategories: { income: [], expense: [] },
+  incomeSources: [],
+  decisions: [],
   currency: 'AUD',
   // UI-only state (not persisted)
   currentType: 'expense',
@@ -1492,6 +1994,9 @@ let state = {
   loanDeductOn: false,
   filter: 'all',
   catPickerMode: 'tx', // 'tx' or 'budget'
+  editingIncSrcId: null,
+  selectedCycle: 'fortnightly',
+  pendingAffordCheck: null,
 };
 
 /* ============ STORAGE & MIGRATION ============ */
@@ -1511,6 +2016,8 @@ function loadData() {
     state.budgets = migrated.budgets || {};
     state.loans = migrated.loans || [];
     state.customCategories = migrated.customCategories || { income: [], expense: [] };
+    state.incomeSources = migrated.incomeSources || [];
+    state.decisions = migrated.decisions || [];
     state.currency = migrated.currency || 'AUD';
   } catch (e) {
     console.error('Load error:', e);
@@ -1542,8 +2049,14 @@ function runMigrations(data) {
     if (!migrated.customCategories) migrated.customCategories = { income: [], expense: [] };
   }
   
+  // Migration: v1 -> v2 (payroll + compass)
+  if (fromVersion < 2) {
+    migrated.schemaVersion = 2;
+    if (!migrated.incomeSources) migrated.incomeSources = [];
+    if (!migrated.decisions) migrated.decisions = [];
+  }
+  
   // FUTURE MIGRATIONS GO HERE:
-  // if (fromVersion < 2) { ... migrated.schemaVersion = 2; }
   // if (fromVersion < 3) { ... migrated.schemaVersion = 3; }
   
   return migrated;
@@ -1557,6 +2070,8 @@ function saveData() {
       budgets: state.budgets,
       loans: state.loans,
       customCategories: state.customCategories,
+      incomeSources: state.incomeSources,
+      decisions: state.decisions,
       currency: state.currency,
       lastSaved: Date.now(),
     };
@@ -1642,10 +2157,12 @@ function goPage(name) {
   document.querySelectorAll('.nav-item').forEach(n => {
     n.classList.toggle('active', n.dataset.page === name);
   });
-  if (name === 'stats') renderStats();
-  if (name === 'budgets') renderBudgets();
+  if (name === 'stats') { renderStats(); renderBudgets(); }
   if (name === 'loans') renderLoans();
-  if (name === 'settings') updateStorageInfo();
+  if (name === 'compass') renderCompass();
+  if (name === 'decisions') renderDecisions();
+  if (name === 'income-sources') renderIncomeSources();
+  if (name === 'settings') { updateStorageInfo(); updateIncomeSourcesCount(); }
   window.scrollTo(0, 0);
 }
 
@@ -1656,6 +2173,7 @@ function renderAll() {
   renderStats();
   renderBudgets();
   renderLoans();
+  renderCompass();
   
   const sym = getCurrencySymbol();
   document.getElementById('currencySymbol').textContent = sym;
@@ -1664,6 +2182,14 @@ function renderAll() {
   const cur = CURRENCIES.find(c => c.code === state.currency);
   document.getElementById('currencyLabel').textContent = cur ? `${cur.code} (${cur.symbol})` : 'AUD (A$)';
   document.getElementById('versionTag').textContent = 'v' + APP_VERSION.split('.').slice(0,2).join('.');
+  updateIncomeSourcesCount();
+}
+
+function updateIncomeSourcesCount() {
+  const el = document.getElementById('incomeSourcesCount');
+  if (!el) return;
+  const n = state.incomeSources.length;
+  el.textContent = n === 0 ? 'Not set up' : n === 1 ? '1 source' : n + ' sources';
 }
 
 function renderHome() {
@@ -2634,7 +3160,831 @@ function setupManifest() {
   document.getElementById('manifestLink').href = URL.createObjectURL(blob);
 }
 
-/* ============ INIT ============ */
+/* ============================================================
+   v2: INCOME SOURCES
+   ============================================================ */
+
+function renderIncomeSources() {
+  const list = document.getElementById('incomeSrcList');
+  if (state.incomeSources.length === 0) {
+    list.innerHTML = emptyState('No income sources', 'Add your job(s) to enable cash flow forecasts');
+    return;
+  }
+  list.innerHTML = state.incomeSources.map(src => {
+    const cycleLabel = {
+      weekly: 'Weekly',
+      fortnightly: 'Fortnightly',
+      monthly: 'Monthly',
+      irregular: 'Irregular',
+    }[src.cycle] || src.cycle;
+    
+    let nextPayStr = '';
+    if (src.cycle !== 'irregular' && src.nextPay) {
+      const np = computeNextPayDate(src);
+      const days = Math.ceil((new Date(np + 'T00:00:00') - new Date(todayISO() + 'T00:00:00')) / 86400000);
+      if (days === 0) nextPayStr = 'Today';
+      else if (days === 1) nextPayStr = 'Tomorrow';
+      else if (days > 0) nextPayStr = `In ${days} days`;
+      else nextPayStr = `${Math.abs(days)}d ago — update`;
+    }
+    
+    return `
+      <div class="income-src-card" onclick="editIncomeSource('${src.id}')">
+        <div class="income-src-head">
+          <span class="income-src-name">${escapeHtml(src.name)}</span>
+          <span class="income-src-amount">+${fmt(src.amount)}</span>
+        </div>
+        <div class="income-src-meta">${cycleLabel}${nextPayStr ? ' · Next: ' + nextPayStr : ''}</div>
+        ${src.note ? `<div class="income-src-meta" style="margin-top:4px;">${escapeHtml(src.note)}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function computeNextPayDate(src) {
+  if (!src.nextPay || src.cycle === 'irregular') return null;
+  const today = new Date(todayISO() + 'T00:00:00');
+  let next = new Date(src.nextPay + 'T00:00:00');
+  if (next >= today) return src.nextPay;
+  
+  // Roll forward to future date
+  if (src.cycle === 'weekly') {
+    while (next < today) next.setDate(next.getDate() + 7);
+  } else if (src.cycle === 'fortnightly') {
+    while (next < today) next.setDate(next.getDate() + 14);
+  } else if (src.cycle === 'monthly') {
+    while (next < today) next.setMonth(next.getMonth() + 1);
+  }
+  return next.toISOString().slice(0,10);
+}
+
+function openIncomeSrcModal() {
+  state.editingIncSrcId = null;
+  state.selectedCycle = 'fortnightly';
+  document.getElementById('incSrcModalTitle').textContent = 'Add Income Source';
+  document.getElementById('inpIncSrcName').value = '';
+  document.getElementById('inpIncSrcAmount').value = '';
+  document.getElementById('inpIncSrcNextPay').value = todayISO();
+  document.getElementById('inpIncSrcNote').value = '';
+  document.getElementById('deleteIncSrcBtn').style.display = 'none';
+  updateCyclePicker();
+  document.getElementById('incomeSrcModal').classList.add('open');
+  setTimeout(() => document.getElementById('inpIncSrcName').focus(), 350);
+}
+
+function editIncomeSource(id) {
+  const src = state.incomeSources.find(s => s.id === id);
+  if (!src) return;
+  state.editingIncSrcId = id;
+  state.selectedCycle = src.cycle;
+  document.getElementById('incSrcModalTitle').textContent = 'Edit Income Source';
+  document.getElementById('inpIncSrcName').value = src.name;
+  document.getElementById('inpIncSrcAmount').value = src.amount;
+  document.getElementById('inpIncSrcNextPay').value = src.nextPay || todayISO();
+  document.getElementById('inpIncSrcNote').value = src.note || '';
+  document.getElementById('deleteIncSrcBtn').style.display = 'block';
+  updateCyclePicker();
+  document.getElementById('incomeSrcModal').classList.add('open');
+}
+
+function selectCycle(cycle) {
+  state.selectedCycle = cycle;
+  updateCyclePicker();
+  document.getElementById('nextPayField').style.display = cycle === 'irregular' ? 'none' : 'block';
+}
+
+function updateCyclePicker() {
+  document.querySelectorAll('.cycle-opt').forEach(el => {
+    el.classList.toggle('selected', el.dataset.cycle === state.selectedCycle);
+  });
+  document.getElementById('nextPayField').style.display = state.selectedCycle === 'irregular' ? 'none' : 'block';
+}
+
+function saveIncomeSource() {
+  const name = document.getElementById('inpIncSrcName').value.trim();
+  const amount = parseFloat(document.getElementById('inpIncSrcAmount').value);
+  const nextPay = document.getElementById('inpIncSrcNextPay').value;
+  const note = document.getElementById('inpIncSrcNote').value.trim();
+  
+  if (!name) { showToast('Enter a name', '⚠'); return; }
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', '⚠'); return; }
+  
+  if (state.editingIncSrcId) {
+    const idx = state.incomeSources.findIndex(s => s.id === state.editingIncSrcId);
+    if (idx >= 0) {
+      state.incomeSources[idx] = {
+        ...state.incomeSources[idx],
+        name, amount, cycle: state.selectedCycle, nextPay, note,
+      };
+    }
+    showToast('Updated');
+  } else {
+    state.incomeSources.push({
+      id: uid('inc'),
+      name, amount, cycle: state.selectedCycle, nextPay, note,
+      createdAt: Date.now(),
+    });
+    showToast('Income source added');
+  }
+  
+  saveData();
+  closeModal('incomeSrcModal');
+  renderIncomeSources();
+  renderCompass();
+}
+
+function deleteCurrentIncomeSource() {
+  if (!state.editingIncSrcId) return;
+  if (!confirm('Delete this income source?')) return;
+  state.incomeSources = state.incomeSources.filter(s => s.id !== state.editingIncSrcId);
+  saveData();
+  closeModal('incomeSrcModal');
+  renderIncomeSources();
+  renderCompass();
+  showToast('Removed', '×');
+}
+
+/* ============================================================
+   v2: FINANCIAL MATH ENGINE
+   ============================================================ */
+
+function getCurrentBalance() {
+  let income = 0, expense = 0;
+  state.transactions.forEach(t => {
+    if (t.type === 'income') income += t.amount;
+    else expense += t.amount;
+  });
+  return income - expense;
+}
+
+function getDataDays() {
+  if (state.transactions.length === 0) return 0;
+  const dates = state.transactions.map(t => t.date).sort();
+  const first = new Date(dates[0] + 'T00:00:00');
+  const today = new Date(todayISO() + 'T00:00:00');
+  return Math.max(1, Math.ceil((today - first) / 86400000) + 1);
+}
+
+function getAvgDailyExpense() {
+  // Last 30 days
+  const d30 = new Date(); d30.setDate(d30.getDate() - 30);
+  const d30ISO = d30.toISOString().slice(0,10);
+  let total = 0, days = 0;
+  const byDay = {};
+  state.transactions.forEach(t => {
+    if (t.date >= d30ISO && t.type === 'expense') {
+      total += t.amount;
+      byDay[t.date] = true;
+    }
+  });
+  days = Math.max(1, Math.min(30, getDataDays()));
+  return total / days;
+}
+
+function getMonthlyIncomeEstimate() {
+  // From income sources if set
+  if (state.incomeSources.length > 0) {
+    let monthly = 0;
+    state.incomeSources.forEach(src => {
+      if (src.cycle === 'weekly') monthly += src.amount * 52 / 12;
+      else if (src.cycle === 'fortnightly') monthly += src.amount * 26 / 12;
+      else if (src.cycle === 'monthly') monthly += src.amount;
+      // Irregular: estimate from transactions
+    });
+    
+    // Add irregular sources' historical average
+    const irregularSources = state.incomeSources.filter(s => s.cycle === 'irregular');
+    if (irregularSources.length > 0) {
+      const d90 = new Date(); d90.setDate(d90.getDate() - 90);
+      const d90ISO = d90.toISOString().slice(0,10);
+      let irr = 0;
+      state.transactions.forEach(t => {
+        if (t.type === 'income' && t.date >= d90ISO) irr += t.amount;
+      });
+      monthly += irr / 3;
+    }
+    return monthly;
+  }
+  
+  // Fallback: average from last 90 days of income transactions
+  const d90 = new Date(); d90.setDate(d90.getDate() - 90);
+  const d90ISO = d90.toISOString().slice(0,10);
+  let total = 0;
+  state.transactions.forEach(t => {
+    if (t.type === 'income' && t.date >= d90ISO) total += t.amount;
+  });
+  return total / 3;
+}
+
+function getUpcomingPayEvents(daysAhead = 30) {
+  const events = [];
+  const today = new Date(todayISO() + 'T00:00:00');
+  const horizon = new Date(today); horizon.setDate(horizon.getDate() + daysAhead);
+  
+  state.incomeSources.forEach(src => {
+    if (src.cycle === 'irregular' || !src.nextPay) return;
+    
+    let next = new Date(computeNextPayDate(src) + 'T00:00:00');
+    while (next <= horizon) {
+      events.push({
+        date: next.toISOString().slice(0,10),
+        amount: src.amount,
+        name: src.name,
+      });
+      if (src.cycle === 'weekly') next.setDate(next.getDate() + 7);
+      else if (src.cycle === 'fortnightly') next.setDate(next.getDate() + 14);
+      else if (src.cycle === 'monthly') next.setMonth(next.getMonth() + 1);
+      else break;
+    }
+  });
+  
+  return events.sort((a,b) => a.date.localeCompare(b.date));
+}
+
+function getUpcomingLoanPayments(daysAhead = 30) {
+  // Estimate based on recent loan payment history
+  const events = [];
+  state.loans.forEach(loan => {
+    if (!loan.deductFromBalance) return;
+    const paid = getLoanPaid(loan);
+    if (paid >= loan.total) return;
+    const payments = loan.payments || [];
+    if (payments.length < 2) return;
+    
+    // Estimate cadence from last 2-3 payments
+    const sorted = [...payments].sort((a,b) => a.date.localeCompare(b.date));
+    const recent = sorted.slice(-3);
+    if (recent.length < 2) return;
+    const gaps = [];
+    for (let i = 1; i < recent.length; i++) {
+      const d1 = new Date(recent[i-1].date + 'T00:00:00');
+      const d2 = new Date(recent[i].date + 'T00:00:00');
+      gaps.push((d2 - d1) / 86400000);
+    }
+    const avgGap = gaps.reduce((a,b) => a+b, 0) / gaps.length;
+    if (avgGap < 1 || avgGap > 90) return;
+    
+    const avgAmt = recent.reduce((s,p) => s + p.amount, 0) / recent.length;
+    let nextDate = new Date(recent[recent.length-1].date + 'T00:00:00');
+    const today = new Date(todayISO() + 'T00:00:00');
+    const horizon = new Date(today); horizon.setDate(horizon.getDate() + daysAhead);
+    
+    nextDate.setDate(nextDate.getDate() + avgGap);
+    while (nextDate <= horizon) {
+      if (nextDate >= today) {
+        events.push({
+          date: nextDate.toISOString().slice(0,10),
+          amount: avgAmt,
+          name: loan.name + ' payment',
+        });
+      }
+      nextDate.setDate(nextDate.getDate() + avgGap);
+    }
+  });
+  return events;
+}
+
+function forecastBalance(daysAhead = 30) {
+  const today = todayISO();
+  const start = getCurrentBalance();
+  const avgDailyOut = getAvgDailyExpense();
+  const payEvents = getUpcomingPayEvents(daysAhead);
+  const loanEvents = getUpcomingLoanPayments(daysAhead);
+  
+  const points = [{ date: today, balance: start, event: null }];
+  let bal = start;
+  
+  for (let i = 1; i <= daysAhead; i++) {
+    const d = new Date(today + 'T00:00:00');
+    d.setDate(d.getDate() + i);
+    const iso = d.toISOString().slice(0,10);
+    
+    // Daily spending
+    bal -= avgDailyOut;
+    
+    // Income events
+    let event = null;
+    payEvents.filter(e => e.date === iso).forEach(e => {
+      bal += e.amount;
+      event = { type: 'income', name: e.name, amount: e.amount };
+    });
+    
+    // Loan events
+    loanEvents.filter(e => e.date === iso).forEach(e => {
+      bal -= e.amount;
+      event = { type: 'expense', name: e.name, amount: e.amount };
+    });
+    
+    points.push({ date: iso, balance: bal, event });
+  }
+  return points;
+}
+
+/* ============================================================
+   v2: COMPASS RENDER
+   ============================================================ */
+
+function renderCompass() {
+  renderHealthScore();
+  renderForecast();
+  renderRatios();
+  renderSmartInsights();
+}
+
+function computeHealthScore() {
+  // 0-100 based on multiple factors
+  const dataDays = getDataDays();
+  if (dataDays < 7 || state.transactions.length < 5) {
+    return { score: null, reason: 'Need more data (at least 7 days, 5+ transactions)' };
+  }
+  
+  let score = 50; // baseline
+  const reasons = [];
+  
+  // Factor 1: Savings rate (this month)
+  const now = new Date();
+  const mStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  let mIn = 0, mOut = 0;
+  state.transactions.forEach(t => {
+    if (t.date >= mStart) {
+      if (t.type === 'income') mIn += t.amount;
+      else mOut += t.amount;
+    }
+  });
+  const savingsRate = mIn > 0 ? (mIn - mOut) / mIn : null;
+  if (savingsRate !== null) {
+    if (savingsRate >= 0.2) { score += 20; reasons.push('Saving 20%+ of income'); }
+    else if (savingsRate >= 0.1) { score += 10; reasons.push('Saving 10%+ of income'); }
+    else if (savingsRate >= 0) { score += 0; }
+    else { score -= 15; reasons.push('Spending more than earning'); }
+  }
+  
+  // Factor 2: Budget adherence
+  const budgetEntries = Object.entries(state.budgets);
+  if (budgetEntries.length > 0) {
+    const spent = {};
+    state.transactions.forEach(t => {
+      if (t.type === 'expense' && t.date >= mStart) {
+        spent[t.category] = (spent[t.category] || 0) + t.amount;
+      }
+    });
+    let onTrack = 0, over = 0;
+    budgetEntries.forEach(([cid, limit]) => {
+      const u = spent[cid] || 0;
+      if (u <= limit) onTrack++;
+      else over++;
+    });
+    const ratio = onTrack / budgetEntries.length;
+    if (ratio === 1) { score += 15; reasons.push('All budgets on track'); }
+    else if (ratio >= 0.7) { score += 8; }
+    else { score -= 8; reasons.push(`${over} budget${over>1?'s':''} over limit`); }
+  }
+  
+  // Factor 3: Buffer (current balance / avg monthly expense)
+  const bal = getCurrentBalance();
+  const avgMonthlyExp = getAvgDailyExpense() * 30;
+  if (avgMonthlyExp > 0) {
+    const monthsBuffer = bal / avgMonthlyExp;
+    if (monthsBuffer >= 3) { score += 15; reasons.push('Strong cash buffer (3+ months)'); }
+    else if (monthsBuffer >= 1) { score += 5; reasons.push('Healthy buffer'); }
+    else if (monthsBuffer >= 0) { score -= 5; reasons.push('Low cash buffer'); }
+    else { score -= 20; reasons.push('Negative balance'); }
+  }
+  
+  // Factor 4: Debt progress (loans)
+  const activeLoans = state.loans.filter(l => getLoanPaid(l) < l.total);
+  if (activeLoans.length > 0) {
+    const totalDebt = activeLoans.reduce((s,l) => s + (l.total - getLoanPaid(l)), 0);
+    const monthlyIncome = getMonthlyIncomeEstimate();
+    if (monthlyIncome > 0) {
+      const dtiRatio = totalDebt / (monthlyIncome * 12);
+      if (dtiRatio < 0.3) { score += 5; }
+      else if (dtiRatio > 1) { score -= 10; reasons.push('High debt-to-income'); }
+    }
+  }
+  
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  return { score, reasons };
+}
+
+function renderHealthScore() {
+  const { score, reasons, reason } = computeHealthScore();
+  const ring = document.getElementById('scoreRingFill');
+  const ringText = document.getElementById('scoreRingText');
+  const label = document.getElementById('scoreLabel');
+  const sub = document.getElementById('scoreSub');
+  
+  if (score === null) {
+    ring.style.strokeDashoffset = '263.9';
+    ringText.textContent = '—';
+    label.textContent = '—';
+    sub.textContent = reason || 'Need more data';
+    return;
+  }
+  
+  const offset = 263.9 - (263.9 * score / 100);
+  ring.style.strokeDashoffset = offset;
+  ringText.textContent = score;
+  
+  let color, grade;
+  if (score >= 80) { color = 'var(--income)'; grade = 'Excellent'; }
+  else if (score >= 60) { color = 'var(--accent)'; grade = 'Good'; }
+  else if (score >= 40) { color = 'var(--warning)'; grade = 'Watch out'; }
+  else { color = 'var(--expense)'; grade = 'Needs attention'; }
+  
+  ring.setAttribute('stroke', color);
+  label.textContent = grade;
+  label.style.color = color;
+  
+  if (reasons && reasons.length) {
+    sub.textContent = reasons.slice(0, 2).join(' · ');
+  } else {
+    sub.textContent = 'Steady';
+  }
+}
+
+function renderForecast() {
+  const chart = document.getElementById('forecastChart');
+  const legend = document.getElementById('forecastLegend');
+  const conf = document.getElementById('forecastConfidence');
+  
+  const dataDays = getDataDays();
+  if (dataDays < 7) {
+    chart.innerHTML = '<div class="empty" style="padding:20px;"><p>Need 7+ days of data to forecast</p></div>';
+    legend.innerHTML = '';
+    conf.innerHTML = '';
+    return;
+  }
+  
+  const points = forecastBalance(30);
+  const balances = points.map(p => p.balance);
+  const min = Math.min(0, ...balances);
+  const max = Math.max(...balances);
+  const range = max - min || 1;
+  
+  const W = 100, H = 100;
+  const xStep = W / (points.length - 1);
+  
+  const pathD = points.map((p, i) => {
+    const x = i * xStep;
+    const y = H - ((p.balance - min) / range) * H;
+    return (i === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + y.toFixed(2);
+  }).join(' ');
+  
+  const zeroY = H - ((0 - min) / range) * H;
+  
+  // Event markers
+  const eventMarkers = points.map((p, i) => {
+    if (!p.event) return '';
+    const x = i * xStep;
+    const y = H - ((p.balance - min) / range) * H;
+    const color = p.event.type === 'income' ? '#4ade80' : '#ff6b6b';
+    return `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="1.5" fill="${color}"/>`;
+  }).join('');
+  
+  chart.innerHTML = `
+    <svg class="forecast-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="forecastGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${balances[balances.length-1] >= 0 ? '#c9ff3d' : '#ff6b6b'}" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="${balances[balances.length-1] >= 0 ? '#c9ff3d' : '#ff6b6b'}" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      ${min < 0 ? `<line x1="0" y1="${zeroY.toFixed(2)}" x2="${W}" y2="${zeroY.toFixed(2)}" stroke="rgba(255,107,107,0.3)" stroke-width="0.3" stroke-dasharray="1,1"/>` : ''}
+      <path d="${pathD} L${W},${H} L0,${H} Z" fill="url(#forecastGrad)"/>
+      <path d="${pathD}" fill="none" stroke="${balances[balances.length-1] >= 0 ? 'var(--accent)' : 'var(--expense)'}" stroke-width="0.6" vector-effect="non-scaling-stroke"/>
+      ${eventMarkers}
+    </svg>
+  `;
+  
+  const endBal = balances[balances.length - 1];
+  const lowest = Math.min(...balances);
+  
+  legend.innerHTML = `
+    <span>Today: ${fmt(balances[0])}</span>
+    <span>30d: ${fmt(endBal)}</span>
+  `;
+  
+  let confText = `Based on ${state.transactions.length} transactions over ${dataDays} days`;
+  if (dataDays < 30) confText += ' · Low confidence';
+  else if (dataDays < 60) confText += ' · Medium confidence';
+  else confText += ' · Good confidence';
+  
+  let warning = '';
+  if (lowest < 0) {
+    const lowIdx = balances.indexOf(lowest);
+    warning = `<div style="margin-top:10px;padding:10px 12px;background:rgba(255,107,107,0.08);border-radius:10px;font-size:12px;color:var(--expense);">⚠ Predicted to dip to ${fmt(lowest)} around day ${lowIdx}</div>`;
+  } else if (state.incomeSources.length === 0) {
+    warning = `<div style="margin-top:10px;padding:10px 12px;background:rgba(251,191,36,0.08);border-radius:10px;font-size:12px;color:var(--warning);">💡 Add income sources in Settings for accurate forecasts</div>`;
+  }
+  
+  conf.innerHTML = warning + `<div class="confidence">${confText}</div>`;
+}
+
+function renderRatios() {
+  // 50/30/20: needs / wants / savings
+  // Map categories to buckets
+  const NEEDS = ['food', 'transport', 'bills', 'health', 'home', 'loan_pay'];
+  const WANTS = ['shopping', 'fun', 'edu', 'travel', 'gym', 'subs'];
+  // Everything else expense = wants by default
+  // Savings = income - all expense
+  
+  const now = new Date();
+  const mStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  
+  let income = 0, needs = 0, wants = 0;
+  state.transactions.forEach(t => {
+    if (t.date < mStart) return;
+    if (t.type === 'income') { income += t.amount; }
+    else {
+      if (NEEDS.includes(t.category)) needs += t.amount;
+      else wants += t.amount;
+    }
+  });
+  
+  const total = income || (needs + wants) || 1;
+  const savings = Math.max(0, income - needs - wants);
+  const needsPct = (needs / total) * 100;
+  const wantsPct = (wants / total) * 100;
+  const savingsPct = (savings / total) * 100;
+  
+  document.getElementById('ratioBars').innerHTML = `
+    <div class="ratio-row">
+      <div class="ratio-head">
+        <span class="ratio-name">Needs</span>
+        <span class="ratio-vals">${needsPct.toFixed(0)}% · ${fmt(needs)} <span style="color:var(--text-muted);">/ 50%</span></span>
+      </div>
+      <div class="ratio-bar-wrap">
+        <div class="ratio-bar-target" style="left:50%;"></div>
+        <div class="ratio-bar-fill needs" style="width:${Math.min(100, needsPct)}%;"></div>
+      </div>
+    </div>
+    <div class="ratio-row">
+      <div class="ratio-head">
+        <span class="ratio-name">Wants</span>
+        <span class="ratio-vals">${wantsPct.toFixed(0)}% · ${fmt(wants)} <span style="color:var(--text-muted);">/ 30%</span></span>
+      </div>
+      <div class="ratio-bar-wrap">
+        <div class="ratio-bar-target" style="left:30%;"></div>
+        <div class="ratio-bar-fill wants" style="width:${Math.min(100, wantsPct)}%;"></div>
+      </div>
+    </div>
+    <div class="ratio-row">
+      <div class="ratio-head">
+        <span class="ratio-name">Savings</span>
+        <span class="ratio-vals">${savingsPct.toFixed(0)}% · ${fmt(savings)} <span style="color:var(--text-muted);">/ 20%</span></span>
+      </div>
+      <div class="ratio-bar-wrap">
+        <div class="ratio-bar-target" style="left:20%;"></div>
+        <div class="ratio-bar-fill savings" style="width:${Math.min(100, savingsPct)}%;"></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSmartInsights() {
+  const list = document.getElementById('smartInsights');
+  const insights = [];
+  
+  if (state.transactions.length < 10) {
+    list.innerHTML = emptyState('Not enough data', 'Insights appear after 10+ transactions');
+    return;
+  }
+  
+  // 1. Subscription tally
+  const subTotal = state.transactions
+    .filter(t => t.category === 'subs' && t.type === 'expense')
+    .reduce((s,t) => {
+      // Approximate: count last 30 days
+      const d30 = new Date(); d30.setDate(d30.getDate() - 30);
+      if (new Date(t.date + 'T00:00:00') >= d30) return s + t.amount;
+      return s;
+    }, 0);
+  if (subTotal > 0) {
+    insights.push({
+      icon: '📺',
+      text: `<strong>Subscriptions:</strong> ${fmt(subTotal)} in the last 30 days · ${fmt(subTotal * 12)} per year`
+    });
+  }
+  
+  // 2. Biggest category
+  const now = new Date();
+  const mStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const catTotals = {};
+  state.transactions.forEach(t => {
+    if (t.type === 'expense' && t.date >= mStart) {
+      catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
+    }
+  });
+  const sorted = Object.entries(catTotals).sort((a,b) => b[1] - a[1]);
+  if (sorted.length > 0) {
+    const [cid, amt] = sorted[0];
+    const cat = getCat(cid, 'expense');
+    insights.push({
+      icon: cat.emoji,
+      text: `<strong>Top category this month:</strong> ${cat.name} at ${fmt(amt)}`
+    });
+  }
+  
+  // 3. Day-of-week pattern
+  const dayTotals = [0,0,0,0,0,0,0];
+  const dayCounts = [0,0,0,0,0,0,0];
+  state.transactions.forEach(t => {
+    if (t.type === 'expense') {
+      const dow = new Date(t.date + 'T00:00:00').getDay();
+      dayTotals[dow] += t.amount;
+      dayCounts[dow]++;
+    }
+  });
+  const avgs = dayTotals.map((t, i) => dayCounts[i] > 0 ? t / dayCounts[i] : 0);
+  const maxDay = avgs.indexOf(Math.max(...avgs));
+  const days = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
+  if (avgs[maxDay] > 0) {
+    insights.push({
+      icon: '📅',
+      text: `<strong>Biggest spending day:</strong> ${days[maxDay]} averaging ${fmt(avgs[maxDay])} per transaction`
+    });
+  }
+  
+  // 4. Cash buffer in days
+  const bal = getCurrentBalance();
+  const avgDaily = getAvgDailyExpense();
+  if (avgDaily > 0 && bal > 0) {
+    const days_left = Math.floor(bal / avgDaily);
+    insights.push({
+      icon: '🛟',
+      text: `<strong>Cash buffer:</strong> ${days_left} days of spending at current pace`
+    });
+  }
+  
+  // 5. Total debt
+  const totalDebt = state.loans.reduce((s,l) => s + Math.max(0, l.total - getLoanPaid(l)), 0);
+  if (totalDebt > 0) {
+    insights.push({
+      icon: '💳',
+      text: `<strong>Total debt remaining:</strong> ${fmt(totalDebt)} across ${state.loans.filter(l => getLoanPaid(l) < l.total).length} loan(s)`
+    });
+  }
+  
+  list.innerHTML = insights.map(i => `
+    <div class="insight-item">
+      <div class="insight-icon">${i.icon}</div>
+      <div class="insight-body">${i.text}</div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   v2: AFFORDABILITY CHECK
+   ============================================================ */
+
+function openAffordabilityModal() {
+  document.getElementById('inpAffordAmount').value = '';
+  document.getElementById('inpAffordWhat').value = '';
+  document.getElementById('affordInputView').style.display = 'block';
+  document.getElementById('affordResultView').style.display = 'none';
+  document.getElementById('affordModal').classList.add('open');
+  setTimeout(() => document.getElementById('inpAffordAmount').focus(), 350);
+}
+
+function runAffordabilityCheck() {
+  const amount = parseFloat(document.getElementById('inpAffordAmount').value);
+  const what = document.getElementById('inpAffordWhat').value.trim();
+  
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', '⚠'); return; }
+  
+  const bal = getCurrentBalance();
+  const monthlyIncome = getMonthlyIncomeEstimate();
+  const avgDaily = getAvgDailyExpense();
+  const monthlyExp = avgDaily * 30;
+  
+  const afterBal = bal - amount;
+  const daysBufferAfter = avgDaily > 0 ? Math.floor(afterBal / avgDaily) : null;
+  const pctOfIncome = monthlyIncome > 0 ? (amount / monthlyIncome) * 100 : null;
+  
+  // Get next pay event
+  const payEvents = getUpcomingPayEvents(30);
+  const nextPay = payEvents[0];
+  
+  // Active loans
+  const activeLoans = state.loans.filter(l => getLoanPaid(l) < l.total);
+  const totalDebt = activeLoans.reduce((s,l) => s + (l.total - getLoanPaid(l)), 0);
+  
+  // Verdict logic
+  let zone, title;
+  const reasons = [];
+  const considerations = [];
+  
+  if (afterBal < 0) {
+    zone = 'red';
+    title = `Don't do it — you'd go ${fmt(Math.abs(afterBal))} into the negative`;
+    reasons.push(`Balance would drop from ${fmt(bal)} to ${fmt(afterBal)}`);
+  } else if (daysBufferAfter !== null && daysBufferAfter < 7) {
+    zone = 'red';
+    title = `Risky — you'd have less than a week of buffer`;
+    reasons.push(`Only ${daysBufferAfter} days of typical spending left after`);
+  } else if (pctOfIncome !== null && pctOfIncome > 50) {
+    zone = 'yellow';
+    title = `Affordable, but this is ${pctOfIncome.toFixed(0)}% of your monthly income`;
+  } else if (daysBufferAfter !== null && daysBufferAfter < 21) {
+    zone = 'yellow';
+    title = `You can afford it — but cuts into your buffer`;
+  } else {
+    zone = 'green';
+    title = `Yes, you can afford it comfortably`;
+  }
+  
+  // Build reasoning
+  reasons.push(`Balance: ${fmt(bal)} → <strong>${fmt(afterBal)}</strong>`);
+  if (daysBufferAfter !== null) {
+    reasons.push(`Buffer after: ~${daysBufferAfter} days of spending`);
+  }
+  if (pctOfIncome !== null && monthlyIncome > 0) {
+    reasons.push(`That's ${pctOfIncome.toFixed(0)}% of your ~${fmt(monthlyIncome)} monthly income`);
+  }
+  if (nextPay) {
+    const days = Math.ceil((new Date(nextPay.date + 'T00:00:00') - new Date(todayISO() + 'T00:00:00')) / 86400000);
+    reasons.push(`Next paycheck: ${fmt(nextPay.amount)} in ${days} days (${nextPay.name})`);
+  }
+  
+  // Considerations
+  if (totalDebt > 0) {
+    considerations.push(`You have ${fmt(totalDebt)} in active debt — could that money speed up payoff?`);
+  }
+  const monthlyBudgets = Object.values(state.budgets).reduce((s,v) => s + v, 0);
+  if (monthlyBudgets > 0 && amount > monthlyBudgets * 0.3) {
+    considerations.push(`This purchase is ${((amount/monthlyBudgets)*100).toFixed(0)}% of your total monthly budgets`);
+  }
+  if (amount > avgDaily * 14 && monthlyExp > 0) {
+    considerations.push(`Roughly ${(amount/avgDaily).toFixed(0)} days worth of typical spending`);
+  }
+  
+  // Render
+  const verdictHtml = `
+    <div class="verdict-card ${zone}">
+      <div class="verdict-label">${zone === 'green' ? 'Green Zone' : zone === 'yellow' ? 'Yellow Zone' : 'Red Zone'}</div>
+      <div class="verdict-title">${title}</div>
+      <div class="verdict-reasoning">
+        ${what ? `<div style="margin-bottom:10px;color:var(--text);"><strong>${escapeHtml(what)}</strong> · ${fmt(amount)}</div>` : ''}
+        <ul>${reasons.map(r => '<li>' + r + '</li>').join('')}</ul>
+        ${considerations.length ? `
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);">
+            <div style="color:var(--text);margin-bottom:6px;font-weight:500;">Consider:</div>
+            <ul>${considerations.map(c => '<li>' + c + '</li>').join('')}</ul>
+          </div>
+        ` : ''}
+        <div style="margin-top:14px;color:var(--text-muted);font-size:11px;">Your call — this is just math.</div>
+      </div>
+    </div>
+  `;
+  
+  document.getElementById('affordVerdict').innerHTML = verdictHtml;
+  document.getElementById('affordInputView').style.display = 'none';
+  document.getElementById('affordResultView').style.display = 'block';
+  
+  state.pendingAffordCheck = { amount, what, zone, title, date: todayISO() };
+}
+
+function saveDecision(action) {
+  if (!state.pendingAffordCheck) { closeModal('affordModal'); return; }
+  
+  const decision = {
+    id: uid('dec'),
+    ...state.pendingAffordCheck,
+    action, // 'yes' or 'no'
+    createdAt: Date.now(),
+  };
+  state.decisions.push(decision);
+  saveData();
+  state.pendingAffordCheck = null;
+  closeModal('affordModal');
+  showToast(action === 'yes' ? 'Decision saved' : 'Saved — good restraint');
+}
+
+function renderDecisions() {
+  const list = document.getElementById('decisionList');
+  if (state.decisions.length === 0) {
+    list.innerHTML = emptyState('No decisions yet', 'Run "Can I afford this?" to start building your journal');
+    return;
+  }
+  const sorted = [...state.decisions].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+  list.innerHTML = sorted.map(d => `
+    <div class="decision-item">
+      <div class="decision-head">
+        <div>
+          <div class="decision-what">${escapeHtml(d.what || 'Unnamed purchase')} · ${fmt(d.amount)}</div>
+          <div class="decision-meta">${formatDateLabel(d.date)}</div>
+        </div>
+        <span class="decision-verdict-dot ${d.zone}">${d.action === 'yes' ? 'Bought' : 'Skipped'}</span>
+      </div>
+      <div class="decision-outcome">
+        ${d.zone === 'green' ? 'Green zone' : d.zone === 'yellow' ? 'Yellow zone' : 'Red zone'} verdict at the time
+      </div>
+    </div>
+  `).join('');
+}
+
+
 function init() {
   loadData();
   setupManifest();
