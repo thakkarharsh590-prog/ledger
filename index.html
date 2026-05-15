@@ -4,36 +4,35 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.1.0
-  Last edited:  2026-05-14
+  Version:      2.2.0
+  Last edited:  2026-05-15
   Storage:      localStorage (device-local, never sent to cloud)
-  Schema ver:   3 (auto-migrates from v1, v2)
+  Schema ver:   4 (auto-migrates from v1, v2, v3)
   
-  COMPLETED FEATURES (v1.0):
-  - Income/expense tracking with categories + custom categories
-  - Budgets with progress bars
-  - Loans with payment history & per-loan deduct toggle
-  - Insights: 7-day chart, monthly net, category breakdown
+  NAMED: Ledger Compass
+  
+  COMPLETED FEATURES (carry-over):
+  - Transactions, loans, budgets, insights, custom categories
   - Multi-currency, search, filters, JSON/CSV export, import
-  - localStorage with versioned schema + auto-migration
-  - PWA installable, offline-capable
+  - Compass tab: Affordability, Forecast, Health, 50/30/20, Insights, Journal
+  - Multi-job income sources with pay cycles + auto-log
+  - Recurring expenses (rent, subs, gym) with auto-log
+  - Auto-snapshots, recovery mode, backup reminders, refresh button
   
-  NEW IN v2.0:
-  - Payroll: multi-job income sources with custom pay cycles
-  - Financial Compass tab (Affordability, Forecast, Health, 50/30/20, Insights, Journal)
-  - Budgets moved into Insights tab
-  
-  NEW IN v2.1:
-  - RECURRING TRANSACTIONS: auto-log on pay/due dates
-    * Income sources: "Auto-log on pay date" toggle
-    * Recurring Expenses: rent, subs, gym etc. (new screen in Settings)
-    * Auto-log banner on home when entries created
-    * autoLogged flag visible on transactions
-  - DATA SAFETY:
-    * Per-session auto-snapshots (last 7 kept silently)
-    * "Days since last export" banner (yellow 7d+, red 14d+)
-    * First-launch PWA storage warning
-    * Recovery mode: detects fresh install, restores from internal backup
+  NEW IN v2.2:
+  - Renamed to "Ledger Compass" + new logo (LC monogram)
+  - Platform detection: iOS / Android / Desktop install instructions
+  - SMART AFFORDABILITY:
+    * Factors in recurring income & expenses (weekly surplus calc)
+    * Suggests best time to buy (wait N pay cycles)
+    * Strategy suggestions (split purchase, wait, etc.)
+  - INSIGHTS upgrade:
+    * Expected monthly income (from recurring sources)
+    * Expected monthly fixed expenses
+    * Expected leftover after fixed costs
+  - SAFE SAVE RATE: adaptive weekly save recommendation based on YOUR data
+  - LOAN STRATEGY: auto-picks avalanche or snowball based on your situation
+  - CATEGORY PREDICTION: typing description live-suggests category
   
   PLANNED (v3+):
   - Streaks/gamification, calendar heatmap, savings goals
@@ -56,17 +55,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Ledger">
+<meta name="apple-mobile-web-app-title" content="Ledger Compass">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0a0a0f">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Ledger</title>
+<title>Ledger Compass</title>
 
 <!-- PWA Manifest (inline as data URI so single-file works) -->
 <link rel="manifest" id="manifestLink">
-<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230a0a0f'/><text x='90' y='118' font-family='Georgia,serif' font-size='90' font-style='italic' font-weight='600' text-anchor='middle' fill='%23c9ff3d'>L</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230a0a0f'/><circle cx='90' cy='90' r='62' fill='none' stroke='%23c9ff3d' stroke-width='3' opacity='0.4'/><path d='M 90 38 L 100 90 L 90 142 L 80 90 Z' fill='%23c9ff3d'/><circle cx='90' cy='90' r='5' fill='%230a0a0f'/></svg>">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -130,12 +129,20 @@
   }
   .brand {
     font-family: 'Fraunces', serif;
-    font-size: 22px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    font-style: italic;
+    font-size: 19px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  .brand span { color: var(--accent); }
+  .brand span:not(.brand-icon):not(.version-tag) { 
+    color: var(--accent); 
+    font-style: italic;
+    font-weight: 600;
+    margin-left: 2px;
+  }
+  .brand-icon { display: inline-flex; align-items: center; }
   .version-tag {
     font-size: 9px;
     color: var(--text-muted);
@@ -1536,7 +1543,16 @@
 <body>
 
 <div class="topbar">
-  <div class="brand">Led<span>g</span>er<span class="version-tag" id="versionTag">v1.0</span></div>
+  <div class="brand">
+    <span class="brand-icon">
+      <svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align: -4px;">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="#c9ff3d" stroke-width="1" opacity="0.4"/>
+        <path d="M 12 4 L 14 12 L 12 20 L 10 12 Z" fill="#c9ff3d"/>
+        <circle cx="12" cy="12" r="1.5" fill="#0a0a0f"/>
+      </svg>
+    </span>
+    Ledger <span>Compass</span><span class="version-tag" id="versionTag">v2.2</span>
+  </div>
   <div class="topbar-actions">
     <button class="icon-btn" onclick="openSearchModal()">🔍</button>
     <button class="icon-btn" onclick="goPage('settings')">⚙</button>
@@ -1660,6 +1676,24 @@
   </button>
   
   <div class="compass-card">
+    <div class="compass-card-title">Expected Monthly Picture</div>
+    <div class="compass-card-sub">Based on your recurring income & expenses</div>
+    <div id="expectedMonthly"></div>
+  </div>
+  
+  <div class="compass-card">
+    <div class="compass-card-title">Safe Weekly Save</div>
+    <div class="compass-card-sub">A sustainable amount based on YOUR data — won't burden you</div>
+    <div id="safeSaveContent"></div>
+  </div>
+  
+  <div class="compass-card" id="loanStrategyCard" style="display:none;">
+    <div class="compass-card-title">Loan Payoff Strategy</div>
+    <div class="compass-card-sub">Smart order based on your loans</div>
+    <div id="loanStrategyContent"></div>
+  </div>
+  
+  <div class="compass-card">
     <div class="compass-card-title">Budget Health</div>
     <div class="compass-card-sub">How your money is performing this month</div>
     <div class="score-ring-wrap">
@@ -1763,7 +1797,7 @@
   </div>
 
   <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.6;">
-    <div>Ledger v1.0.0 · Schema v1</div>
+    <div>Ledger Compass v2.2.0 · Schema v4</div>
     <div>All data stored on this device</div>
     <div id="lastBackup" style="margin-top: 4px;"></div>
   </div>
@@ -1816,7 +1850,7 @@
 
     <div class="field">
       <label>Description</label>
-      <input type="text" id="inpDesc" placeholder="e.g. Coffee at café">
+      <input type="text" id="inpDesc" placeholder="e.g. Coffee at café" oninput="onDescInput()">
     </div>
 
     <div class="field">
@@ -2180,8 +2214,8 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.1.0';
-const SCHEMA_VERSION = 3;
+const APP_VERSION = '2.2.0';
+const SCHEMA_VERSION = 4;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
 const AUTO_SNAPSHOT_PREFIX = 'ledger_snap_';
@@ -2325,6 +2359,11 @@ function runMigrations(data) {
         ...s,
       }));
     }
+  }
+  
+  // Migration: v3 -> v4 (Ledger Compass rebrand, no data changes)
+  if (fromVersion < 4) {
+    migrated.schemaVersion = 4;
   }
   
   // FUTURE MIGRATIONS GO HERE:
@@ -3390,25 +3429,76 @@ function confirmClearAll() {
   showToast('All data cleared (backup saved internally)', '×');
 }
 
-/* ============ PWA INSTALL BANNER ============ */
+/* ============ PWA INSTALL BANNER (platform-aware) ============ */
+function detectPlatform() {
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isAndroid = /Android/i.test(ua);
+  const isMobile = isIOS || isAndroid || /Mobi|Tablet/i.test(ua);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  let browser = 'other';
+  if (/CriOS/.test(ua)) browser = 'chrome-ios';
+  else if (/FxiOS/.test(ua)) browser = 'firefox-ios';
+  else if (isIOS && /Safari/.test(ua)) browser = 'safari-ios';
+  else if (isAndroid && /Chrome/.test(ua)) browser = 'chrome-android';
+  else if (isAndroid && /Firefox/.test(ua)) browser = 'firefox-android';
+  else if (/Chrome/.test(ua)) browser = 'chrome-desktop';
+  else if (/Firefox/.test(ua)) browser = 'firefox-desktop';
+  else if (/Safari/.test(ua)) browser = 'safari-desktop';
+  return { isIOS, isAndroid, isMobile, isStandalone, browser };
+}
+
 function showInstallBannerIfNeeded() {
-  // Detect iOS Safari (no native install prompt)
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  const p = detectPlatform();
+  if (p.isStandalone) return; // already installed
   const dismissed = localStorage.getItem('ledger_install_dismissed');
+  if (dismissed) return;
   
-  if (isIOS && !isStandalone && !dismissed) {
-    document.getElementById('installBanner').innerHTML = `
-      <div class="install-banner">
-        <div class="install-banner-icon">📲</div>
-        <div class="install-banner-text" onclick="alert('To install Ledger on your iPhone:\\n\\n1. Tap the Share button (square with arrow) at the bottom of Safari\\n2. Scroll down and tap \\'Add to Home Screen\\'\\n3. Tap Add\\n\\nYou\\'ll get a Ledger icon on your home screen that opens full-screen like a real app.')">
-          <div class="install-banner-title">Install Ledger</div>
-          <div class="install-banner-sub">Tap Share → Add to Home Screen</div>
-        </div>
-        <button class="install-banner-close" onclick="dismissInstall()">×</button>
-      </div>
-    `;
+  let title, sub, helpAlert;
+  
+  if (p.isIOS) {
+    if (p.browser === 'safari-ios') {
+      title = 'Install on iPhone';
+      sub = 'Tap Share → Add to Home Screen';
+      helpAlert = 'To install Ledger Compass on your iPhone:\n\n1. Tap the Share button (square with arrow) at the bottom of Safari\n2. Scroll down and tap "Add to Home Screen"\n3. Tap Add\n\nYou\'ll get a Ledger Compass icon on your home screen that opens full-screen like a real app.';
+    } else {
+      title = 'Open in Safari to install';
+      sub = `${p.browser.split('-')[0]} doesn't support installing. Open in Safari first.`;
+      helpAlert = 'On iPhone, only Safari can install web apps to your home screen.\n\nCopy this URL, open Safari, paste it, then tap Share → Add to Home Screen.';
+    }
+  } else if (p.isAndroid) {
+    if (p.browser === 'chrome-android') {
+      title = 'Install on Android';
+      sub = 'Tap menu (⋮) → Install app';
+      helpAlert = 'To install Ledger Compass on Android:\n\n1. Tap the three-dot menu (⋮) in Chrome\n2. Tap "Install app" or "Add to Home screen"\n3. Confirm\n\nYou\'ll get an icon on your home screen that opens like a real app.';
+    } else {
+      title = 'Install on Android';
+      sub = 'Tap menu → Add to Home screen';
+      helpAlert = 'On Android, open the browser menu (usually three dots) and look for "Install app" or "Add to Home screen".\n\nChrome works best for this.';
+    }
+  } else {
+    // Desktop
+    title = 'Install as desktop app';
+    sub = p.browser === 'chrome-desktop' ? 'Click install icon in address bar' : 'Use Chrome to install';
+    helpAlert = 'On desktop:\n\n• Chrome / Edge: look for an install icon in the address bar (right side)\n• Or use the browser menu → "Install Ledger Compass..."\n\nYou\'ll get a standalone app window.';
   }
+  
+  document.getElementById('installBanner').innerHTML = `
+    <div class="install-banner">
+      <div class="install-banner-icon">📲</div>
+      <div class="install-banner-text" onclick="showInstallHelp()">
+        <div class="install-banner-title">${title}</div>
+        <div class="install-banner-sub">${sub}</div>
+      </div>
+      <button class="install-banner-close" onclick="dismissInstall()">×</button>
+    </div>
+  `;
+  
+  window._installHelpText = helpAlert;
+}
+
+function showInstallHelp() {
+  if (window._installHelpText) alert(window._installHelpText);
 }
 
 function dismissInstall() {
@@ -3419,9 +3509,9 @@ function dismissInstall() {
 /* ============ PWA MANIFEST (inline) ============ */
 function setupManifest() {
   const manifest = {
-    name: 'Ledger',
+    name: 'Ledger Compass',
     short_name: 'Ledger',
-    description: 'Personal finance tracker',
+    description: 'Personal finance tracker with smart insights',
     start_url: './?source=pwa',
     display: 'standalone',
     background_color: '#0a0a0f',
@@ -3429,12 +3519,12 @@ function setupManifest() {
     orientation: 'portrait',
     icons: [
       {
-        src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='42' fill='%230a0a0f'/><text x='96' y='126' font-family='Georgia,serif' font-size='96' font-style='italic' font-weight='600' text-anchor='middle' fill='%23c9ff3d'>L</text></svg>",
+        src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='42' fill='%230a0a0f'/><circle cx='96' cy='96' r='66' fill='none' stroke='%23c9ff3d' stroke-width='3' opacity='0.4'/><path d='M 96 40 L 107 96 L 96 152 L 85 96 Z' fill='%23c9ff3d'/><circle cx='96' cy='96' r='5' fill='%230a0a0f'/></svg>",
         sizes: '192x192',
         type: 'image/svg+xml',
       },
       {
-        src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%230a0a0f'/><text x='256' y='340' font-family='Georgia,serif' font-size='260' font-style='italic' font-weight='600' text-anchor='middle' fill='%23c9ff3d'>L</text></svg>",
+        src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%230a0a0f'/><circle cx='256' cy='256' r='175' fill='none' stroke='%23c9ff3d' stroke-width='8' opacity='0.4'/><path d='M 256 108 L 285 256 L 256 404 L 227 256 Z' fill='%23c9ff3d'/><circle cx='256' cy='256' r='14' fill='%230a0a0f'/></svg>",
         sizes: '512x512',
         type: 'image/svg+xml',
       }
@@ -3686,6 +3776,376 @@ function getMonthlyIncomeEstimate() {
   return total / 3;
 }
 
+/* ============================================================
+   v2.2: SMART FINANCIAL ENGINE
+   ============================================================ */
+
+// Convert any cycle to monthly equivalent
+function cycleToMonthly(amount, cycle) {
+  if (cycle === 'weekly') return amount * 52 / 12;
+  if (cycle === 'fortnightly') return amount * 26 / 12;
+  if (cycle === 'monthly') return amount;
+  if (cycle === 'yearly') return amount / 12;
+  return amount; // irregular fallback
+}
+
+function cycleToWeekly(amount, cycle) {
+  if (cycle === 'weekly') return amount;
+  if (cycle === 'fortnightly') return amount / 2;
+  if (cycle === 'monthly') return amount * 12 / 52;
+  if (cycle === 'yearly') return amount / 52;
+  return 0;
+}
+
+// Expected monthly income from recurring sources only
+function getExpectedMonthlyIncomeRecurring() {
+  let monthly = 0;
+  state.incomeSources.forEach(src => {
+    if (src.cycle !== 'irregular') monthly += cycleToMonthly(src.amount, src.cycle);
+  });
+  return monthly;
+}
+
+// Expected monthly fixed expenses from recurring expenses only
+function getExpectedMonthlyFixedExpenses() {
+  let monthly = 0;
+  state.recurringExpenses.forEach(rec => {
+    if (rec.active) monthly += cycleToMonthly(rec.amount, rec.cycle);
+  });
+  return monthly;
+}
+
+// Average monthly variable expenses (= total monthly avg - fixed recurring)
+function getAverageVariableMonthlyExpense() {
+  const avgDaily = getAvgDailyExpense();
+  const totalMonthly = avgDaily * 30;
+  const fixed = getExpectedMonthlyFixedExpenses();
+  return Math.max(0, totalMonthly - fixed);
+}
+
+// Expected monthly leftover (the real "investable" number)
+function getExpectedMonthlyLeftover() {
+  return getExpectedMonthlyIncomeRecurring() - getExpectedMonthlyFixedExpenses() - getAverageVariableMonthlyExpense();
+}
+
+// Compute weekly recurring picture
+function getWeeklyRecurringPicture() {
+  let weeklyIn = 0, weeklyOut = 0;
+  state.incomeSources.forEach(src => {
+    if (src.cycle !== 'irregular') weeklyIn += cycleToWeekly(src.amount, src.cycle);
+  });
+  state.recurringExpenses.forEach(rec => {
+    if (rec.active) weeklyOut += cycleToWeekly(rec.amount, rec.cycle);
+  });
+  return { weeklyIn, weeklyOut, surplus: weeklyIn - weeklyOut };
+}
+
+// Safe weekly save recommendation — adaptive based on user data
+function computeSafeWeeklySave() {
+  const { weeklyIn, weeklyOut } = getWeeklyRecurringPicture();
+  const avgDailyVar = getAvgDailyExpense();
+  // Subtract recurring out from total avg so we don't double-count
+  const totalMonthlyAvg = avgDailyVar * 30;
+  const fixedMonthly = getExpectedMonthlyFixedExpenses();
+  const variableWeekly = Math.max(0, (totalMonthlyAvg - fixedMonthly) / 4.33);
+  
+  // Loan minimum payments (weekly approximation from recent payments)
+  let loanWeekly = 0;
+  state.loans.forEach(l => {
+    if (getLoanPaid(l) >= l.total) return;
+    const recent = (l.payments || []).slice(-3);
+    if (recent.length >= 2) {
+      // estimate weekly equivalent from cadence
+      const sorted = [...recent].sort((a,b) => a.date.localeCompare(b.date));
+      const first = new Date(sorted[0].date + 'T00:00:00');
+      const last = new Date(sorted[sorted.length-1].date + 'T00:00:00');
+      const days = Math.max(1, (last - first) / 86400000);
+      const totalPaid = sorted.reduce((s,p) => s + p.amount, 0);
+      const perDay = totalPaid / days;
+      loanWeekly += perDay * 7;
+    }
+  });
+  
+  // The safe rule: save (income - fixed - variable - loans) * 0.7
+  // The 0.7 leaves buffer for irregular spikes
+  const rawAvailable = weeklyIn - weeklyOut - variableWeekly - loanWeekly;
+  const safeSave = Math.max(0, rawAvailable * 0.7);
+  const stretchSave = Math.max(0, rawAvailable * 0.9);
+  
+  // Confidence
+  const dataDays = getDataDays();
+  let confidence = 'low';
+  if (dataDays >= 30 && state.transactions.length >= 30) confidence = 'medium';
+  if (dataDays >= 60 && state.transactions.length >= 60) confidence = 'good';
+  
+  return {
+    safeSave: Math.round(safeSave),
+    stretchSave: Math.round(stretchSave),
+    breakdown: {
+      weeklyIn: Math.round(weeklyIn),
+      weeklyOut: Math.round(weeklyOut),
+      variableWeekly: Math.round(variableWeekly),
+      loanWeekly: Math.round(loanWeekly),
+      rawAvailable: Math.round(rawAvailable),
+    },
+    confidence,
+    hasEnoughData: weeklyIn > 0,
+  };
+}
+
+// Smart loan strategy: avalanche vs snowball auto-pick
+function computeLoanStrategy() {
+  const active = state.loans
+    .filter(l => getLoanPaid(l) < l.total)
+    .map(l => ({
+      ...l,
+      remaining: l.total - getLoanPaid(l),
+      progress: getLoanPaid(l) / l.total,
+    }));
+  
+  if (active.length === 0) return null;
+  if (active.length === 1) {
+    return {
+      strategy: 'single',
+      ordered: active,
+      note: `Just focus on ${active[0].name}. Pay as much as your safe-save rate allows above minimum.`,
+    };
+  }
+  
+  // Pick strategy:
+  // - If smallest loan is < 30% of total debt AND user has been paying consistently → snowball (motivation)
+  // - Else avalanche (no interest data, so go by largest remaining = likely highest cost)
+  const totalDebt = active.reduce((s,l) => s + l.remaining, 0);
+  const sortedBySize = [...active].sort((a,b) => a.remaining - b.remaining);
+  const smallestPct = sortedBySize[0].remaining / totalDebt;
+  
+  let strategy, ordered, note;
+  if (smallestPct < 0.25 && active.length >= 2) {
+    // Snowball — clear smallest first for psychological win
+    strategy = 'snowball';
+    ordered = sortedBySize;
+    note = 'Snowball strategy: clear the smallest debts first for momentum. Each cleared loan frees money for the next.';
+  } else {
+    // Avalanche — largest first (proxy for highest interest cost without interest data)
+    strategy = 'avalanche';
+    ordered = [...active].sort((a,b) => b.remaining - a.remaining);
+    note = 'Avalanche strategy: pay extra on the largest balance first. Saves the most money long-term.';
+  }
+  
+  // Estimate payoff time
+  const safe = computeSafeWeeklySave();
+  let payoffWeeks = null;
+  if (safe.breakdown.loanWeekly > 0 || safe.safeSave > 0) {
+    const weeklyAvailable = safe.breakdown.loanWeekly + (safe.safeSave * 0.5); // half savings → debt
+    if (weeklyAvailable > 0) {
+      payoffWeeks = Math.ceil(totalDebt / weeklyAvailable);
+    }
+  }
+  
+  return { strategy, ordered, note, totalDebt, payoffWeeks };
+}
+
+/* ============================================================
+   v2.2: SMART AFFORDABILITY (recurring-aware)
+   ============================================================ */
+function computeSmartAffordability(amount) {
+  const bal = getCurrentBalance();
+  const monthlyIn = getExpectedMonthlyIncomeRecurring() || getMonthlyIncomeEstimate();
+  const monthlyFixed = getExpectedMonthlyFixedExpenses();
+  const monthlyVar = getAverageVariableMonthlyExpense();
+  const monthlyLeftover = monthlyIn - monthlyFixed - monthlyVar;
+  const weekly = getWeeklyRecurringPicture();
+  const afterBal = bal - amount;
+  
+  // Buffer days (using full avg daily including variable)
+  const avgDaily = getAvgDailyExpense() || (monthlyFixed + monthlyVar) / 30;
+  const daysBufferAfter = avgDaily > 0 ? Math.floor(afterBal / avgDaily) : null;
+  const pctOfMonthlyIn = monthlyIn > 0 ? (amount / monthlyIn) * 100 : null;
+  
+  // Next pay events
+  const payEvents = getUpcomingPayEvents(45);
+  const nextPay = payEvents[0];
+  
+  // Active loans
+  const activeLoans = state.loans.filter(l => getLoanPaid(l) < l.total);
+  const totalDebt = activeLoans.reduce((s,l) => s + (l.total - getLoanPaid(l)), 0);
+  
+  // VERDICT
+  let zone, title;
+  if (afterBal < 0) {
+    zone = 'red';
+    title = `Don't — you'd go ${fmt(Math.abs(afterBal))} negative`;
+  } else if (daysBufferAfter !== null && daysBufferAfter < 7) {
+    zone = 'red';
+    title = `Risky — only ${daysBufferAfter} days of buffer left`;
+  } else if (monthlyLeftover > 0 && amount <= monthlyLeftover) {
+    zone = 'green';
+    title = `Comfortable — within your monthly leftover`;
+  } else if (pctOfMonthlyIn !== null && pctOfMonthlyIn > 50) {
+    zone = 'yellow';
+    title = `Affordable, but a big bite (${pctOfMonthlyIn.toFixed(0)}% of monthly income)`;
+  } else if (daysBufferAfter !== null && daysBufferAfter < 21) {
+    zone = 'yellow';
+    title = `You can afford it — but it eats into buffer`;
+  } else {
+    zone = 'green';
+    title = `Yes, you can afford it comfortably`;
+  }
+  
+  // REASONING
+  const reasons = [];
+  reasons.push(`Balance: ${fmt(bal)} → <strong>${fmt(afterBal)}</strong>`);
+  if (daysBufferAfter !== null) reasons.push(`Buffer after: ~${daysBufferAfter} days of spending`);
+  if (monthlyIn > 0) {
+    reasons.push(`Monthly picture: +${fmt(monthlyIn)} in / -${fmt(monthlyFixed + monthlyVar)} out = <strong>${fmt(monthlyLeftover)} leftover</strong>`);
+  }
+  if (weekly.weeklyIn > 0) {
+    reasons.push(`Weekly surplus: ${fmt(weekly.surplus)} after fixed costs`);
+  }
+  if (nextPay) {
+    const days = Math.ceil((new Date(nextPay.date + 'T00:00:00') - new Date(todayISO() + 'T00:00:00')) / 86400000);
+    reasons.push(`Next paycheck: ${fmt(nextPay.amount)} from ${nextPay.name} in ${days} day${days===1?'':'s'}`);
+  }
+  
+  // TIMING STRATEGIES
+  const strategies = [];
+  
+  // Strategy 1: Wait for next paycheck(s)
+  if (zone !== 'green' && nextPay && monthlyLeftover < amount) {
+    // How many pay cycles to make it green?
+    let cumIncome = 0, cyclesNeeded = 0;
+    for (const evt of payEvents) {
+      cumIncome += evt.amount;
+      cyclesNeeded++;
+      const projectedBal = bal + cumIncome - (avgDaily * (Math.ceil((new Date(evt.date+'T00:00:00') - new Date(todayISO()+'T00:00:00')) / 86400000)));
+      if (projectedBal - amount > avgDaily * 21) break;
+      if (cyclesNeeded >= 4) break;
+    }
+    if (cyclesNeeded > 0 && cyclesNeeded <= 4) {
+      const targetDate = payEvents[cyclesNeeded - 1].date;
+      const daysUntil = Math.ceil((new Date(targetDate+'T00:00:00') - new Date(todayISO()+'T00:00:00')) / 86400000);
+      strategies.push(`<strong>Wait ${cyclesNeeded} pay cycle${cyclesNeeded>1?'s':''} (~${daysUntil} days)</strong> — by ${formatDateLabel(targetDate)} your balance should comfortably absorb this purchase.`);
+    }
+  }
+  
+  // Strategy 2: Split the purchase
+  if (zone === 'yellow' && amount > 200 && nextPay) {
+    const halfNow = Math.round(amount / 2);
+    strategies.push(`<strong>Split it</strong> — pay ${fmt(halfNow)} now and ${fmt(amount - halfNow)} after next paycheck. Keeps your buffer healthier.`);
+  }
+  
+  // Strategy 3: Use leftover
+  if (monthlyLeftover > 0 && amount > monthlyLeftover && amount < monthlyLeftover * 3) {
+    const months = Math.ceil(amount / monthlyLeftover);
+    strategies.push(`<strong>Save up over ${months} month${months>1?'s':''}</strong> — at your current ${fmt(monthlyLeftover)}/month leftover, you'd have it without touching savings.`);
+  }
+  
+  // CONSIDERATIONS / TRADEOFFS
+  const considerations = [];
+  if (totalDebt > 0) {
+    const debtMonths = monthlyLeftover > 0 ? (amount / monthlyLeftover) : null;
+    if (debtMonths !== null && debtMonths > 0) {
+      const weeks = Math.ceil(debtMonths * 4.33);
+      considerations.push(`Could delay your debt payoff by ~${weeks} week${weeks>1?'s':''} (you have ${fmt(totalDebt)} in active loans)`);
+    } else {
+      considerations.push(`You have ${fmt(totalDebt)} in active loans — could this money go there instead?`);
+    }
+  }
+  
+  const safe = computeSafeWeeklySave();
+  if (safe.hasEnoughData && safe.safeSave > 0) {
+    const savingsWeeks = Math.ceil(amount / safe.safeSave);
+    considerations.push(`This = ${savingsWeeks} week${savingsWeeks>1?'s':''} of your safe save target (${fmt(safe.safeSave)}/wk)`);
+  }
+  
+  if (amount > avgDaily * 14 && avgDaily > 0) {
+    considerations.push(`Roughly ${(amount/avgDaily).toFixed(0)} days worth of typical spending`);
+  }
+  
+  return { zone, title, reasons, strategies, considerations, monthlyLeftover, monthlyIn };
+}
+
+/* ============================================================
+   v2.2: CATEGORY PREDICTION
+   ============================================================ */
+const CATEGORY_KEYWORDS = {
+  food: ['coffee', 'cafe', 'cafè', 'lunch', 'dinner', 'breakfast', 'snack', 'pizza', 'burger', 'restaurant', 'mcdonald', 'kfc', 'subway', 'starbucks', 'tea', 'meal', 'eat', 'food', 'grocery', 'groceries', 'woolies', 'woolworths', 'coles', 'aldi', 'iga', 'sushi', 'ramen', 'noodle', 'cake', 'dessert', 'icecream', 'ice cream', 'bakery'],
+  transport: ['uber', 'taxi', 'lyft', 'didi', 'bus', 'train', 'tram', 'metro', 'fuel', 'petrol', 'gas', 'parking', 'toll', 'opal', 'myki', 'flight', 'car wash', 'oil change', 'tyres', 'tires'],
+  health: ['medicine', 'medication', 'pharmacy', 'chemist', 'doctor', 'gp', 'dentist', 'hospital', 'clinic', 'physio', 'optometrist', 'glasses', 'contact lens', 'panadol', 'tablet', 'supplement', 'vitamin', 'therapy'],
+  bills: ['electricity', 'electric', 'power', 'water', 'gas bill', 'internet', 'wifi', 'phone', 'mobile', 'telstra', 'optus', 'vodafone', 'rent', 'mortgage', 'insurance', 'rego', 'registration', 'council', 'rates'],
+  shopping: ['amazon', 'ebay', 'kmart', 'target', 'big w', 'jb hi', 'jbhifi', 'apple store', 'clothes', 'clothing', 'shoes', 'shirt', 'pants', 'jacket', 'bag', 'electronics', 'gadget', 'furniture', 'ikea'],
+  fun: ['movie', 'cinema', 'hoyts', 'event cinemas', 'netflix', 'cinema', 'concert', 'party', 'bar', 'pub', 'club', 'beer', 'wine', 'drinks', 'game', 'steam', 'playstation', 'xbox', 'nintendo'],
+  subs: ['netflix', 'spotify', 'youtube', 'apple music', 'disney', 'amazon prime', 'hbo', 'stan', 'binge', 'kayo', 'subscription', 'icloud', 'dropbox', 'chatgpt', 'gpt', 'claude', 'figma', 'adobe'],
+  gym: ['gym', 'fitness', 'crossfit', 'yoga', 'pilates', 'workout', 'pt session', 'personal training', 'protein', 'whey', 'creatine', 'supplements'],
+  home: ['rent', 'mortgage', 'cleaning', 'detergent', 'soap', 'paper towel', 'toilet paper', 'kitchen', 'bedding', 'pillow', 'mattress', 'curtain'],
+  edu: ['book', 'textbook', 'course', 'udemy', 'coursera', 'university', 'uni fees', 'tuition', 'rmit', 'tafe', 'tafe nsw', 'stationery', 'notebook', 'pen', 'pencil'],
+  travel: ['hotel', 'airbnb', 'flight', 'qantas', 'jetstar', 'virgin', 'tigerair', 'booking.com', 'expedia', 'airline', 'luggage', 'visa fee', 'passport'],
+  // Income
+  salary: ['salary', 'pay', 'wage', 'wages', 'paycheck', 'payslip'],
+  freelance: ['freelance', 'client', 'invoice', 'consulting', 'contract'],
+  gift: ['gift', 'birthday', 'present'],
+  invest: ['dividend', 'interest', 'stock', 'crypto', 'eth', 'btc', 'bitcoin', 'investment'],
+  refund: ['refund', 'return', 'cashback', 'reimbursement', 'rebate'],
+};
+
+function predictCategory(description, type) {
+  if (!description) return null;
+  const text = description.toLowerCase().trim();
+  if (text.length < 2) return null;
+  
+  const candidates = type === 'income' 
+    ? ['salary', 'freelance', 'gift', 'invest', 'refund']
+    : ['food', 'transport', 'health', 'bills', 'shopping', 'fun', 'subs', 'gym', 'home', 'edu', 'travel'];
+  
+  // First pass: exact word match
+  for (const catId of candidates) {
+    const keywords = CATEGORY_KEYWORDS[catId] || [];
+    for (const kw of keywords) {
+      if (text === kw || text.startsWith(kw + ' ') || text.endsWith(' ' + kw) || text.includes(' ' + kw + ' ')) {
+        return catId;
+      }
+    }
+  }
+  
+  // Second pass: substring match  
+  for (const catId of candidates) {
+    const keywords = CATEGORY_KEYWORDS[catId] || [];
+    for (const kw of keywords) {
+      if (text.includes(kw)) return catId;
+    }
+  }
+  
+  // Third pass: learn from history (most recent transaction with similar description)
+  const histMatch = state.transactions
+    .filter(t => t.type === type && t.description)
+    .sort((a,b) => (b.createdAt||0) - (a.createdAt||0))
+    .find(t => {
+      const d = t.description.toLowerCase();
+      return d.includes(text) || text.includes(d);
+    });
+  if (histMatch) return histMatch.category;
+  
+  return null;
+}
+
+// Live category prediction as user types description
+let _descPredictTimer = null;
+function onDescInput() {
+  // Don't override if user is editing existing transaction (they may have set their category deliberately)
+  if (state.editingId) return;
+  
+  clearTimeout(_descPredictTimer);
+  _descPredictTimer = setTimeout(() => {
+    const desc = document.getElementById('inpDesc').value;
+    if (!desc || desc.length < 3) return;
+    const predicted = predictCategory(desc, state.currentType);
+    if (predicted && predicted !== state.selectedCategory) {
+      state.selectedCategory = predicted;
+      renderCatPicker();
+    }
+  }, 250);
+}
+
 function getUpcomingPayEvents(daysAhead = 30) {
   const events = [];
   const today = new Date(todayISO() + 'T00:00:00');
@@ -3795,10 +4255,155 @@ function forecastBalance(daysAhead = 30) {
    ============================================================ */
 
 function renderCompass() {
+  renderExpectedMonthly();
+  renderSafeSave();
+  renderLoanStrategy();
   renderHealthScore();
   renderForecast();
   renderRatios();
   renderSmartInsights();
+}
+
+function renderExpectedMonthly() {
+  const el = document.getElementById('expectedMonthly');
+  if (!el) return;
+  
+  const monthlyIn = getExpectedMonthlyIncomeRecurring();
+  const monthlyFixed = getExpectedMonthlyFixedExpenses();
+  const monthlyVar = getAverageVariableMonthlyExpense();
+  const leftover = monthlyIn - monthlyFixed - monthlyVar;
+  
+  if (monthlyIn === 0 && monthlyFixed === 0) {
+    el.innerHTML = `
+      <div style="color:var(--text-dim);font-size:13px;line-height:1.6;padding:8px 0;">
+        Set up <strong style="color:var(--accent);" onclick="goPage('income-sources')">Income Sources</strong> and <strong style="color:var(--accent);" onclick="goPage('recurring-expenses')">Recurring Expenses</strong> in Settings to see your expected monthly picture.
+      </div>
+    `;
+    return;
+  }
+  
+  const leftoverColor = leftover >= 0 ? 'var(--income)' : 'var(--expense)';
+  
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;justify-content:space-between;padding:6px 0;">
+        <span style="color:var(--text-dim);font-size:13px;">💼 Recurring income</span>
+        <span style="font-family:'Geist Mono',monospace;color:var(--income);font-weight:500;">+${fmt(monthlyIn)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;">
+        <span style="color:var(--text-dim);font-size:13px;">🧾 Fixed recurring expenses</span>
+        <span style="font-family:'Geist Mono',monospace;color:var(--expense);font-weight:500;">−${fmt(monthlyFixed)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;">
+        <span style="color:var(--text-dim);font-size:13px;">🍔 Avg variable spend</span>
+        <span style="font-family:'Geist Mono',monospace;color:var(--expense);font-weight:500;">−${fmt(monthlyVar)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:12px 0 6px;border-top:1px solid var(--border);margin-top:4px;">
+        <span style="font-weight:500;font-size:14px;">Expected leftover</span>
+        <span style="font-family:'Geist Mono',monospace;color:${leftoverColor};font-weight:600;font-size:16px;">${leftover >= 0 ? '+' : ''}${fmt(leftover)}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderSafeSave() {
+  const el = document.getElementById('safeSaveContent');
+  if (!el) return;
+  
+  const result = computeSafeWeeklySave();
+  
+  if (!result.hasEnoughData) {
+    el.innerHTML = `
+      <div style="color:var(--text-dim);font-size:13px;line-height:1.6;padding:8px 0;">
+        Add your income sources in Settings to get a personalized weekly save target.
+      </div>
+    `;
+    return;
+  }
+  
+  if (result.safeSave === 0) {
+    el.innerHTML = `
+      <div style="color:var(--text-dim);font-size:13px;line-height:1.6;padding:8px 0;">
+        <div style="color:var(--warning);font-weight:500;margin-bottom:8px;">⚠ Tight margins</div>
+        Your recurring expenses + variable spending eat up your income. Focus on reducing one fixed cost or cutting variable spending before targeting savings.
+      </div>
+    `;
+    return;
+  }
+  
+  const confColor = result.confidence === 'good' ? 'var(--income)' : result.confidence === 'medium' ? 'var(--warning)' : 'var(--text-muted)';
+  
+  el.innerHTML = `
+    <div style="text-align:center;padding:16px 0 12px;">
+      <div style="font-family:'Fraunces',serif;font-size:34px;font-weight:500;color:var(--accent);letter-spacing:-0.02em;line-height:1;">${fmt(result.safeSave)}</div>
+      <div style="color:var(--text-dim);font-size:12px;margin-top:4px;">per week · sustainable</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.02);border-radius:10px;padding:12px;font-size:12px;color:var(--text-dim);line-height:1.7;">
+      <strong style="color:var(--text);">How we got there:</strong><br>
+      Weekly income: <span style="font-family:'Geist Mono',monospace;">${fmt(result.breakdown.weeklyIn)}</span><br>
+      − Fixed expenses: <span style="font-family:'Geist Mono',monospace;">${fmt(result.breakdown.weeklyOut)}</span><br>
+      − Variable spend: <span style="font-family:'Geist Mono',monospace;">${fmt(result.breakdown.variableWeekly)}</span><br>
+      − Loan payments: <span style="font-family:'Geist Mono',monospace;">${fmt(result.breakdown.loanWeekly)}</span><br>
+      = <span style="font-family:'Geist Mono',monospace;color:var(--text);">${fmt(result.breakdown.rawAvailable)}</span> available<br>
+      × 0.7 buffer = <strong style="color:var(--accent);">${fmt(result.safeSave)}</strong>
+    </div>
+    ${result.stretchSave > result.safeSave ? `
+      <div style="margin-top:10px;padding:10px;background:rgba(201,255,61,0.05);border:1px dashed rgba(201,255,61,0.2);border-radius:10px;font-size:12px;color:var(--text-dim);">
+        💪 <strong style="color:var(--text);">Stretch goal:</strong> ${fmt(result.stretchSave)}/week if you trim variable spending
+      </div>
+    ` : ''}
+    <div class="confidence" style="margin-top:10px;color:${confColor};">${result.confidence} confidence · ${getDataDays()} days of data</div>
+  `;
+}
+
+function renderLoanStrategy() {
+  const card = document.getElementById('loanStrategyCard');
+  const el = document.getElementById('loanStrategyContent');
+  if (!el || !card) return;
+  
+  const result = computeLoanStrategy();
+  if (!result) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+  
+  const stratLabel = {
+    avalanche: 'Avalanche',
+    snowball: 'Snowball',
+    single: 'Focused',
+  }[result.strategy] || 'Custom';
+  
+  let payoffStr = '';
+  if (result.payoffWeeks) {
+    const months = (result.payoffWeeks / 4.33).toFixed(1);
+    payoffStr = `<div style="margin-top:10px;padding:10px;background:rgba(74,222,128,0.06);border-radius:10px;font-size:12px;color:var(--text-dim);">
+      🎯 At your current pace: debt-free in ~<strong style="color:var(--income);">${result.payoffWeeks} weeks (${months} months)</strong>
+    </div>`;
+  }
+  
+  el.innerHTML = `
+    <div style="margin-bottom:12px;padding:10px;background:rgba(201,255,61,0.05);border:1px solid rgba(201,255,61,0.15);border-radius:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:500;">${stratLabel} strategy</span>
+        <span style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--text-dim);">${fmt(result.totalDebt)} total</span>
+      </div>
+      <div style="font-size:12px;color:var(--text-dim);line-height:1.5;">${result.note}</div>
+    </div>
+    ${result.ordered.map((l, i) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg-card);border-radius:10px;margin-bottom:6px;">
+        <div>
+          <div style="font-size:13px;font-weight:500;">
+            <span style="display:inline-block;width:20px;height:20px;background:${i===0?'var(--accent)':'var(--border-strong)'};color:${i===0?'#0a0a0f':'var(--text-dim)'};border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:600;margin-right:6px;">${i+1}</span>
+            ${escapeHtml(l.name)}
+            ${i === 0 ? '<span class="tx-auto-badge" style="margin-left:6px;">focus</span>' : ''}
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:2px;margin-left:26px;">${(l.progress*100).toFixed(0)}% paid · ${fmt(l.remaining)} left</div>
+        </div>
+      </div>
+    `).join('')}
+    ${payoffStr}
+  `;
 }
 
 function computeHealthScore() {
@@ -4163,84 +4768,26 @@ function runAffordabilityCheck() {
   
   if (!amount || amount <= 0) { showToast('Enter a valid amount', '⚠'); return; }
   
-  const bal = getCurrentBalance();
-  const monthlyIncome = getMonthlyIncomeEstimate();
-  const avgDaily = getAvgDailyExpense();
-  const monthlyExp = avgDaily * 30;
-  
-  const afterBal = bal - amount;
-  const daysBufferAfter = avgDaily > 0 ? Math.floor(afterBal / avgDaily) : null;
-  const pctOfIncome = monthlyIncome > 0 ? (amount / monthlyIncome) * 100 : null;
-  
-  // Get next pay event
-  const payEvents = getUpcomingPayEvents(30);
-  const nextPay = payEvents[0];
-  
-  // Active loans
-  const activeLoans = state.loans.filter(l => getLoanPaid(l) < l.total);
-  const totalDebt = activeLoans.reduce((s,l) => s + (l.total - getLoanPaid(l)), 0);
-  
-  // Verdict logic
-  let zone, title;
-  const reasons = [];
-  const considerations = [];
-  
-  if (afterBal < 0) {
-    zone = 'red';
-    title = `Don't do it — you'd go ${fmt(Math.abs(afterBal))} into the negative`;
-    reasons.push(`Balance would drop from ${fmt(bal)} to ${fmt(afterBal)}`);
-  } else if (daysBufferAfter !== null && daysBufferAfter < 7) {
-    zone = 'red';
-    title = `Risky — you'd have less than a week of buffer`;
-    reasons.push(`Only ${daysBufferAfter} days of typical spending left after`);
-  } else if (pctOfIncome !== null && pctOfIncome > 50) {
-    zone = 'yellow';
-    title = `Affordable, but this is ${pctOfIncome.toFixed(0)}% of your monthly income`;
-  } else if (daysBufferAfter !== null && daysBufferAfter < 21) {
-    zone = 'yellow';
-    title = `You can afford it — but cuts into your buffer`;
-  } else {
-    zone = 'green';
-    title = `Yes, you can afford it comfortably`;
-  }
-  
-  // Build reasoning
-  reasons.push(`Balance: ${fmt(bal)} → <strong>${fmt(afterBal)}</strong>`);
-  if (daysBufferAfter !== null) {
-    reasons.push(`Buffer after: ~${daysBufferAfter} days of spending`);
-  }
-  if (pctOfIncome !== null && monthlyIncome > 0) {
-    reasons.push(`That's ${pctOfIncome.toFixed(0)}% of your ~${fmt(monthlyIncome)} monthly income`);
-  }
-  if (nextPay) {
-    const days = Math.ceil((new Date(nextPay.date + 'T00:00:00') - new Date(todayISO() + 'T00:00:00')) / 86400000);
-    reasons.push(`Next paycheck: ${fmt(nextPay.amount)} in ${days} days (${nextPay.name})`);
-  }
-  
-  // Considerations
-  if (totalDebt > 0) {
-    considerations.push(`You have ${fmt(totalDebt)} in active debt — could that money speed up payoff?`);
-  }
-  const monthlyBudgets = Object.values(state.budgets).reduce((s,v) => s + v, 0);
-  if (monthlyBudgets > 0 && amount > monthlyBudgets * 0.3) {
-    considerations.push(`This purchase is ${((amount/monthlyBudgets)*100).toFixed(0)}% of your total monthly budgets`);
-  }
-  if (amount > avgDaily * 14 && monthlyExp > 0) {
-    considerations.push(`Roughly ${(amount/avgDaily).toFixed(0)} days worth of typical spending`);
-  }
+  const result = computeSmartAffordability(amount);
   
   // Render
   const verdictHtml = `
-    <div class="verdict-card ${zone}">
-      <div class="verdict-label">${zone === 'green' ? 'Green Zone' : zone === 'yellow' ? 'Yellow Zone' : 'Red Zone'}</div>
-      <div class="verdict-title">${title}</div>
+    <div class="verdict-card ${result.zone}">
+      <div class="verdict-label">${result.zone === 'green' ? 'Green Zone' : result.zone === 'yellow' ? 'Yellow Zone' : 'Red Zone'}</div>
+      <div class="verdict-title">${result.title}</div>
       <div class="verdict-reasoning">
         ${what ? `<div style="margin-bottom:10px;color:var(--text);"><strong>${escapeHtml(what)}</strong> · ${fmt(amount)}</div>` : ''}
-        <ul>${reasons.map(r => '<li>' + r + '</li>').join('')}</ul>
-        ${considerations.length ? `
+        <ul>${result.reasons.map(r => '<li>' + r + '</li>').join('')}</ul>
+        ${result.strategies.length ? `
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);">
-            <div style="color:var(--text);margin-bottom:6px;font-weight:500;">Consider:</div>
-            <ul>${considerations.map(c => '<li>' + c + '</li>').join('')}</ul>
+            <div style="color:var(--text);margin-bottom:6px;font-weight:500;">💡 Smart timing strategies:</div>
+            <ul>${result.strategies.map(s => '<li>' + s + '</li>').join('')}</ul>
+          </div>
+        ` : ''}
+        ${result.considerations.length ? `
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);">
+            <div style="color:var(--text);margin-bottom:6px;font-weight:500;">⚖ Tradeoffs:</div>
+            <ul>${result.considerations.map(c => '<li>' + c + '</li>').join('')}</ul>
           </div>
         ` : ''}
         <div style="margin-top:14px;color:var(--text-muted);font-size:11px;">Your call — this is just math.</div>
@@ -4252,7 +4799,7 @@ function runAffordabilityCheck() {
   document.getElementById('affordInputView').style.display = 'none';
   document.getElementById('affordResultView').style.display = 'block';
   
-  state.pendingAffordCheck = { amount, what, zone, title, date: todayISO() };
+  state.pendingAffordCheck = { amount, what, zone: result.zone, title: result.title, date: todayISO() };
 }
 
 function saveDecision(action) {
@@ -4905,7 +5452,7 @@ function showFirstLaunchWarningIfNeeded() {
   }
   setTimeout(() => {
     alert(
-      '👋 Welcome to Ledger!\n\n' +
+      '👋 Welcome to Ledger Compass!\n\n' +
       'IMPORTANT — Data Safety:\n\n' +
       '• Your data is stored ONLY on this device.\n' +
       '• Removing the app from your home screen on iPhone may wipe your data.\n' +
