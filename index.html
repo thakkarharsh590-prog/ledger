@@ -4,14 +4,14 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.0.0
+  Version:      2.1.0
   Last edited:  2026-05-14
   Storage:      localStorage (device-local, never sent to cloud)
-  Schema ver:   2 (auto-migrates from v1)
+  Schema ver:   3 (auto-migrates from v1, v2)
   
   COMPLETED FEATURES (v1.0):
-  - Income/expense tracking with 18 categories + custom categories
-  - Budgets with progress bars (yellow at 80%, red over)
+  - Income/expense tracking with categories + custom categories
+  - Budgets with progress bars
   - Loans with payment history & per-loan deduct toggle
   - Insights: 7-day chart, monthly net, category breakdown
   - Multi-currency, search, filters, JSON/CSV export, import
@@ -19,27 +19,25 @@
   - PWA installable, offline-capable
   
   NEW IN v2.0:
-  - Payroll setup: multiple jobs/income sources with custom pay cycles
-    (weekly, fortnightly, monthly, or custom interval)
-  - Financial Compass tab (replaces Budgets in nav)
-      • Affordability Check ("Can I afford $X?") with green/yellow/red verdict
-      • Cash Flow Forecast (30-day predicted balance with upcoming pay events)
-      • Budget Health Score (0-100)
-      • 50/30/20 mirror
-      • Smart insights (subscriptions, day-of-week patterns)
-      • Decision journal (track past affordability checks)
-  - Budgets section moved into Insights tab
-  - Confidence indicators on predictions (low data = honest about it)
+  - Payroll: multi-job income sources with custom pay cycles
+  - Financial Compass tab (Affordability, Forecast, Health, 50/30/20, Insights, Journal)
+  - Budgets moved into Insights tab
+  
+  NEW IN v2.1:
+  - RECURRING TRANSACTIONS: auto-log on pay/due dates
+    * Income sources: "Auto-log on pay date" toggle
+    * Recurring Expenses: rent, subs, gym etc. (new screen in Settings)
+    * Auto-log banner on home when entries created
+    * autoLogged flag visible on transactions
+  - DATA SAFETY:
+    * Per-session auto-snapshots (last 7 kept silently)
+    * "Days since last export" banner (yellow 7d+, red 14d+)
+    * First-launch PWA storage warning
+    * Recovery mode: detects fresh install, restores from internal backup
   
   PLANNED (v3+):
-  - Streaks & gamification
-  - Recurring transactions (auto-log payday)
-  - Calendar heatmap
-  - Savings goals with progress rings
-  - Mood log per purchase
-  - Receipt photo OCR
-  - Passcode lock
-  - iOS Shortcut for fast-logging
+  - Streaks/gamification, calendar heatmap, savings goals
+  - Mood log, receipt OCR, passcode lock, iOS Shortcut
   
   HOW TO RESUME IN A NEW CHAT:
   1. Download/save this HTML file when chat ends
@@ -61,6 +59,9 @@
 <meta name="apple-mobile-web-app-title" content="Ledger">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0a0a0f">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Ledger</title>
 
 <!-- PWA Manifest (inline as data URI so single-file works) -->
@@ -1390,6 +1391,146 @@
   .cycle-opt .opt-name { font-weight: 500; }
   .cycle-opt .opt-sub { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
   
+  /* ============ v2.1 STYLES ============ */
+  
+  /* Auto-log banner */
+  .auto-log-banner {
+    margin: 12px 0 16px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(201,255,61,0.1), rgba(74,222,128,0.05));
+    border: 1px solid rgba(201,255,61,0.25);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .auto-log-icon { font-size: 22px; }
+  .auto-log-text { flex: 1; }
+  .auto-log-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .auto-log-sub { font-size: 11px; color: var(--text-dim); }
+  .auto-log-close {
+    background: none; border: none; color: var(--text-dim);
+    font-size: 18px; cursor: pointer; padding: 4px 8px;
+  }
+  
+  /* Backup warning banner */
+  .backup-warn {
+    margin: 12px 0 16px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .backup-warn.yellow {
+    background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(251,191,36,0.04));
+    border: 1px solid rgba(251,191,36,0.3);
+  }
+  .backup-warn.red {
+    background: linear-gradient(135deg, rgba(255,107,107,0.1), rgba(255,107,107,0.04));
+    border: 1px solid rgba(255,107,107,0.3);
+  }
+  .backup-warn-icon { font-size: 22px; }
+  .backup-warn-text { flex: 1; }
+  .backup-warn-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .backup-warn.yellow .backup-warn-title { color: var(--warning); }
+  .backup-warn.red .backup-warn-title { color: var(--expense); }
+  .backup-warn-sub { font-size: 11px; color: var(--text-dim); }
+  
+  /* Auto-logged badge on transactions */
+  .tx-auto-badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 100px;
+    background: rgba(201,255,61,0.15);
+    color: var(--accent);
+    margin-left: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+    vertical-align: middle;
+  }
+  
+  /* Recurring expense card */
+  .rec-exp-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .rec-exp-card.inactive { opacity: 0.5; }
+  .rec-exp-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .rec-exp-name {
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rec-exp-amount {
+    font-family: 'Geist Mono', monospace;
+    font-size: 14px;
+    color: var(--expense);
+    font-weight: 500;
+  }
+  .rec-exp-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  
+  /* Recovery banner (one-time on fresh launch with backups present) */
+  .recovery-card {
+    margin: 12px 0 16px;
+    padding: 18px;
+    background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04));
+    border: 1px solid rgba(74,222,128,0.3);
+    border-radius: 16px;
+  }
+  .recovery-title {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    color: var(--income);
+    margin-bottom: 6px;
+  }
+  .recovery-text {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+  .recovery-btns {
+    display: flex;
+    gap: 8px;
+  }
+  .recovery-btns button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+  }
+  .recovery-restore {
+    background: var(--income);
+    color: #0a0a0f;
+  }
+  .recovery-dismiss {
+    background: var(--bg-card);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
 </style>
 </head>
 <body>
@@ -1404,6 +1545,8 @@
 
 <!-- HOME PAGE -->
 <div class="page active" id="page-home">
+  <div id="autoLogBanner"></div>
+  <div id="backupWarnBanner"></div>
   <div id="installBanner"></div>
   
   <div class="hero">
@@ -1578,6 +1721,11 @@
     <span class="setting-value" id="incomeSourcesCount">—</span>
   </div>
 
+  <div class="setting-row" onclick="goPage('recurring-expenses')">
+    <span class="setting-label">Recurring Expenses</span>
+    <span class="setting-value" id="recurringExpensesCount">—</span>
+  </div>
+
   <div class="setting-row" onclick="exportData()">
     <span class="setting-label">Export Data (JSON)</span>
     <span class="setting-value">↓</span>
@@ -1594,9 +1742,19 @@
   </div>
   <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
 
+  <div class="setting-row" onclick="showSnapshotsModal()">
+    <span class="setting-label">Internal Snapshots</span>
+    <span class="setting-value" id="snapshotsCount">—</span>
+  </div>
+
   <div class="setting-row" onclick="showStorageInfo()">
     <span class="setting-label">Storage Info</span>
     <span class="setting-value" id="storageInfo">—</span>
+  </div>
+
+  <div class="setting-row" onclick="refreshApp()" style="border-color: rgba(201,255,61,0.2);">
+    <span class="setting-label" style="color: var(--accent);">↻ Refresh App (Force Update)</span>
+    <span class="setting-value" id="versionDisplay">v2.1.0</span>
   </div>
 
   <div class="setting-row" style="border-color: rgba(255,107,107,0.2);" onclick="confirmClearAll()">
@@ -1619,9 +1777,22 @@
   </div>
   <div class="section-title"><h2>Income Sources</h2></div>
   <div style="color:var(--text-dim);font-size:12px;line-height:1.6;margin-bottom:16px;padding:12px 14px;background:var(--bg-card);border-radius:12px;border:1px solid var(--border);">
-    Set up your paychecks for cash flow forecasting. Supports multiple jobs with different pay cycles.
+    Set up your paychecks for cash flow forecasting. Supports multiple jobs with different pay cycles. Toggle "Auto-log on pay date" to skip manual entry.
   </div>
   <div id="incomeSrcList"></div>
+</div>
+
+<!-- RECURRING EXPENSES PAGE -->
+<div class="page" id="page-recurring-expenses">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <button class="back-btn" onclick="goPage('settings')">← Back</button>
+    <span class="link" onclick="openRecExpModal()">+ Add</span>
+  </div>
+  <div class="section-title"><h2>Recurring Expenses</h2></div>
+  <div style="color:var(--text-dim);font-size:12px;line-height:1.6;margin-bottom:16px;padding:12px 14px;background:var(--bg-card);border-radius:12px;border:1px solid var(--border);">
+    Set fixed expenses (rent, Netflix, gym) to auto-log on their due dates. Skip the manual entry forever.
+  </div>
+  <div id="recExpList"></div>
 </div>
 
 <!-- ADD/EDIT TX MODAL -->
@@ -1893,6 +2064,14 @@
       <input type="date" id="inpIncSrcNextPay">
     </div>
     
+    <div class="switch-row">
+      <div>
+        <div class="switch-label">Auto-log on pay date</div>
+        <div class="switch-hint">Creates the income entry automatically</div>
+      </div>
+      <div class="switch" id="incSrcAutoLogSwitch" onclick="toggleIncSrcAutoLog()"></div>
+    </div>
+    
     <div class="field">
       <label>Note (optional)</label>
       <input type="text" id="inpIncSrcNote" placeholder="e.g. After tax, gross">
@@ -1901,6 +2080,76 @@
     <button class="btn-primary" onclick="saveIncomeSource()">Save</button>
     <button class="btn-danger" id="deleteIncSrcBtn" style="display:none" onclick="deleteCurrentIncomeSource()">Delete</button>
     <button class="btn-secondary" onclick="closeModal('incomeSrcModal')">Cancel</button>
+  </div>
+</div>
+
+<!-- RECURRING EXPENSE MODAL -->
+<div class="modal-backdrop" id="recExpModal" onclick="closeModalOnBg(event, 'recExpModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="recExpModalTitle">Add Recurring Expense</div>
+    <div class="modal-sub">Auto-logs on the due date</div>
+
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="inpRecExpName" placeholder="e.g. Rent, Netflix, Gym">
+    </div>
+
+    <div class="field">
+      <label>Amount</label>
+      <div class="amount-input-wrap" id="recExpAmtWrap">
+        <input type="number" inputmode="decimal" id="inpRecExpAmount" class="amount-input" placeholder="0.00" step="0.01">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Category</label>
+      <div class="cat-picker" id="recExpCatPicker"></div>
+    </div>
+
+    <div class="field">
+      <label>Frequency</label>
+      <div class="cycle-picker" id="recCyclePicker">
+        <div class="cycle-opt" data-cycle="weekly" onclick="selectRecCycle('weekly')">
+          <div class="opt-name">Weekly</div>
+          <div class="opt-sub">Every 7 days</div>
+        </div>
+        <div class="cycle-opt" data-cycle="fortnightly" onclick="selectRecCycle('fortnightly')">
+          <div class="opt-name">Fortnightly</div>
+          <div class="opt-sub">Every 14 days</div>
+        </div>
+        <div class="cycle-opt selected" data-cycle="monthly" onclick="selectRecCycle('monthly')">
+          <div class="opt-name">Monthly</div>
+          <div class="opt-sub">Same date each month</div>
+        </div>
+        <div class="cycle-opt" data-cycle="yearly" onclick="selectRecCycle('yearly')">
+          <div class="opt-name">Yearly</div>
+          <div class="opt-sub">Same date each year</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Next due date</label>
+      <input type="date" id="inpRecExpNextDue">
+    </div>
+
+    <div class="switch-row">
+      <div>
+        <div class="switch-label">Active</div>
+        <div class="switch-hint">Turn off to pause auto-logging</div>
+      </div>
+      <div class="switch on" id="recExpActiveSwitch" onclick="toggleRecExpActive()"></div>
+    </div>
+
+    <div class="field">
+      <label>Note (optional)</label>
+      <input type="text" id="inpRecExpNote" placeholder="">
+    </div>
+
+    <button class="btn-primary" onclick="saveRecExp()">Save</button>
+    <button class="btn-danger" id="deleteRecExpBtn" style="display:none" onclick="deleteCurrentRecExp()">Delete</button>
+    <button class="btn-secondary" onclick="closeModal('recExpModal')">Cancel</button>
   </div>
 </div>
 
@@ -1931,10 +2180,12 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.0.0';
-const SCHEMA_VERSION = 2;
+const APP_VERSION = '2.1.0';
+const SCHEMA_VERSION = 3;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
+const AUTO_SNAPSHOT_PREFIX = 'ledger_snap_';
+const MAX_AUTO_SNAPSHOTS = 7;
 
 /* ============ DEFAULT CATEGORIES ============ */
 const DEFAULT_CATEGORIES = {
@@ -1983,6 +2234,7 @@ let state = {
   customCategories: { income: [], expense: [] },
   incomeSources: [],
   decisions: [],
+  recurringExpenses: [],
   currency: 'AUD',
   // UI-only state (not persisted)
   currentType: 'expense',
@@ -1993,10 +2245,14 @@ let state = {
   viewingLoanId: null,
   loanDeductOn: false,
   filter: 'all',
-  catPickerMode: 'tx', // 'tx' or 'budget'
+  catPickerMode: 'tx',
   editingIncSrcId: null,
   selectedCycle: 'fortnightly',
   pendingAffordCheck: null,
+  editingRecExpId: null,
+  selectedRecCycle: 'monthly',
+  incSrcAutoLogOn: false,
+  recentAutoLogged: [],
 };
 
 /* ============ STORAGE & MIGRATION ============ */
@@ -2018,6 +2274,7 @@ function loadData() {
     state.customCategories = migrated.customCategories || { income: [], expense: [] };
     state.incomeSources = migrated.incomeSources || [];
     state.decisions = migrated.decisions || [];
+    state.recurringExpenses = migrated.recurringExpenses || [];
     state.currency = migrated.currency || 'AUD';
   } catch (e) {
     console.error('Load error:', e);
@@ -2056,6 +2313,20 @@ function runMigrations(data) {
     if (!migrated.decisions) migrated.decisions = [];
   }
   
+  // Migration: v2 -> v3 (recurring transactions)
+  if (fromVersion < 3) {
+    migrated.schemaVersion = 3;
+    if (!migrated.recurringExpenses) migrated.recurringExpenses = [];
+    // Add autoLog: false to existing income sources (opt-in)
+    if (migrated.incomeSources) {
+      migrated.incomeSources = migrated.incomeSources.map(s => ({
+        autoLog: false,
+        lastAutoLogDate: null,
+        ...s,
+      }));
+    }
+  }
+  
   // FUTURE MIGRATIONS GO HERE:
   // if (fromVersion < 3) { ... migrated.schemaVersion = 3; }
   
@@ -2072,6 +2343,7 @@ function saveData() {
       customCategories: state.customCategories,
       incomeSources: state.incomeSources,
       decisions: state.decisions,
+      recurringExpenses: state.recurringExpenses,
       currency: state.currency,
       lastSaved: Date.now(),
     };
@@ -2162,7 +2434,8 @@ function goPage(name) {
   if (name === 'compass') renderCompass();
   if (name === 'decisions') renderDecisions();
   if (name === 'income-sources') renderIncomeSources();
-  if (name === 'settings') { updateStorageInfo(); updateIncomeSourcesCount(); }
+  if (name === 'recurring-expenses') renderRecExps();
+  if (name === 'settings') { updateStorageInfo(); updateIncomeSourcesCount(); updateRecExpCount(); updateSnapshotsCount(); }
   window.scrollTo(0, 0);
 }
 
@@ -2183,6 +2456,16 @@ function renderAll() {
   document.getElementById('currencyLabel').textContent = cur ? `${cur.code} (${cur.symbol})` : 'AUD (A$)';
   document.getElementById('versionTag').textContent = 'v' + APP_VERSION.split('.').slice(0,2).join('.');
   updateIncomeSourcesCount();
+  updateRecExpCount();
+  renderBackupWarnBanner();
+}
+
+function updateRecExpCount() {
+  const el = document.getElementById('recurringExpensesCount');
+  if (!el) return;
+  const n = state.recurringExpenses.length;
+  const active = state.recurringExpenses.filter(r => r.active).length;
+  el.textContent = n === 0 ? 'None set up' : `${active} active / ${n}`;
 }
 
 function updateIncomeSourcesCount() {
@@ -2249,11 +2532,12 @@ function renderTxItem(t) {
   const cat = getCat(t.category, t.type);
   const sign = t.type === 'income' ? '+' : '−';
   const colorClass = t.type === 'income' ? 'income-text' : 'expense-text';
+  const autoBadge = t.autoLogged ? '<span class="tx-auto-badge">auto</span>' : '';
   return `
     <div class="tx" onclick="openEditModal('${t.id}')">
       <div class="tx-icon" style="background:${cat.color}22;">${cat.emoji}</div>
       <div class="tx-main">
-        <div class="tx-title">${escapeHtml(t.description || cat.name)}</div>
+        <div class="tx-title">${escapeHtml(t.description || cat.name)}${autoBadge}</div>
         <div class="tx-meta">${cat.name}${t.note ? ' · ' + escapeHtml(t.note) : ''}</div>
       </div>
       <div class="tx-amount ${colorClass}">${sign}${fmt(t.amount)}</div>
@@ -3138,7 +3422,7 @@ function setupManifest() {
     name: 'Ledger',
     short_name: 'Ledger',
     description: 'Personal finance tracker',
-    start_url: './',
+    start_url: './?source=pwa',
     display: 'standalone',
     background_color: '#0a0a0f',
     theme_color: '#0a0a0f',
@@ -3158,6 +3442,13 @@ function setupManifest() {
   };
   const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
   document.getElementById('manifestLink').href = URL.createObjectURL(blob);
+  
+  // Unregister any existing service workers (we don't ship one — prevents stale caching)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    }).catch(() => {});
+  }
 }
 
 /* ============================================================
@@ -3191,7 +3482,7 @@ function renderIncomeSources() {
     return `
       <div class="income-src-card" onclick="editIncomeSource('${src.id}')">
         <div class="income-src-head">
-          <span class="income-src-name">${escapeHtml(src.name)}</span>
+          <span class="income-src-name">${escapeHtml(src.name)}${src.autoLog ? ' <span class="tx-auto-badge">auto</span>' : ''}</span>
           <span class="income-src-amount">+${fmt(src.amount)}</span>
         </div>
         <div class="income-src-meta">${cycleLabel}${nextPayStr ? ' · Next: ' + nextPayStr : ''}</div>
@@ -3221,6 +3512,7 @@ function computeNextPayDate(src) {
 function openIncomeSrcModal() {
   state.editingIncSrcId = null;
   state.selectedCycle = 'fortnightly';
+  state.incSrcAutoLogOn = false;
   document.getElementById('incSrcModalTitle').textContent = 'Add Income Source';
   document.getElementById('inpIncSrcName').value = '';
   document.getElementById('inpIncSrcAmount').value = '';
@@ -3228,6 +3520,7 @@ function openIncomeSrcModal() {
   document.getElementById('inpIncSrcNote').value = '';
   document.getElementById('deleteIncSrcBtn').style.display = 'none';
   updateCyclePicker();
+  updateIncSrcAutoLogSwitch();
   document.getElementById('incomeSrcModal').classList.add('open');
   setTimeout(() => document.getElementById('inpIncSrcName').focus(), 350);
 }
@@ -3237,6 +3530,7 @@ function editIncomeSource(id) {
   if (!src) return;
   state.editingIncSrcId = id;
   state.selectedCycle = src.cycle;
+  state.incSrcAutoLogOn = !!src.autoLog;
   document.getElementById('incSrcModalTitle').textContent = 'Edit Income Source';
   document.getElementById('inpIncSrcName').value = src.name;
   document.getElementById('inpIncSrcAmount').value = src.amount;
@@ -3244,7 +3538,18 @@ function editIncomeSource(id) {
   document.getElementById('inpIncSrcNote').value = src.note || '';
   document.getElementById('deleteIncSrcBtn').style.display = 'block';
   updateCyclePicker();
+  updateIncSrcAutoLogSwitch();
   document.getElementById('incomeSrcModal').classList.add('open');
+}
+
+function toggleIncSrcAutoLog() {
+  state.incSrcAutoLogOn = !state.incSrcAutoLogOn;
+  updateIncSrcAutoLogSwitch();
+}
+
+function updateIncSrcAutoLogSwitch() {
+  const el = document.getElementById('incSrcAutoLogSwitch');
+  if (el) el.classList.toggle('on', state.incSrcAutoLogOn);
 }
 
 function selectCycle(cycle) {
@@ -3275,6 +3580,7 @@ function saveIncomeSource() {
       state.incomeSources[idx] = {
         ...state.incomeSources[idx],
         name, amount, cycle: state.selectedCycle, nextPay, note,
+        autoLog: state.incSrcAutoLogOn,
       };
     }
     showToast('Updated');
@@ -3282,6 +3588,8 @@ function saveIncomeSource() {
     state.incomeSources.push({
       id: uid('inc'),
       name, amount, cycle: state.selectedCycle, nextPay, note,
+      autoLog: state.incSrcAutoLogOn,
+      lastAutoLogDate: null,
       createdAt: Date.now(),
     });
     showToast('Income source added');
@@ -3291,6 +3599,8 @@ function saveIncomeSource() {
   closeModal('incomeSrcModal');
   renderIncomeSources();
   renderCompass();
+  // Run auto-log immediately in case the new source is already due
+  runAutoLog();
 }
 
 function deleteCurrentIncomeSource() {
@@ -3985,13 +4295,649 @@ function renderDecisions() {
 }
 
 
+/* ============================================================
+   v2.1: RECURRING EXPENSES
+   ============================================================ */
+
+function renderRecExps() {
+  const list = document.getElementById('recExpList');
+  if (state.recurringExpenses.length === 0) {
+    list.innerHTML = emptyState('No recurring expenses', 'Add rent, subs, gym etc. to auto-log');
+    return;
+  }
+  list.innerHTML = state.recurringExpenses.map(r => {
+    const cycleLabel = {
+      weekly: 'Weekly', fortnightly: 'Fortnightly',
+      monthly: 'Monthly', yearly: 'Yearly',
+    }[r.cycle] || r.cycle;
+    
+    const cat = getCat(r.category, 'expense');
+    let nextStr = '';
+    if (r.active && r.nextDue) {
+      const nd = computeNextDueDate(r);
+      const days = Math.ceil((new Date(nd + 'T00:00:00') - new Date(todayISO() + 'T00:00:00')) / 86400000);
+      if (days === 0) nextStr = 'Due today';
+      else if (days === 1) nextStr = 'Due tomorrow';
+      else if (days > 0) nextStr = `Due in ${days} days`;
+      else nextStr = `${Math.abs(days)}d overdue`;
+    } else if (!r.active) {
+      nextStr = 'Paused';
+    }
+    
+    return `
+      <div class="rec-exp-card ${r.active ? '' : 'inactive'}" onclick="editRecExp('${r.id}')">
+        <div class="rec-exp-head">
+          <span class="rec-exp-name">${cat.emoji} ${escapeHtml(r.name)}</span>
+          <span class="rec-exp-amount">−${fmt(r.amount)}</span>
+        </div>
+        <div class="rec-exp-meta">${cycleLabel}${nextStr ? ' · ' + nextStr : ''}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function computeNextDueDate(rec) {
+  if (!rec.nextDue) return null;
+  const today = new Date(todayISO() + 'T00:00:00');
+  let next = new Date(rec.nextDue + 'T00:00:00');
+  if (next >= today) return rec.nextDue;
+  
+  while (next < today) {
+    if (rec.cycle === 'weekly') next.setDate(next.getDate() + 7);
+    else if (rec.cycle === 'fortnightly') next.setDate(next.getDate() + 14);
+    else if (rec.cycle === 'monthly') next.setMonth(next.getMonth() + 1);
+    else if (rec.cycle === 'yearly') next.setFullYear(next.getFullYear() + 1);
+    else break;
+  }
+  return next.toISOString().slice(0,10);
+}
+
+function advanceRecurringDate(dateISO, cycle) {
+  const d = new Date(dateISO + 'T00:00:00');
+  if (cycle === 'weekly') d.setDate(d.getDate() + 7);
+  else if (cycle === 'fortnightly') d.setDate(d.getDate() + 14);
+  else if (cycle === 'monthly') d.setMonth(d.getMonth() + 1);
+  else if (cycle === 'yearly') d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString().slice(0,10);
+}
+
+function openRecExpModal() {
+  state.editingRecExpId = null;
+  state.selectedRecCycle = 'monthly';
+  state.selectedCategory = 'home'; // default to Home for rent
+  state.currentType = 'expense';
+  state.recExpActiveOn = true;
+  document.getElementById('recExpModalTitle').textContent = 'Add Recurring Expense';
+  document.getElementById('inpRecExpName').value = '';
+  document.getElementById('inpRecExpAmount').value = '';
+  document.getElementById('inpRecExpNextDue').value = todayISO();
+  document.getElementById('inpRecExpNote').value = '';
+  document.getElementById('deleteRecExpBtn').style.display = 'none';
+  updateRecCyclePicker();
+  renderRecExpCatPicker();
+  document.getElementById('recExpActiveSwitch').classList.add('on');
+  document.getElementById('recExpModal').classList.add('open');
+  setTimeout(() => document.getElementById('inpRecExpName').focus(), 350);
+}
+
+function editRecExp(id) {
+  const r = state.recurringExpenses.find(x => x.id === id);
+  if (!r) return;
+  state.editingRecExpId = id;
+  state.selectedRecCycle = r.cycle;
+  state.selectedCategory = r.category;
+  state.currentType = 'expense';
+  state.recExpActiveOn = !!r.active;
+  document.getElementById('recExpModalTitle').textContent = 'Edit Recurring Expense';
+  document.getElementById('inpRecExpName').value = r.name;
+  document.getElementById('inpRecExpAmount').value = r.amount;
+  document.getElementById('inpRecExpNextDue').value = r.nextDue || todayISO();
+  document.getElementById('inpRecExpNote').value = r.note || '';
+  document.getElementById('deleteRecExpBtn').style.display = 'block';
+  updateRecCyclePicker();
+  renderRecExpCatPicker();
+  document.getElementById('recExpActiveSwitch').classList.toggle('on', state.recExpActiveOn);
+  document.getElementById('recExpModal').classList.add('open');
+}
+
+function selectRecCycle(cycle) {
+  state.selectedRecCycle = cycle;
+  updateRecCyclePicker();
+}
+
+function updateRecCyclePicker() {
+  document.querySelectorAll('#recCyclePicker .cycle-opt').forEach(el => {
+    el.classList.toggle('selected', el.dataset.cycle === state.selectedRecCycle);
+  });
+}
+
+function renderRecExpCatPicker() {
+  const cats = getCategories('expense');
+  const html = cats.map(c => `
+    <div class="cat-pick ${state.selectedCategory === c.id ? 'selected' : ''}" 
+         onclick="selectRecExpCat('${c.id}')">
+      <div class="emoji">${c.emoji}</div>
+      <div class="name">${escapeHtml(c.name)}</div>
+    </div>
+  `).join('');
+  document.getElementById('recExpCatPicker').innerHTML = html;
+}
+
+function selectRecExpCat(id) {
+  state.selectedCategory = id;
+  renderRecExpCatPicker();
+}
+
+function toggleRecExpActive() {
+  state.recExpActiveOn = !state.recExpActiveOn;
+  document.getElementById('recExpActiveSwitch').classList.toggle('on', state.recExpActiveOn);
+}
+
+function saveRecExp() {
+  const name = document.getElementById('inpRecExpName').value.trim();
+  const amount = parseFloat(document.getElementById('inpRecExpAmount').value);
+  const nextDue = document.getElementById('inpRecExpNextDue').value;
+  const note = document.getElementById('inpRecExpNote').value.trim();
+  
+  if (!name) { showToast('Enter a name', '⚠'); return; }
+  if (!amount || amount <= 0) { showToast('Enter valid amount', '⚠'); return; }
+  if (!nextDue) { showToast('Pick a due date', '⚠'); return; }
+  
+  if (state.editingRecExpId) {
+    const idx = state.recurringExpenses.findIndex(r => r.id === state.editingRecExpId);
+    if (idx >= 0) {
+      state.recurringExpenses[idx] = {
+        ...state.recurringExpenses[idx],
+        name, amount, category: state.selectedCategory,
+        cycle: state.selectedRecCycle, nextDue, note,
+        active: state.recExpActiveOn,
+      };
+    }
+    showToast('Updated');
+  } else {
+    state.recurringExpenses.push({
+      id: uid('rec'),
+      name, amount, category: state.selectedCategory,
+      cycle: state.selectedRecCycle, nextDue, note,
+      active: state.recExpActiveOn,
+      lastAutoLogDate: null,
+      createdAt: Date.now(),
+    });
+    showToast('Recurring expense added');
+  }
+  
+  saveData();
+  closeModal('recExpModal');
+  renderRecExps();
+  runAutoLog();
+}
+
+function deleteCurrentRecExp() {
+  if (!state.editingRecExpId) return;
+  if (!confirm('Delete this recurring expense?')) return;
+  state.recurringExpenses = state.recurringExpenses.filter(r => r.id !== state.editingRecExpId);
+  saveData();
+  closeModal('recExpModal');
+  renderRecExps();
+  showToast('Removed', '×');
+}
+
+/* ============================================================
+   v2.1: AUTO-LOG ENGINE
+   ============================================================ */
+
+function runAutoLog() {
+  const today = todayISO();
+  const todayDate = new Date(today + 'T00:00:00');
+  const created = [];
+  
+  // --- Income sources with autoLog enabled ---
+  state.incomeSources.forEach(src => {
+    if (!src.autoLog || src.cycle === 'irregular' || !src.nextPay) return;
+    
+    // Walk forward from nextPay (or lastAutoLogDate+1) through today
+    let checkDate = src.lastAutoLogDate 
+      ? advanceRecurringDate(src.lastAutoLogDate, src.cycle)
+      : src.nextPay;
+    
+    // Safety: cap iterations
+    let iterations = 0;
+    while (checkDate <= today && iterations < 100) {
+      const cd = new Date(checkDate + 'T00:00:00');
+      if (cd <= todayDate) {
+        // Check if already logged for this date+source
+        const dupId = 'auto_inc_' + src.id + '_' + checkDate;
+        const exists = state.transactions.some(t => t.autoLogId === dupId);
+        if (!exists) {
+          state.transactions.push({
+            id: uid('tx'),
+            type: 'income',
+            amount: src.amount,
+            description: src.name,
+            category: 'salary',
+            date: checkDate,
+            note: src.note || '',
+            autoLogged: true,
+            autoLogId: dupId,
+            createdAt: Date.now(),
+          });
+          created.push({ name: src.name, amount: src.amount, type: 'income', date: checkDate });
+        }
+        src.lastAutoLogDate = checkDate;
+      }
+      checkDate = advanceRecurringDate(checkDate, src.cycle);
+      iterations++;
+    }
+    
+    // Update nextPay forward
+    if (src.lastAutoLogDate) {
+      src.nextPay = advanceRecurringDate(src.lastAutoLogDate, src.cycle);
+    }
+  });
+  
+  // --- Recurring expenses ---
+  state.recurringExpenses.forEach(rec => {
+    if (!rec.active || !rec.nextDue) return;
+    
+    let checkDate = rec.lastAutoLogDate 
+      ? advanceRecurringDate(rec.lastAutoLogDate, rec.cycle)
+      : rec.nextDue;
+    
+    let iterations = 0;
+    while (checkDate <= today && iterations < 100) {
+      const cd = new Date(checkDate + 'T00:00:00');
+      if (cd <= todayDate) {
+        const dupId = 'auto_exp_' + rec.id + '_' + checkDate;
+        const exists = state.transactions.some(t => t.autoLogId === dupId);
+        if (!exists) {
+          state.transactions.push({
+            id: uid('tx'),
+            type: 'expense',
+            amount: rec.amount,
+            description: rec.name,
+            category: rec.category,
+            date: checkDate,
+            note: rec.note || '',
+            autoLogged: true,
+            autoLogId: dupId,
+            createdAt: Date.now(),
+          });
+          created.push({ name: rec.name, amount: rec.amount, type: 'expense', date: checkDate });
+        }
+        rec.lastAutoLogDate = checkDate;
+      }
+      checkDate = advanceRecurringDate(checkDate, rec.cycle);
+      iterations++;
+    }
+    
+    if (rec.lastAutoLogDate) {
+      rec.nextDue = advanceRecurringDate(rec.lastAutoLogDate, rec.cycle);
+    }
+  });
+  
+  if (created.length > 0) {
+    saveData();
+    state.recentAutoLogged = created;
+    renderAll();
+    renderAutoLogBanner();
+  }
+  
+  return created;
+}
+
+function renderAutoLogBanner() {
+  const el = document.getElementById('autoLogBanner');
+  if (!el) return;
+  const dismissed = sessionStorage.getItem('autolog_banner_dismissed');
+  if (dismissed === 'yes' || state.recentAutoLogged.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+  const n = state.recentAutoLogged.length;
+  const incs = state.recentAutoLogged.filter(x => x.type === 'income').length;
+  const exps = state.recentAutoLogged.filter(x => x.type === 'expense').length;
+  let summary = [];
+  if (incs > 0) summary.push(`${incs} income`);
+  if (exps > 0) summary.push(`${exps} expense${exps>1?'s':''}`);
+  el.innerHTML = `
+    <div class="auto-log-banner" onclick="goPage('transactions')">
+      <div class="auto-log-icon">⚡</div>
+      <div class="auto-log-text">
+        <div class="auto-log-title">Auto-logged ${n} entr${n>1?'ies':'y'}</div>
+        <div class="auto-log-sub">${summary.join(' + ')} · Tap to review or edit</div>
+      </div>
+      <button class="auto-log-close" onclick="dismissAutoLogBanner(event)">×</button>
+    </div>
+  `;
+}
+
+function dismissAutoLogBanner(ev) {
+  if (ev) ev.stopPropagation();
+  sessionStorage.setItem('autolog_banner_dismissed', 'yes');
+  document.getElementById('autoLogBanner').innerHTML = '';
+}
+
+/* ============================================================
+   v2.1: AUTO-SNAPSHOT (DATA SAFETY)
+   ============================================================ */
+
+function takeAutoSnapshot() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    
+    const today = todayISO();
+    const key = AUTO_SNAPSHOT_PREFIX + today;
+    
+    // Only one snapshot per day
+    if (localStorage.getItem(key)) return;
+    
+    localStorage.setItem(key, raw);
+    
+    // Prune old snapshots, keep last MAX_AUTO_SNAPSHOTS
+    const snapKeys = Object.keys(localStorage)
+      .filter(k => k.startsWith(AUTO_SNAPSHOT_PREFIX))
+      .sort();
+    while (snapKeys.length > MAX_AUTO_SNAPSHOTS) {
+      localStorage.removeItem(snapKeys.shift());
+    }
+  } catch (e) {
+    console.warn('Snapshot failed:', e);
+  }
+}
+
+function findRecoveryData() {
+  // Returns the most recent snapshot or backup, or null
+  const allKeys = Object.keys(localStorage);
+  const candidates = allKeys
+    .filter(k => k.startsWith(AUTO_SNAPSHOT_PREFIX) || k.startsWith(BACKUP_PREFIX))
+    .sort((a, b) => b.localeCompare(a)); // newest first
+  
+  for (const key of candidates) {
+    try {
+      const raw = localStorage.getItem(key);
+      const parsed = JSON.parse(raw);
+      if (parsed && (parsed.transactions || parsed.loans || parsed.budgets)) {
+        const txCount = (parsed.transactions || []).length;
+        if (txCount > 0 || (parsed.loans || []).length > 0) {
+          return { key, data: parsed, txCount };
+        }
+      }
+    } catch (e) {}
+  }
+  return null;
+}
+
+function checkRecoveryMode() {
+  // Called on fresh launch when state is empty
+  if (state.transactions.length > 0 || state.loans.length > 0 || state.incomeSources.length > 0) {
+    return; // not empty, no recovery needed
+  }
+  const dismissed = localStorage.getItem('recovery_dismissed');
+  if (dismissed === 'yes') return;
+  
+  const found = findRecoveryData();
+  if (!found) return;
+  
+  // Show banner on home page
+  const homeContent = document.getElementById('page-home');
+  if (!homeContent) return;
+  
+  const banner = document.createElement('div');
+  banner.id = 'recoveryBanner';
+  banner.innerHTML = `
+    <div class="recovery-card">
+      <div class="recovery-title">📦 Backup data found</div>
+      <div class="recovery-text">
+        Your app appears to be empty, but we found a backup with <strong>${found.txCount} transactions</strong> in storage. Would you like to restore it?
+      </div>
+      <div class="recovery-btns">
+        <button class="recovery-restore" onclick="restoreFromRecovery()">Restore</button>
+        <button class="recovery-dismiss" onclick="dismissRecovery()">Start fresh</button>
+      </div>
+    </div>
+  `;
+  homeContent.insertBefore(banner, homeContent.firstChild);
+}
+
+function restoreFromRecovery() {
+  const found = findRecoveryData();
+  if (!found) { showToast('No backup to restore', '⚠'); return; }
+  if (!confirm(`Restore ${found.txCount} transactions from backup?`)) return;
+  
+  try {
+    const migrated = runMigrations(found.data);
+    state.transactions = migrated.transactions || [];
+    state.budgets = migrated.budgets || {};
+    state.loans = migrated.loans || [];
+    state.customCategories = migrated.customCategories || { income: [], expense: [] };
+    state.incomeSources = migrated.incomeSources || [];
+    state.decisions = migrated.decisions || [];
+    state.recurringExpenses = migrated.recurringExpenses || [];
+    state.currency = migrated.currency || 'AUD';
+    saveData();
+    const banner = document.getElementById('recoveryBanner');
+    if (banner) banner.remove();
+    renderAll();
+    showToast('Data restored!');
+  } catch (e) {
+    showToast('Restore failed', '⚠');
+  }
+}
+
+function dismissRecovery() {
+  localStorage.setItem('recovery_dismissed', 'yes');
+  const banner = document.getElementById('recoveryBanner');
+  if (banner) banner.remove();
+}
+
+function showSnapshotsModal() {
+  const snapKeys = Object.keys(localStorage)
+    .filter(k => k.startsWith(AUTO_SNAPSHOT_PREFIX))
+    .sort((a, b) => b.localeCompare(a));
+  
+  if (snapKeys.length === 0) {
+    alert('No internal snapshots yet.\n\nThe app automatically takes a daily snapshot of your data (kept for 7 days). These appear here after your first day of use.\n\nFor real backups, use "Export Data (JSON)" and save the file to Files or iCloud Drive.');
+    return;
+  }
+  
+  let msg = `Internal Snapshots (${snapKeys.length} kept)\n\nThese are automatic daily backups inside the app. They survive app updates but NOT being removed from home screen.\n\nAvailable snapshots:\n\n`;
+  snapKeys.forEach(k => {
+    const date = k.replace(AUTO_SNAPSHOT_PREFIX, '');
+    try {
+      const data = JSON.parse(localStorage.getItem(k));
+      const txCount = (data.transactions || []).length;
+      msg += `• ${date} — ${txCount} transactions\n`;
+    } catch (e) {
+      msg += `• ${date} — (corrupted)\n`;
+    }
+  });
+  msg += `\nTo restore from a snapshot, type the date (YYYY-MM-DD) and press OK. Cancel to exit.`;
+  
+  const input = prompt(msg);
+  if (!input) return;
+  
+  const targetKey = AUTO_SNAPSHOT_PREFIX + input.trim();
+  if (!localStorage.getItem(targetKey)) {
+    showToast('Snapshot not found', '⚠');
+    return;
+  }
+  
+  if (!confirm(`Restore from ${input}? Your current data will be backed up first.`)) return;
+  
+  try {
+    // Back up current state first
+    localStorage.setItem(BACKUP_PREFIX + Date.now() + '_pre_snapshot_restore', localStorage.getItem(STORAGE_KEY) || '{}');
+    
+    const data = JSON.parse(localStorage.getItem(targetKey));
+    const migrated = runMigrations(data);
+    state.transactions = migrated.transactions || [];
+    state.budgets = migrated.budgets || {};
+    state.loans = migrated.loans || [];
+    state.customCategories = migrated.customCategories || { income: [], expense: [] };
+    state.incomeSources = migrated.incomeSources || [];
+    state.decisions = migrated.decisions || [];
+    state.recurringExpenses = migrated.recurringExpenses || [];
+    state.currency = migrated.currency || 'AUD';
+    saveData();
+    renderAll();
+    showToast('Restored from ' + input);
+  } catch (e) {
+    showToast('Restore failed', '⚠');
+  }
+}
+
+function updateSnapshotsCount() {
+  const el = document.getElementById('snapshotsCount');
+  if (!el) return;
+  const n = Object.keys(localStorage).filter(k => k.startsWith(AUTO_SNAPSHOT_PREFIX)).length;
+  el.textContent = n === 0 ? 'None yet' : `${n} kept`;
+}
+
+/* ============================================================
+   v2.1: BACKUP REMINDER BANNER
+   ============================================================ */
+
+function renderBackupWarnBanner() {
+  const el = document.getElementById('backupWarnBanner');
+  if (!el) return;
+  
+  // Don't show if no real data
+  if (state.transactions.length < 5) { el.innerHTML = ''; return; }
+  
+  const dismissed = sessionStorage.getItem('backup_warn_dismissed');
+  if (dismissed === 'yes') { el.innerHTML = ''; return; }
+  
+  const lastExp = localStorage.getItem('ledger_last_export');
+  let daysSince;
+  if (!lastExp) daysSince = 999;
+  else daysSince = Math.floor((Date.now() - parseInt(lastExp)) / 86400000);
+  
+  if (daysSince < 7) { el.innerHTML = ''; return; }
+  
+  const isRed = daysSince >= 14;
+  const zone = isRed ? 'red' : 'yellow';
+  const title = isRed 
+    ? `${daysSince === 999 ? 'No backups yet' : daysSince + ' days since backup'} — please export now`
+    : `${daysSince} days since last backup`;
+  const sub = isRed
+    ? 'iOS can clear PWA data. Tap to export JSON.'
+    : 'Tap to download a backup to your Files app.';
+  
+  el.innerHTML = `
+    <div class="backup-warn ${zone}" onclick="exportData()">
+      <div class="backup-warn-icon">${isRed ? '⚠' : '💾'}</div>
+      <div class="backup-warn-text">
+        <div class="backup-warn-title">${title}</div>
+        <div class="backup-warn-sub">${sub}</div>
+      </div>
+      <button class="auto-log-close" onclick="dismissBackupWarn(event)">×</button>
+    </div>
+  `;
+}
+
+function dismissBackupWarn(ev) {
+  if (ev) ev.stopPropagation();
+  sessionStorage.setItem('backup_warn_dismissed', 'yes');
+  document.getElementById('backupWarnBanner').innerHTML = '';
+}
+
+/* ============================================================
+   v2.1: REFRESH APP (FORCE UPDATE)
+   ============================================================ */
+
+function refreshApp() {
+  if (!confirm('Force refresh from server? This bypasses cache to get the latest version. Your data is safe.')) return;
+  
+  // Take a snapshot first
+  takeAutoSnapshot();
+  
+  // Try to unregister service workers (if any)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    }).catch(() => {});
+  }
+  
+  // Clear caches API (if any)
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      names.forEach(n => caches.delete(n));
+    }).catch(() => {});
+  }
+  
+  // Force reload bypassing cache
+  setTimeout(() => {
+    window.location.href = 
+      window.location.origin + 
+      window.location.pathname + 
+      '?update=' + Date.now();
+  }, 200);
+}
+
+/* ============================================================
+   v2.1: VERSION CHANGE DETECTION
+   ============================================================ */
+
+function checkVersionChange() {
+  const savedVersion = localStorage.getItem('app_version');
+  if (savedVersion && savedVersion !== APP_VERSION) {
+    // Take a snapshot before applying new version
+    takeAutoSnapshot();
+    setTimeout(() => {
+      showToast(`Updated to v${APP_VERSION}`);
+    }, 800);
+  }
+  localStorage.setItem('app_version', APP_VERSION);
+}
+
+/* ============================================================
+   v2.1: FIRST-LAUNCH WARNING
+   ============================================================ */
+
+function showFirstLaunchWarningIfNeeded() {
+  const shown = localStorage.getItem('first_launch_warning_shown');
+  if (shown === 'yes') return;
+  if (state.transactions.length > 0) {
+    // Existing user upgrading — skip warning
+    localStorage.setItem('first_launch_warning_shown', 'yes');
+    return;
+  }
+  setTimeout(() => {
+    alert(
+      '👋 Welcome to Ledger!\n\n' +
+      'IMPORTANT — Data Safety:\n\n' +
+      '• Your data is stored ONLY on this device.\n' +
+      '• Removing the app from your home screen on iPhone may wipe your data.\n' +
+      '• Export a backup (Settings → Export JSON) at least weekly.\n' +
+      '• The app will remind you if you haven\'t backed up recently.\n\n' +
+      'Tap OK to continue.'
+    );
+    localStorage.setItem('first_launch_warning_shown', 'yes');
+  }, 800);
+}
+
+
 function init() {
   loadData();
+  takeAutoSnapshot();      // Snapshot AFTER load (preserves loaded state)
+  checkVersionChange();    // Toast if updated
   setupManifest();
+  runAutoLog();            // Generate any due transactions
   renderAll();
   showInstallBannerIfNeeded();
+  checkRecoveryMode();     // Offer restore if storage is empty but backups exist
+  showFirstLaunchWarningIfNeeded();
+  
   // Re-render every minute so "Today/Yesterday" stays accurate
-  setInterval(() => { if (document.getElementById('page-home').classList.contains('active')) renderHome(); }, 60000);
+  setInterval(() => { 
+    if (document.getElementById('page-home').classList.contains('active')) renderHome(); 
+  }, 60000);
+  
+  // Re-run auto-log every hour (in case app stays open across midnight)
+  setInterval(() => {
+    runAutoLog();
+  }, 3600000);
 }
 
 init();
