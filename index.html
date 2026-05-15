@@ -4,12 +4,22 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.2.0
+  Version:      2.2.1
   Last edited:  2026-05-15
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   4 (auto-migrates from v1, v2, v3)
   
   NAMED: Ledger Compass
+  
+  v2.2.1 BUGFIXES:
+  - Cleaner brand wordmark (single weight, integrated needle icon)
+  - Avg variable spend now uses MEDIAN of daily totals + filters outliers
+    (excludes auto-logged recurring, loan payments, and one-off marked txs)
+  - Negative "leftover" displays correctly with minus sign in red
+  - "Wait N cycles" only suggests if math actually works within 4 cycles
+    Otherwise: "Save up over N months" with realistic timeline
+  - Sanity check: warns if computed variable spend > income (bad data signal)
+  - One-time transaction flag — long-press or edit toggle to exclude from averages
   
   COMPLETED FEATURES (carry-over):
   - Transactions, loans, budgets, insights, custom categories
@@ -129,20 +139,21 @@
   }
   .brand {
     font-family: 'Fraunces', serif;
-    font-size: 19px;
+    font-size: 18px;
     font-weight: 500;
     letter-spacing: -0.01em;
     display: flex;
     align-items: center;
     gap: 8px;
+    color: var(--text);
   }
-  .brand span:not(.brand-icon):not(.version-tag) { 
-    color: var(--accent); 
+  .brand-word {
     font-style: italic;
-    font-weight: 600;
-    margin-left: 2px;
   }
-  .brand-icon { display: inline-flex; align-items: center; }
+  .brand-needle { 
+    display: inline-flex; 
+    flex-shrink: 0;
+  }
   .version-tag {
     font-size: 9px;
     color: var(--text-muted);
@@ -1544,14 +1555,13 @@
 
 <div class="topbar">
   <div class="brand">
-    <span class="brand-icon">
-      <svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align: -4px;">
-        <circle cx="12" cy="12" r="9" fill="none" stroke="#c9ff3d" stroke-width="1" opacity="0.4"/>
-        <path d="M 12 4 L 14 12 L 12 20 L 10 12 Z" fill="#c9ff3d"/>
-        <circle cx="12" cy="12" r="1.5" fill="#0a0a0f"/>
-      </svg>
-    </span>
-    Ledger <span>Compass</span><span class="version-tag" id="versionTag">v2.2</span>
+    <svg viewBox="0 0 24 24" width="20" height="20" class="brand-needle">
+      <circle cx="12" cy="12" r="9" fill="none" stroke="#c9ff3d" stroke-width="1.2" opacity="0.45"/>
+      <path d="M 12 4.5 L 13.5 12 L 12 19.5 L 10.5 12 Z" fill="#c9ff3d"/>
+      <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
+    </svg>
+    <span class="brand-word">Ledger Compass</span>
+    <span class="version-tag" id="versionTag">v2.2</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" onclick="openSearchModal()">🔍</button>
@@ -1797,7 +1807,7 @@
   </div>
 
   <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.6;">
-    <div>Ledger Compass v2.2.0 · Schema v4</div>
+    <div>Ledger Compass v2.2.1 · Schema v4</div>
     <div>All data stored on this device</div>
     <div id="lastBackup" style="margin-top: 4px;"></div>
   </div>
@@ -1866,6 +1876,14 @@
     <div class="field">
       <label>Note (optional)</label>
       <input type="text" id="inpNote" placeholder="Add a note">
+    </div>
+
+    <div class="switch-row" id="oneTimeRow" style="display:none;">
+      <div>
+        <div class="switch-label">One-time / not typical</div>
+        <div class="switch-hint">Exclude from spending averages</div>
+      </div>
+      <div class="switch" id="oneTimeSwitch" onclick="toggleOneTime()"></div>
     </div>
 
     <button class="btn-primary" onclick="saveTransaction()">Save</button>
@@ -2214,7 +2232,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.2.0';
+const APP_VERSION = '2.2.1';
 const SCHEMA_VERSION = 4;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
@@ -2572,11 +2590,12 @@ function renderTxItem(t) {
   const sign = t.type === 'income' ? '+' : '−';
   const colorClass = t.type === 'income' ? 'income-text' : 'expense-text';
   const autoBadge = t.autoLogged ? '<span class="tx-auto-badge">auto</span>' : '';
+  const oneTimeBadge = t.oneTime ? '<span class="tx-auto-badge" style="background:rgba(167,139,250,0.15);color:#a78bfa;">one-time</span>' : '';
   return `
     <div class="tx" onclick="openEditModal('${t.id}')">
       <div class="tx-icon" style="background:${cat.color}22;">${cat.emoji}</div>
       <div class="tx-main">
-        <div class="tx-title">${escapeHtml(t.description || cat.name)}${autoBadge}</div>
+        <div class="tx-title">${escapeHtml(t.description || cat.name)}${autoBadge}${oneTimeBadge}</div>
         <div class="tx-meta">${cat.name}${t.note ? ' · ' + escapeHtml(t.note) : ''}</div>
       </div>
       <div class="tx-amount ${colorClass}">${sign}${fmt(t.amount)}</div>
@@ -3068,6 +3087,7 @@ function openAddModal(type) {
   state.editingId = null;
   state.currentType = type;
   state.catPickerMode = 'tx';
+  state.oneTimeOn = false;
   document.getElementById('addModalTitle').textContent = type === 'income' ? 'Add Income' : 'Add Expense';
   document.getElementById('addModalSub').textContent = type === 'income' ? 'Money coming in' : 'Money going out';
   document.getElementById('inpAmount').value = '';
@@ -3076,6 +3096,9 @@ function openAddModal(type) {
   document.getElementById('inpNote').value = '';
   state.selectedCategory = getCategories(type)[0].id;
   document.getElementById('deleteBtn').style.display = 'none';
+  // Show one-time toggle only for expense
+  document.getElementById('oneTimeRow').style.display = type === 'expense' ? 'flex' : 'none';
+  document.getElementById('oneTimeSwitch').classList.remove('on');
   updateTypeToggle();
   renderCatPicker();
   document.getElementById('addModal').classList.add('open');
@@ -3088,6 +3111,7 @@ function openEditModal(id) {
   state.editingId = id;
   state.currentType = t.type;
   state.catPickerMode = 'tx';
+  state.oneTimeOn = !!t.oneTime;
   document.getElementById('addModalTitle').textContent = 'Edit Transaction';
   document.getElementById('addModalSub').textContent = 'Modify or delete';
   document.getElementById('inpAmount').value = t.amount;
@@ -3096,14 +3120,24 @@ function openEditModal(id) {
   document.getElementById('inpNote').value = t.note || '';
   state.selectedCategory = t.category;
   document.getElementById('deleteBtn').style.display = 'block';
+  document.getElementById('oneTimeRow').style.display = t.type === 'expense' ? 'flex' : 'none';
+  document.getElementById('oneTimeSwitch').classList.toggle('on', state.oneTimeOn);
   updateTypeToggle();
   renderCatPicker();
   document.getElementById('addModal').classList.add('open');
 }
 
+function toggleOneTime() {
+  state.oneTimeOn = !state.oneTimeOn;
+  document.getElementById('oneTimeSwitch').classList.toggle('on', state.oneTimeOn);
+}
+
 function setType(type) {
   state.currentType = type;
   state.selectedCategory = getCategories(type)[0].id;
+  // Show/hide one-time row when type changes
+  const row = document.getElementById('oneTimeRow');
+  if (row) row.style.display = type === 'expense' ? 'flex' : 'none';
   updateTypeToggle();
   renderCatPicker();
 }
@@ -3168,6 +3202,7 @@ function saveTransaction() {
   const desc = document.getElementById('inpDesc').value.trim();
   const date = document.getElementById('inpDate').value;
   const note = document.getElementById('inpNote').value.trim();
+  const oneTime = state.currentType === 'expense' && !!state.oneTimeOn;
   
   if (!amount || amount <= 0) { showToast('Enter a valid amount', '⚠'); return; }
   if (!date) { showToast('Pick a date', '⚠'); return; }
@@ -3178,7 +3213,7 @@ function saveTransaction() {
       state.transactions[idx] = {
         ...state.transactions[idx],
         type: state.currentType, amount, description: desc,
-        category: state.selectedCategory, date, note,
+        category: state.selectedCategory, date, note, oneTime,
       };
     }
     showToast('Updated');
@@ -3186,7 +3221,7 @@ function saveTransaction() {
     state.transactions.push({
       id: uid('tx'),
       type: state.currentType, amount, description: desc,
-      category: state.selectedCategory, date, note,
+      category: state.selectedCategory, date, note, oneTime,
       createdAt: Date.now(),
     });
     showToast(state.currentType === 'income' ? 'Income added' : 'Expense added');
@@ -3725,20 +3760,64 @@ function getDataDays() {
   return Math.max(1, Math.ceil((today - first) / 86400000) + 1);
 }
 
+// Returns the set of category IDs that have recurring expense entries set up
+function getRecurringExpenseCategoryIds() {
+  const set = new Set();
+  state.recurringExpenses.forEach(r => { if (r.active) set.add(r.category); });
+  return set;
+}
+
+// Decide which transactions to count for "variable spending" analytics
+function isVariableExpense(t) {
+  if (t.type !== 'expense') return false;
+  if (t.autoLogged) return false;        // auto-logged recurring/income
+  if (t.oneTime) return false;            // user-flagged one-off
+  if (t.category === 'loan_pay') return false; // loan payments tracked separately
+  if (t.loanPaymentId) return false;      // linked loan payment auto-tx
+  return true;
+}
+
+// Median helper
+function median(arr) {
+  if (arr.length === 0) return 0;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 
+    ? (sorted[mid - 1] + sorted[mid]) / 2 
+    : sorted[mid];
+}
+
+// Daily expense from MEDIAN of daily totals over last 60 days
+// (median + outlier trim = stable estimate immune to one-off purchases)
 function getAvgDailyExpense() {
-  // Last 30 days
-  const d30 = new Date(); d30.setDate(d30.getDate() - 30);
-  const d30ISO = d30.toISOString().slice(0,10);
-  let total = 0, days = 0;
+  const d60 = new Date(); d60.setDate(d60.getDate() - 60);
+  const d60ISO = d60.toISOString().slice(0,10);
+  
+  // Bucket variable expenses by date
   const byDay = {};
   state.transactions.forEach(t => {
-    if (t.date >= d30ISO && t.type === 'expense') {
-      total += t.amount;
-      byDay[t.date] = true;
+    if (t.date >= d60ISO && isVariableExpense(t)) {
+      byDay[t.date] = (byDay[t.date] || 0) + t.amount;
     }
   });
-  days = Math.max(1, Math.min(30, getDataDays()));
-  return total / days;
+  
+  const dailyTotals = Object.values(byDay);
+  if (dailyTotals.length === 0) return 0;
+  
+  // Trim top/bottom 10% to kill outliers (only if we have enough samples)
+  if (dailyTotals.length >= 10) {
+    const trimmed = trimOutliers(dailyTotals, 0.1);
+    return median(trimmed);
+  }
+  
+  return median(dailyTotals);
+}
+
+function trimOutliers(arr, frac) {
+  if (arr.length < 5) return arr;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const k = Math.floor(sorted.length * frac);
+  return sorted.slice(k, sorted.length - k);
 }
 
 function getMonthlyIncomeEstimate() {
@@ -3815,12 +3894,41 @@ function getExpectedMonthlyFixedExpenses() {
   return monthly;
 }
 
-// Average monthly variable expenses (= total monthly avg - fixed recurring)
+// Average monthly variable expenses (built directly from filtered/median data,
+// not from "total - fixed" which double-counts and amplifies outliers)
 function getAverageVariableMonthlyExpense() {
-  const avgDaily = getAvgDailyExpense();
-  const totalMonthly = avgDaily * 30;
-  const fixed = getExpectedMonthlyFixedExpenses();
-  return Math.max(0, totalMonthly - fixed);
+  const dailyMedian = getAvgDailyExpense();
+  // Sanity bound — if daily median > 2x weekly income/day, something is off
+  const w = getWeeklyRecurringPicture();
+  const incomePerDay = w.weeklyIn / 7;
+  if (incomePerDay > 0 && dailyMedian > incomePerDay * 2) {
+    // Likely bad data — cap at a sane value (1.5x daily income)
+    return incomePerDay * 1.5 * 30;
+  }
+  return dailyMedian * 30;
+}
+
+// Check if computed numbers look wrong (helps surface data issues to user)
+function detectDataAnomalies() {
+  const w = getWeeklyRecurringPicture();
+  const monthlyIn = w.weeklyIn * 52 / 12;
+  const monthlyFixed = getExpectedMonthlyFixedExpenses();
+  const monthlyVar = getAverageVariableMonthlyExpense();
+  const warnings = [];
+  
+  if (monthlyIn > 0 && monthlyVar > monthlyIn * 1.5) {
+    warnings.push({
+      level: 'high',
+      msg: 'Variable spend looks unusually high vs income. May include one-off purchases. Tap a transaction → mark "one-time" to exclude it from averages.',
+    });
+  }
+  if (monthlyFixed > 0 && monthlyIn > 0 && monthlyFixed > monthlyIn * 0.9) {
+    warnings.push({
+      level: 'medium',
+      msg: 'Fixed expenses are eating 90%+ of your income. Hard to save until one of those drops.',
+    });
+  }
+  return warnings;
 }
 
 // Expected monthly leftover (the real "investable" number)
@@ -4007,37 +4115,65 @@ function computeSmartAffordability(amount) {
     reasons.push(`Next paycheck: ${fmt(nextPay.amount)} from ${nextPay.name} in ${days} day${days===1?'':'s'}`);
   }
   
-  // TIMING STRATEGIES
+  // TIMING STRATEGIES (realistic, day-by-day simulation)
   const strategies = [];
   
-  // Strategy 1: Wait for next paycheck(s)
-  if (zone !== 'green' && nextPay && monthlyLeftover < amount) {
-    // How many pay cycles to make it green?
-    let cumIncome = 0, cyclesNeeded = 0;
-    for (const evt of payEvents) {
-      cumIncome += evt.amount;
-      cyclesNeeded++;
-      const projectedBal = bal + cumIncome - (avgDaily * (Math.ceil((new Date(evt.date+'T00:00:00') - new Date(todayISO()+'T00:00:00')) / 86400000)));
-      if (projectedBal - amount > avgDaily * 21) break;
-      if (cyclesNeeded >= 4) break;
+  // Simulate balance day by day to find when (if ever) it can absorb the purchase
+  // Buffer target: 14 days of spending after purchase
+  if (zone !== 'green' && (avgDaily > 0 || nextPay)) {
+    const bufferDays = 14;
+    const targetBalAfter = Math.max(0, avgDaily * bufferDays);
+    let simBal = bal;
+    let simDate = new Date(todayISO() + 'T00:00:00');
+    let foundDay = null;
+    
+    for (let day = 1; day <= 180; day++) { // simulate up to 6 months
+      simDate.setDate(simDate.getDate() + 1);
+      const isoDate = simDate.toISOString().slice(0, 10);
+      
+      // Daily variable spend
+      simBal -= avgDaily;
+      
+      // Income events on this day
+      payEvents.filter(e => e.date === isoDate).forEach(e => { simBal += e.amount; });
+      
+      // Check if balance can absorb purchase with buffer
+      if (simBal - amount >= targetBalAfter) {
+        foundDay = day;
+        break;
+      }
     }
-    if (cyclesNeeded > 0 && cyclesNeeded <= 4) {
-      const targetDate = payEvents[cyclesNeeded - 1].date;
-      const daysUntil = Math.ceil((new Date(targetDate+'T00:00:00') - new Date(todayISO()+'T00:00:00')) / 86400000);
-      strategies.push(`<strong>Wait ${cyclesNeeded} pay cycle${cyclesNeeded>1?'s':''} (~${daysUntil} days)</strong> — by ${formatDateLabel(targetDate)} your balance should comfortably absorb this purchase.`);
+    
+    if (foundDay !== null && foundDay <= 60) {
+      // Realistic — show wait strategy
+      const targetDate = new Date(todayISO() + 'T00:00:00');
+      targetDate.setDate(targetDate.getDate() + foundDay);
+      const targetISO = targetDate.toISOString().slice(0, 10);
+      const cyclesUntil = payEvents.filter(e => e.date <= targetISO).length;
+      const cycleText = cyclesUntil > 0 
+        ? `${cyclesUntil} pay cycle${cyclesUntil > 1 ? 's' : ''}`
+        : 'a couple of weeks';
+      strategies.push(`<strong>Wait ${foundDay} days (${cycleText})</strong> — by ${formatDateLabel(targetISO)} your balance should comfortably absorb this with a 2-week buffer remaining.`);
+    } else if (foundDay !== null && foundDay > 60) {
+      // 2+ months — frame as save-up
+      const months = Math.ceil(foundDay / 30);
+      strategies.push(`<strong>Save up over ~${months} months</strong> — your day-to-day spending currently outpaces accumulation. You'd need to either trim variable spend or wait this long.`);
+    } else {
+      // Math doesn't work — be honest
+      strategies.push(`<strong>This isn't realistic at current pace</strong> — your daily spending exceeds what each paycheck adds. To make this work, you'd need to reduce variable spending or increase income first.`);
     }
   }
   
-  // Strategy 2: Split the purchase
+  // Strategy: Split the purchase (only for yellow zone, mid-range amounts)
   if (zone === 'yellow' && amount > 200 && nextPay) {
     const halfNow = Math.round(amount / 2);
     strategies.push(`<strong>Split it</strong> — pay ${fmt(halfNow)} now and ${fmt(amount - halfNow)} after next paycheck. Keeps your buffer healthier.`);
   }
   
-  // Strategy 3: Use leftover
-  if (monthlyLeftover > 0 && amount > monthlyLeftover && amount < monthlyLeftover * 3) {
+  // Strategy: Save up from leftover (only if positive and within 6 months)
+  if (monthlyLeftover > 0 && amount > monthlyLeftover && amount <= monthlyLeftover * 6) {
     const months = Math.ceil(amount / monthlyLeftover);
-    strategies.push(`<strong>Save up over ${months} month${months>1?'s':''}</strong> — at your current ${fmt(monthlyLeftover)}/month leftover, you'd have it without touching savings.`);
+    strategies.push(`<strong>Save up over ${months} month${months > 1 ? 's' : ''}</strong> — at your current ${fmt(monthlyLeftover)}/month leftover, you'd have it without touching savings.`);
   }
   
   // CONSIDERATIONS / TRADEOFFS
@@ -4283,6 +4419,16 @@ function renderExpectedMonthly() {
   }
   
   const leftoverColor = leftover >= 0 ? 'var(--income)' : 'var(--expense)';
+  const leftoverSign = leftover >= 0 ? '+' : '−';
+  const leftoverStr = fmt(leftover); // fmt already strips sign via Math.abs
+  
+  // Anomaly warnings
+  const anomalies = detectDataAnomalies();
+  const anomalyHtml = anomalies.length > 0 ? anomalies.map(a => `
+    <div style="margin-top:10px;padding:10px 12px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:10px;font-size:12px;color:var(--text-dim);line-height:1.5;">
+      <strong style="color:var(--warning);">⚠ Check your data:</strong> ${a.msg}
+    </div>
+  `).join('') : '';
   
   el.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px;">
@@ -4300,9 +4446,10 @@ function renderExpectedMonthly() {
       </div>
       <div style="display:flex;justify-content:space-between;padding:12px 0 6px;border-top:1px solid var(--border);margin-top:4px;">
         <span style="font-weight:500;font-size:14px;">Expected leftover</span>
-        <span style="font-family:'Geist Mono',monospace;color:${leftoverColor};font-weight:600;font-size:16px;">${leftover >= 0 ? '+' : ''}${fmt(leftover)}</span>
+        <span style="font-family:'Geist Mono',monospace;color:${leftoverColor};font-weight:600;font-size:16px;">${leftoverSign}${leftoverStr}</span>
       </div>
     </div>
+    ${anomalyHtml}
   `;
 }
 
