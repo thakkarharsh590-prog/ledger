@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <!--
   ============================================================
   LEDGER — Personal Finance App
@@ -60,7 +59,6 @@
   - Export JSON regularly from Settings page
   ============================================================
 -->
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -76,7 +74,6 @@
 <title>Ledger Compass</title>
 
 <!-- PWA Manifest (inline as data URI so single-file works) -->
-
 <link rel="manifest" id="manifestLink">
 <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230a0a0f'/><circle cx='90' cy='90' r='62' fill='none' stroke='%23c9ff3d' stroke-width='3' opacity='0.4'/><path d='M 90 38 L 100 90 L 90 142 L 80 90 Z' fill='%23c9ff3d'/><circle cx='90' cy='90' r='5' fill='%230a0a0f'/></svg>">
 
@@ -85,1644 +82,1644 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  
+  :root {
+    --bg: #0a0a0f;
+    --bg-elevated: #14141c;
+    --bg-card: #1a1a24;
+    --bg-card-hover: #20202c;
+    --border: rgba(255,255,255,0.06);
+    --border-strong: rgba(255,255,255,0.12);
+    --text: #f5f5f7;
+    --text-dim: #8a8a96;
+    --text-muted: #5a5a66;
+    --accent: #c9ff3d;
+    --accent-dim: #9ec92e;
+    --income: #4ade80;
+    --expense: #ff6b6b;
+    --warning: #fbbf24;
+    --shadow: 0 8px 32px rgba(0,0,0,0.4);
+    --safe-top: env(safe-area-inset-top, 0);
+    --safe-bottom: env(safe-area-inset-bottom, 0);
+  }
 
-:root {
-–bg: #0a0a0f;
-–bg-elevated: #14141c;
-–bg-card: #1a1a24;
-–bg-card-hover: #20202c;
-–border: rgba(255,255,255,0.06);
-–border-strong: rgba(255,255,255,0.12);
-–text: #f5f5f7;
-–text-dim: #8a8a96;
-–text-muted: #5a5a66;
-–accent: #c9ff3d;
-–accent-dim: #9ec92e;
-–income: #4ade80;
-–expense: #ff6b6b;
-–warning: #fbbf24;
-–shadow: 0 8px 32px rgba(0,0,0,0.4);
-–safe-top: env(safe-area-inset-top, 0);
-–safe-bottom: env(safe-area-inset-bottom, 0);
-}
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Geist', -apple-system, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    overscroll-behavior-y: contain;
+  }
 
-html, body {
-background: var(–bg);
-color: var(–text);
-font-family: ‘Geist’, -apple-system, system-ui, sans-serif;
--webkit-font-smoothing: antialiased;
-overflow-x: hidden;
-overscroll-behavior-y: contain;
-}
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-top: var(--safe-top);
+    padding-bottom: calc(80px + var(--safe-bottom));
+    background-image: 
+      radial-gradient(ellipse at top, rgba(201,255,61,0.04), transparent 60%),
+      radial-gradient(ellipse at bottom right, rgba(74,222,128,0.03), transparent 50%);
+  }
 
-body {
-min-height: 100vh;
-min-height: 100dvh;
-padding-top: var(–safe-top);
-padding-bottom: calc(80px + var(–safe-bottom));
-background-image:
-radial-gradient(ellipse at top, rgba(201,255,61,0.04), transparent 60%),
-radial-gradient(ellipse at bottom right, rgba(74,222,128,0.03), transparent 50%);
-}
+  /* Top Bar */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding: 14px 20px 12px;
+    padding-top: calc(14px + var(--safe-top));
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+  }
+  .brand-word {
+    font-style: italic;
+  }
+  .brand-needle { 
+    display: inline-flex; 
+    flex-shrink: 0;
+  }
+  .version-tag {
+    font-size: 10px;
+    color: var(--accent);
+    background: rgba(201,255,61,0.1);
+    border: 1px solid rgba(201,255,61,0.3);
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-family: 'Geist Mono', monospace;
+    margin-left: 4px;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+  .topbar-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 38px; height: 38px;
+    border-radius: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all .15s;
+    font-size: 16px;
+  }
+  .icon-btn:active { transform: scale(0.94); background: var(--bg-card-hover); }
 
-/* Top Bar */
-.topbar {
-position: sticky;
-top: 0;
-z-index: 50;
-padding: 14px 20px 12px;
-padding-top: calc(14px + var(–safe-top));
-background: rgba(10,10,15,0.85);
-backdrop-filter: blur(20px);
--webkit-backdrop-filter: blur(20px);
-border-bottom: 1px solid var(–border);
-display: flex;
-align-items: center;
-justify-content: space-between;
-}
-.brand {
-font-family: ‘Fraunces’, serif;
-font-size: 18px;
-font-weight: 500;
-letter-spacing: -0.01em;
-display: flex;
-align-items: center;
-gap: 8px;
-color: var(–text);
-}
-.brand-word {
-font-style: italic;
-}
-.brand-needle {
-display: inline-flex;
-flex-shrink: 0;
-}
-.version-tag {
-font-size: 10px;
-color: var(–accent);
-background: rgba(201,255,61,0.1);
-border: 1px solid rgba(201,255,61,0.3);
-padding: 2px 6px;
-border-radius: 6px;
-font-family: ‘Geist Mono’, monospace;
-margin-left: 4px;
-font-weight: 500;
-letter-spacing: 0;
-}
-.topbar-actions { display: flex; gap: 8px; }
-.icon-btn {
-width: 38px; height: 38px;
-border-radius: 12px;
-background: var(–bg-card);
-border: 1px solid var(–border);
-color: var(–text);
-display: flex; align-items: center; justify-content: center;
-cursor: pointer;
-transition: all .15s;
-font-size: 16px;
-}
-.icon-btn:active { transform: scale(0.94); background: var(–bg-card-hover); }
+  /* Pages */
+  .page { display: none; padding: 16px 20px 20px; animation: fadeIn .3s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
-/* Pages */
-.page { display: none; padding: 16px 20px 20px; animation: fadeIn .3s ease; }
-.page.active { display: block; }
-@keyframes fadeIn {
-from { opacity: 0; transform: translateY(8px); }
-to { opacity: 1; transform: translateY(0); }
-}
+  /* Balance Hero */
+  .hero {
+    margin: 8px 0 24px;
+    padding: 28px 24px;
+    background: linear-gradient(135deg, #1c1c28 0%, #14141c 100%);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%; right: -30%;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(201,255,61,0.12), transparent 70%);
+    pointer-events: none;
+  }
+  .hero-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+  .hero-amount {
+    font-family: 'Fraunces', serif;
+    font-size: 44px;
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .hero-currency {
+    font-size: 18px;
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+  .hero-sub {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .hero-row {
+    margin-top: 22px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    position: relative;
+  }
+  .hero-stat {
+    padding: 14px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+  }
+  .hero-stat-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .hero-stat-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .hero-stat-value {
+    font-family: 'Geist Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+  }
+  .income-text { color: var(--income); }
+  .expense-text { color: var(--expense); }
 
-/* Balance Hero */
-.hero {
-margin: 8px 0 24px;
-padding: 28px 24px;
-background: linear-gradient(135deg, #1c1c28 0%, #14141c 100%);
-border: 1px solid var(–border);
-border-radius: 24px;
-position: relative;
-overflow: hidden;
-}
-.hero::before {
-content: ‘’;
-position: absolute;
-top: -50%; right: -30%;
-width: 300px; height: 300px;
-background: radial-gradient(circle, rgba(201,255,61,0.12), transparent 70%);
-pointer-events: none;
-}
-.hero-label {
-font-size: 11px;
-text-transform: uppercase;
-letter-spacing: 0.15em;
-color: var(–text-dim);
-margin-bottom: 10px;
-}
-.hero-amount {
-font-family: ‘Fraunces’, serif;
-font-size: 44px;
-font-weight: 500;
-letter-spacing: -0.03em;
-line-height: 1;
-margin-bottom: 6px;
-}
-.hero-currency {
-font-size: 18px;
-color: var(–text-dim);
-font-weight: 400;
-}
-.hero-sub {
-color: var(–text-dim);
-font-size: 13px;
-margin-top: 4px;
-}
-.hero-row {
-margin-top: 22px;
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 16px;
-position: relative;
-}
-.hero-stat {
-padding: 14px;
-background: rgba(255,255,255,0.03);
-border-radius: 14px;
-border: 1px solid var(–border);
-}
-.hero-stat-label {
-font-size: 11px;
-color: var(–text-dim);
-text-transform: uppercase;
-letter-spacing: 0.1em;
-margin-bottom: 6px;
-display: flex;
-align-items: center;
-gap: 6px;
-}
-.hero-stat-dot { width: 6px; height: 6px; border-radius: 50%; }
-.hero-stat-value {
-font-family: ‘Geist Mono’, monospace;
-font-size: 18px;
-font-weight: 500;
-}
-.income-text { color: var(–income); }
-.expense-text { color: var(–expense); }
+  /* Section Title */
+  .section-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 8px 4px 14px;
+  }
+  .section-title h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  .section-title .link {
+    font-size: 13px;
+    color: var(--accent);
+    cursor: pointer;
+  }
 
-/* Section Title */
-.section-title {
-display: flex;
-justify-content: space-between;
-align-items: baseline;
-margin: 8px 4px 14px;
-}
-.section-title h2 {
-font-family: ‘Fraunces’, serif;
-font-size: 20px;
-font-weight: 500;
-letter-spacing: -0.01em;
-}
-.section-title .link {
-font-size: 13px;
-color: var(–accent);
-cursor: pointer;
-}
+  /* Quick Add */
+  .quickadd {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .quickadd button {
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all .15s;
+  }
+  .quickadd button:active { transform: scale(0.97); }
+  .quickadd .add-income { border-color: rgba(74,222,128,0.3); color: var(--income); }
+  .quickadd .add-expense { border-color: rgba(255,107,107,0.3); color: var(--expense); }
+  .quickadd .icon {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600;
+  }
+  .add-income .icon { background: rgba(74,222,128,0.15); }
+  .add-expense .icon { background: rgba(255,107,107,0.15); }
 
-/* Quick Add */
-.quickadd {
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 10px;
-margin-bottom: 24px;
-}
-.quickadd button {
-padding: 16px;
-border-radius: 16px;
-border: 1px solid var(–border);
-background: var(–bg-card);
-color: var(–text);
-font-family: inherit;
-font-size: 14px;
-font-weight: 500;
-cursor: pointer;
-display: flex;
-align-items: center;
-justify-content: center;
-gap: 8px;
-transition: all .15s;
-}
-.quickadd button:active { transform: scale(0.97); }
-.quickadd .add-income { border-color: rgba(74,222,128,0.3); color: var(–income); }
-.quickadd .add-expense { border-color: rgba(255,107,107,0.3); color: var(–expense); }
-.quickadd .icon {
-width: 22px; height: 22px; border-radius: 50%;
-display: flex; align-items: center; justify-content: center;
-font-size: 14px; font-weight: 600;
-}
-.add-income .icon { background: rgba(74,222,128,0.15); }
-.add-expense .icon { background: rgba(255,107,107,0.15); }
+  /* Transactions */
+  .tx-list { display: flex; flex-direction: column; gap: 4px; }
+  .tx-group-date {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    padding: 14px 4px 6px;
+  }
+  .tx {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .tx:active { background: var(--bg-card-hover); transform: scale(0.99); }
+  .tx-icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .tx-main { flex: 1; min-width: 0; }
+  .tx-title {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tx-meta {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .tx-amount {
+    font-family: 'Geist Mono', monospace;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+  .empty-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+  }
+  .empty p { font-size: 14px; line-height: 1.5; }
 
-/* Transactions */
-.tx-list { display: flex; flex-direction: column; gap: 4px; }
-.tx-group-date {
-font-size: 11px;
-text-transform: uppercase;
-letter-spacing: 0.12em;
-color: var(–text-muted);
-padding: 14px 4px 6px;
-}
-.tx {
-display: flex;
-align-items: center;
-gap: 12px;
-padding: 14px;
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 14px;
-cursor: pointer;
-transition: all .15s;
-}
-.tx:active { background: var(–bg-card-hover); transform: scale(0.99); }
-.tx-icon {
-width: 40px; height: 40px;
-border-radius: 12px;
-display: flex; align-items: center; justify-content: center;
-font-size: 18px;
-flex-shrink: 0;
-}
-.tx-main { flex: 1; min-width: 0; }
-.tx-title {
-font-size: 14px;
-font-weight: 500;
-white-space: nowrap;
-overflow: hidden;
-text-overflow: ellipsis;
-}
-.tx-meta {
-font-size: 12px;
-color: var(–text-dim);
-margin-top: 2px;
-}
-.tx-amount {
-font-family: ‘Geist Mono’, monospace;
-font-size: 15px;
-font-weight: 500;
-text-align: right;
-flex-shrink: 0;
-}
-.empty {
-text-align: center;
-padding: 60px 20px;
-color: var(–text-dim);
-}
-.empty-icon {
-font-size: 40px;
-margin-bottom: 12px;
-opacity: 0.5;
-}
-.empty p { font-size: 14px; line-height: 1.5; }
+  /* Stats Page */
+  .stat-card {
+    padding: 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    margin-bottom: 12px;
+  }
+  .stat-card-title {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  .stat-card-value {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
 
-/* Stats Page */
-.stat-card {
-padding: 18px;
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 16px;
-margin-bottom: 12px;
-}
-.stat-card-title {
-font-size: 12px;
-color: var(–text-dim);
-text-transform: uppercase;
-letter-spacing: 0.1em;
-margin-bottom: 8px;
-}
-.stat-card-value {
-font-family: ‘Fraunces’, serif;
-font-size: 28px;
-font-weight: 500;
-letter-spacing: -0.02em;
-}
-.stat-grid {
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 10px;
-margin-bottom: 20px;
-}
+  /* Chart */
+  .chart-wrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 20px;
+  }
+  .chart-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 14px;
+  }
+  .bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 140px;
+    padding: 4px 0;
+  }
+  .bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    height: 100%;
+    cursor: pointer;
+  }
+  .bar-bars {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 2px;
+  }
+  .bar {
+    flex: 1;
+    border-radius: 4px 4px 0 0;
+    min-height: 2px;
+    transition: all .3s ease;
+  }
+  .bar.in { background: linear-gradient(180deg, var(--income), rgba(74,222,128,0.4)); }
+  .bar.out { background: linear-gradient(180deg, var(--expense), rgba(255,107,107,0.4)); }
+  .bar-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: 'Geist Mono', monospace;
+  }
 
-/* Chart */
-.chart-wrap {
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 16px;
-padding: 18px;
-margin-bottom: 20px;
-}
-.chart-title {
-font-family: ‘Fraunces’, serif;
-font-size: 16px;
-font-weight: 500;
-margin-bottom: 14px;
-}
-.bar-chart {
-display: flex;
-align-items: flex-end;
-gap: 6px;
-height: 140px;
-padding: 4px 0;
-}
-.bar-col {
-flex: 1;
-display: flex;
-flex-direction: column;
-align-items: center;
-gap: 6px;
-height: 100%;
-cursor: pointer;
-}
-.bar-bars {
-width: 100%;
-height: 100%;
-display: flex;
-align-items: flex-end;
-justify-content: center;
-gap: 2px;
-}
-.bar {
-flex: 1;
-border-radius: 4px 4px 0 0;
-min-height: 2px;
-transition: all .3s ease;
-}
-.bar.in { background: linear-gradient(180deg, var(–income), rgba(74,222,128,0.4)); }
-.bar.out { background: linear-gradient(180deg, var(–expense), rgba(255,107,107,0.4)); }
-.bar-label {
-font-size: 10px;
-color: var(–text-dim);
-font-family: ‘Geist Mono’, monospace;
-}
+  /* Category Breakdown */
+  .cat-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .cat-row:last-child { border-bottom: none; }
+  .cat-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .cat-info { flex: 1; }
+  .cat-name { font-size: 14px; font-weight: 500; }
+  .cat-bar-wrap {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .cat-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width .4s ease;
+  }
+  .cat-amount {
+    font-family: 'Geist Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .cat-pct {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+  }
 
-/* Category Breakdown */
-.cat-row {
-display: flex;
-align-items: center;
-gap: 12px;
-padding: 12px 0;
-border-bottom: 1px solid var(–border);
-}
-.cat-row:last-child { border-bottom: none; }
-.cat-icon {
-width: 36px; height: 36px;
-border-radius: 10px;
-display: flex; align-items: center; justify-content: center;
-font-size: 16px;
-}
-.cat-info { flex: 1; }
-.cat-name { font-size: 14px; font-weight: 500; }
-.cat-bar-wrap {
-width: 100%;
-height: 4px;
-background: rgba(255,255,255,0.06);
-border-radius: 2px;
-margin-top: 6px;
-overflow: hidden;
-}
-.cat-bar-fill {
-height: 100%;
-background: var(–accent);
-border-radius: 2px;
-transition: width .4s ease;
-}
-.cat-amount {
-font-family: ‘Geist Mono’, monospace;
-font-size: 13px;
-color: var(–text);
-}
-.cat-pct {
-font-size: 11px;
-color: var(–text-dim);
-text-align: right;
-}
+  /* Budgets */
+  .budget-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+  .budget-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .budget-name {
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .budget-amount {
+    font-family: 'Geist Mono', monospace;
+    font-size: 13px;
+  }
+  .budget-bar-wrap {
+    width: 100%;
+    height: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .budget-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width .4s ease;
+  }
+  .budget-foot {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
 
-/* Budgets */
-.budget-card {
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 16px;
-padding: 16px;
-margin-bottom: 10px;
-cursor: pointer;
-}
-.budget-head {
-display: flex;
-justify-content: space-between;
-align-items: center;
-margin-bottom: 10px;
-}
-.budget-name {
-font-size: 14px;
-font-weight: 500;
-display: flex;
-align-items: center;
-gap: 8px;
-}
-.budget-amount {
-font-family: ‘Geist Mono’, monospace;
-font-size: 13px;
-}
-.budget-bar-wrap {
-width: 100%;
-height: 8px;
-background: rgba(255,255,255,0.06);
-border-radius: 4px;
-overflow: hidden;
-}
-.budget-bar-fill {
-height: 100%;
-border-radius: 4px;
-transition: width .4s ease;
-}
-.budget-foot {
-display: flex;
-justify-content: space-between;
-margin-top: 8px;
-font-size: 11px;
-color: var(–text-dim);
-}
+  /* Loans */
+  .loans-summary {
+    background: linear-gradient(135deg, #1c1c28, #14141c);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .loans-summary::before {
+    content: '';
+    position: absolute;
+    top: -40%; right: -20%;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(251,191,36,0.1), transparent 70%);
+  }
+  .loans-summary-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .loans-summary-amount {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  .loans-summary-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
+  }
+  .loans-summary-stat {
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .loans-summary-stat-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .loans-summary-stat-val {
+    font-family: 'Geist Mono', monospace;
+    font-size: 15px;
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .loan-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .loan-card:active { transform: scale(0.99); background: var(--bg-card-hover); }
+  .loan-card.paid-off { border-color: rgba(74,222,128,0.3); }
+  .loan-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+    gap: 10px;
+  }
+  .loan-title {
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .loan-lender {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .loan-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 100px;
+    background: rgba(74,222,128,0.15);
+    color: var(--income);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .loan-badge.active-loan {
+    background: rgba(251,191,36,0.15);
+    color: var(--warning);
+  }
+  .loan-progress-wrap {
+    width: 100%;
+    height: 10px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .loan-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--income));
+    border-radius: 5px;
+    transition: width .5s cubic-bezier(.2,.9,.3,1);
+  }
+  .loan-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .loan-stat-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  .loan-stat-val {
+    font-family: 'Geist Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .loan-stat-val.paid { color: var(--income); }
+  .loan-stat-val.remaining { color: var(--warning); }
 
-/* Loans */
-.loans-summary {
-background: linear-gradient(135deg, #1c1c28, #14141c);
-border: 1px solid var(–border);
-border-radius: 20px;
-padding: 20px;
-margin-bottom: 20px;
-position: relative;
-overflow: hidden;
-}
-.loans-summary::before {
-content: ‘’;
-position: absolute;
-top: -40%; right: -20%;
-width: 200px; height: 200px;
-background: radial-gradient(circle, rgba(251,191,36,0.1), transparent 70%);
-}
-.loans-summary-label {
-font-size: 11px;
-text-transform: uppercase;
-letter-spacing: 0.12em;
-color: var(–text-dim);
-margin-bottom: 8px;
-}
-.loans-summary-amount {
-font-family: ‘Fraunces’, serif;
-font-size: 32px;
-font-weight: 500;
-letter-spacing: -0.02em;
-margin-bottom: 12px;
-}
-.loans-summary-row {
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 10px;
-position: relative;
-z-index: 1;
-}
-.loans-summary-stat {
-padding: 10px 12px;
-background: rgba(255,255,255,0.03);
-border-radius: 10px;
-border: 1px solid var(–border);
-}
-.loans-summary-stat-label {
-font-size: 10px;
-color: var(–text-dim);
-text-transform: uppercase;
-letter-spacing: 0.08em;
-}
-.loans-summary-stat-val {
-font-family: ‘Geist Mono’, monospace;
-font-size: 15px;
-font-weight: 500;
-margin-top: 2px;
-}
-.loan-card {
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 16px;
-padding: 18px;
-margin-bottom: 12px;
-cursor: pointer;
-transition: all .15s;
-}
-.loan-card:active { transform: scale(0.99); background: var(–bg-card-hover); }
-.loan-card.paid-off { border-color: rgba(74,222,128,0.3); }
-.loan-head {
-display: flex;
-justify-content: space-between;
-align-items: flex-start;
-margin-bottom: 14px;
-gap: 10px;
-}
-.loan-title {
-font-size: 15px;
-font-weight: 500;
-margin-bottom: 4px;
-}
-.loan-lender {
-font-size: 12px;
-color: var(–text-dim);
-}
-.loan-badge {
-font-size: 10px;
-padding: 3px 8px;
-border-radius: 100px;
-background: rgba(74,222,128,0.15);
-color: var(–income);
-text-transform: uppercase;
-letter-spacing: 0.08em;
-font-weight: 500;
-white-space: nowrap;
-}
-.loan-badge.active-loan {
-background: rgba(251,191,36,0.15);
-color: var(–warning);
-}
-.loan-progress-wrap {
-width: 100%;
-height: 10px;
-background: rgba(255,255,255,0.06);
-border-radius: 5px;
-overflow: hidden;
-margin-bottom: 10px;
-}
-.loan-progress-fill {
-height: 100%;
-background: linear-gradient(90deg, var(–accent), var(–income));
-border-radius: 5px;
-transition: width .5s cubic-bezier(.2,.9,.3,1);
-}
-.loan-stats {
-display: grid;
-grid-template-columns: 1fr 1fr 1fr;
-gap: 12px;
-margin-top: 12px;
-}
-.loan-stat-label {
-font-size: 10px;
-color: var(–text-muted);
-text-transform: uppercase;
-letter-spacing: 0.08em;
-margin-bottom: 4px;
-}
-.loan-stat-val {
-font-family: ‘Geist Mono’, monospace;
-font-size: 13px;
-font-weight: 500;
-}
-.loan-stat-val.paid { color: var(–income); }
-.loan-stat-val.remaining { color: var(–warning); }
+  /* Payment History */
+  .payment-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 6px;
+  }
+  .payment-date {
+    font-size: 13px;
+  }
+  .payment-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .payment-amt {
+    font-family: 'Geist Mono', monospace;
+    font-size: 14px;
+    color: var(--income);
+    font-weight: 500;
+  }
+  .payment-delete {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    margin-left: 8px;
+  }
+  .detail-section { margin-top: 20px; }
+  .detail-section-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+  .back-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .back-btn:active { transform: scale(0.97); }
 
-/* Payment History */
-.payment-row {
-display: flex;
-align-items: center;
-justify-content: space-between;
-padding: 12px 14px;
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 12px;
-margin-bottom: 6px;
-}
-.payment-date {
-font-size: 13px;
-}
-.payment-meta {
-font-size: 11px;
-color: var(–text-dim);
-margin-top: 2px;
-}
-.payment-amt {
-font-family: ‘Geist Mono’, monospace;
-font-size: 14px;
-color: var(–income);
-font-weight: 500;
-}
-.payment-delete {
-background: none;
-border: none;
-color: var(–text-muted);
-font-size: 18px;
-cursor: pointer;
-padding: 4px 8px;
-margin-left: 8px;
-}
-.detail-section { margin-top: 20px; }
-.detail-section-title {
-font-family: ‘Fraunces’, serif;
-font-size: 16px;
-font-weight: 500;
-margin-bottom: 10px;
-padding: 0 4px;
-}
-.back-btn {
-background: var(–bg-card);
-border: 1px solid var(–border);
-color: var(–text-dim);
-border-radius: 100px;
-padding: 6px 14px;
-font-size: 13px;
-cursor: pointer;
-font-family: inherit;
-}
-.back-btn:active { transform: scale(0.97); }
+  /* Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 100;
+    display: none;
+    align-items: flex-end;
+  }
+  .modal-backdrop.open { display: flex; animation: fadeBg .2s; }
+  @keyframes fadeBg { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    width: 100%;
+    background: var(--bg-elevated);
+    border-radius: 28px 28px 0 0;
+    padding: 8px 20px calc(20px + var(--safe-bottom));
+    max-height: 92vh;
+    overflow-y: auto;
+    animation: slideUp .3s cubic-bezier(.2,.9,.3,1);
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  .modal-handle {
+    width: 40px; height: 4px;
+    background: var(--border-strong);
+    border-radius: 2px;
+    margin: 8px auto 16px;
+  }
+  .modal-title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .modal-sub {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
 
-/* Modal */
-.modal-backdrop {
-position: fixed;
-inset: 0;
-background: rgba(0,0,0,0.7);
-backdrop-filter: blur(10px);
--webkit-backdrop-filter: blur(10px);
-z-index: 100;
-display: none;
-align-items: flex-end;
-}
-.modal-backdrop.open { display: flex; animation: fadeBg .2s; }
-@keyframes fadeBg { from { opacity: 0; } to { opacity: 1; } }
-.modal {
-width: 100%;
-background: var(–bg-elevated);
-border-radius: 28px 28px 0 0;
-padding: 8px 20px calc(20px + var(–safe-bottom));
-max-height: 92vh;
-overflow-y: auto;
-animation: slideUp .3s cubic-bezier(.2,.9,.3,1);
-}
-@keyframes slideUp {
-from { transform: translateY(100%); }
-to { transform: translateY(0); }
-}
-.modal-handle {
-width: 40px; height: 4px;
-background: var(–border-strong);
-border-radius: 2px;
-margin: 8px auto 16px;
-}
-.modal-title {
-font-family: ‘Fraunces’, serif;
-font-size: 22px;
-font-weight: 500;
-letter-spacing: -0.02em;
-margin-bottom: 4px;
-}
-.modal-sub {
-color: var(–text-dim);
-font-size: 13px;
-margin-bottom: 20px;
-}
+  /* Form */
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 16px;
+    transition: border .2s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .amount-input-wrap { position: relative; }
+  .amount-input-wrap::before {
+    content: attr(data-symbol);
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    font-size: 18px;
+    pointer-events: none;
+  }
+  .amount-input {
+    padding-left: 36px !important;
+    font-family: 'Geist Mono', monospace !important;
+    font-size: 20px !important;
+    font-weight: 500;
+  }
 
-/* Form */
-.field { margin-bottom: 14px; }
-.field label {
-display: block;
-font-size: 11px;
-text-transform: uppercase;
-letter-spacing: 0.1em;
-color: var(–text-dim);
-margin-bottom: 8px;
-}
-.field input, .field select, .field textarea {
-width: 100%;
-padding: 14px 16px;
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 12px;
-color: var(–text);
-font-family: inherit;
-font-size: 16px;
-transition: border .2s;
--webkit-appearance: none;
-appearance: none;
-}
-.field input:focus, .field select:focus, .field textarea:focus {
-outline: none;
-border-color: var(–accent);
-}
-.amount-input-wrap { position: relative; }
-.amount-input-wrap::before {
-content: attr(data-symbol);
-position: absolute;
-left: 16px;
-top: 50%;
-transform: translateY(-50%);
-color: var(–text-dim);
-font-size: 18px;
-pointer-events: none;
-}
-.amount-input {
-padding-left: 36px !important;
-font-family: ‘Geist Mono’, monospace !important;
-font-size: 20px !important;
-font-weight: 500;
-}
+  /* Category Picker */
+  .cat-picker {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .cat-pick {
+    aspect-ratio: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 6px;
+    transition: all .15s;
+  }
+  .cat-pick:active { transform: scale(0.95); }
+  .cat-pick.selected {
+    border-color: var(--accent);
+    background: rgba(201,255,61,0.08);
+  }
+  .cat-pick .emoji { font-size: 20px; }
+  .cat-pick .name { font-size: 10px; color: var(--text-dim); text-align: center; line-height: 1.1; }
+  .cat-pick.selected .name { color: var(--text); }
+  .cat-pick.add-new { 
+    border-style: dashed; 
+    border-color: var(--text-muted);
+    color: var(--text-muted);
+  }
+  .cat-pick.add-new .emoji { font-size: 24px; }
 
-/* Category Picker */
-.cat-picker {
-display: grid;
-grid-template-columns: repeat(4, 1fr);
-gap: 8px;
-}
-.cat-pick {
-aspect-ratio: 1;
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 14px;
-display: flex;
-flex-direction: column;
-align-items: center;
-justify-content: center;
-gap: 4px;
-cursor: pointer;
-padding: 6px;
-transition: all .15s;
-}
-.cat-pick:active { transform: scale(0.95); }
-.cat-pick.selected {
-border-color: var(–accent);
-background: rgba(201,255,61,0.08);
-}
-.cat-pick .emoji { font-size: 20px; }
-.cat-pick .name { font-size: 10px; color: var(–text-dim); text-align: center; line-height: 1.1; }
-.cat-pick.selected .name { color: var(–text); }
-.cat-pick.add-new {
-border-style: dashed;
-border-color: var(–text-muted);
-color: var(–text-muted);
-}
-.cat-pick.add-new .emoji { font-size: 24px; }
+  /* Buttons */
+  .btn-primary {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    color: #0a0a0f;
+    border: none;
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: all .15s;
+  }
+  .btn-primary:active { transform: scale(0.98); background: var(--accent-dim); }
+  .btn-secondary {
+    width: 100%;
+    padding: 14px;
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .btn-danger {
+    width: 100%;
+    padding: 14px;
+    background: rgba(255,107,107,0.1);
+    color: var(--expense);
+    border: 1px solid rgba(255,107,107,0.3);
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 8px;
+  }
 
-/* Buttons */
-.btn-primary {
-width: 100%;
-padding: 16px;
-background: var(–accent);
-color: #0a0a0f;
-border: none;
-border-radius: 14px;
-font-family: inherit;
-font-size: 15px;
-font-weight: 600;
-cursor: pointer;
-margin-top: 8px;
-transition: all .15s;
-}
-.btn-primary:active { transform: scale(0.98); background: var(–accent-dim); }
-.btn-secondary {
-width: 100%;
-padding: 14px;
-background: transparent;
-color: var(–text-dim);
-border: 1px solid var(–border);
-border-radius: 14px;
-font-family: inherit;
-font-size: 14px;
-cursor: pointer;
-margin-top: 8px;
-}
-.btn-danger {
-width: 100%;
-padding: 14px;
-background: rgba(255,107,107,0.1);
-color: var(–expense);
-border: 1px solid rgba(255,107,107,0.3);
-border-radius: 14px;
-font-family: inherit;
-font-size: 14px;
-cursor: pointer;
-margin-top: 8px;
-}
+  /* Toggle */
+  .toggle-row {
+    display: flex;
+    background: var(--bg-card);
+    border-radius: 14px;
+    padding: 4px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+  }
+  .toggle-opt {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all .2s;
+    font-weight: 500;
+  }
+  .toggle-opt.active {
+    background: var(--bg-elevated);
+    color: var(--text);
+  }
+  .toggle-opt.income.active { color: var(--income); }
+  .toggle-opt.expense.active { color: var(--expense); }
 
-/* Toggle */
-.toggle-row {
-display: flex;
-background: var(–bg-card);
-border-radius: 14px;
-padding: 4px;
-margin-bottom: 16px;
-border: 1px solid var(–border);
-}
-.toggle-opt {
-flex: 1;
-padding: 10px;
-text-align: center;
-border-radius: 10px;
-font-size: 13px;
-color: var(–text-dim);
-cursor: pointer;
-transition: all .2s;
-font-weight: 500;
-}
-.toggle-opt.active {
-background: var(–bg-elevated);
-color: var(–text);
-}
-.toggle-opt.income.active { color: var(–income); }
-.toggle-opt.expense.active { color: var(–expense); }
+  /* Switch */
+  .switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 14px;
+    gap: 12px;
+  }
+  .switch-label { font-size: 13px; flex: 1; }
+  .switch-hint { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+  .switch {
+    position: relative;
+    width: 44px;
+    height: 26px;
+    background: var(--bg-elevated);
+    border-radius: 100px;
+    border: 1px solid var(--border-strong);
+    cursor: pointer;
+    transition: all .2s;
+    flex-shrink: 0;
+  }
+  .switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: var(--text-dim);
+    border-radius: 50%;
+    transition: all .2s cubic-bezier(.2,.9,.3,1);
+  }
+  .switch.on { background: var(--accent); border-color: var(--accent); }
+  .switch.on::after { transform: translateX(18px); background: #0a0a0f; }
 
-/* Switch */
-.switch-row {
-display: flex;
-align-items: center;
-justify-content: space-between;
-padding: 12px 14px;
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 12px;
-margin-bottom: 14px;
-gap: 12px;
-}
-.switch-label { font-size: 13px; flex: 1; }
-.switch-hint { font-size: 11px; color: var(–text-dim); margin-top: 3px; }
-.switch {
-position: relative;
-width: 44px;
-height: 26px;
-background: var(–bg-elevated);
-border-radius: 100px;
-border: 1px solid var(–border-strong);
-cursor: pointer;
-transition: all .2s;
-flex-shrink: 0;
-}
-.switch::after {
-content: ‘’;
-position: absolute;
-top: 2px;
-left: 2px;
-width: 20px;
-height: 20px;
-background: var(–text-dim);
-border-radius: 50%;
-transition: all .2s cubic-bezier(.2,.9,.3,1);
-}
-.switch.on { background: var(–accent); border-color: var(–accent); }
-.switch.on::after { transform: translateX(18px); background: #0a0a0f; }
+  /* Bottom Nav */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: rgba(20,20,28,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding: 10px 8px;
+    padding-bottom: calc(10px + var(--safe-bottom));
+    display: flex;
+    justify-content: space-around;
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 2px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 500;
+    transition: color .15s;
+    background: none;
+    border: none;
+    font-family: inherit;
+  }
+  .nav-item.active { color: var(--accent); }
+  .nav-icon { font-size: 18px; }
 
-/* Bottom Nav */
-.bottom-nav {
-position: fixed;
-bottom: 0;
-left: 0;
-right: 0;
-z-index: 50;
-background: rgba(20,20,28,0.85);
-backdrop-filter: blur(20px);
--webkit-backdrop-filter: blur(20px);
-border-top: 1px solid var(–border);
-padding: 10px 8px;
-padding-bottom: calc(10px + var(–safe-bottom));
-display: flex;
-justify-content: space-around;
-}
-.nav-item {
-flex: 1;
-display: flex;
-flex-direction: column;
-align-items: center;
-gap: 3px;
-padding: 6px 2px;
-color: var(–text-muted);
-cursor: pointer;
-font-size: 10px;
-font-weight: 500;
-transition: color .15s;
-background: none;
-border: none;
-font-family: inherit;
-}
-.nav-item.active { color: var(–accent); }
-.nav-icon { font-size: 18px; }
+  /* Filter Pills */
+  .filter-pills {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .filter-pills::-webkit-scrollbar { display: none; }
+  .pill {
+    padding: 8px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .pill.active {
+    background: var(--accent);
+    color: #0a0a0f;
+    border-color: var(--accent);
+    font-weight: 500;
+  }
 
-/* Filter Pills */
-.filter-pills {
-display: flex;
-gap: 8px;
-margin-bottom: 16px;
-overflow-x: auto;
-padding-bottom: 4px;
--webkit-overflow-scrolling: touch;
-}
-.filter-pills::-webkit-scrollbar { display: none; }
-.pill {
-padding: 8px 14px;
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 100px;
-font-size: 12px;
-color: var(–text-dim);
-white-space: nowrap;
-cursor: pointer;
-}
-.pill.active {
-background: var(–accent);
-color: #0a0a0f;
-border-color: var(–accent);
-font-weight: 500;
-}
+  /* Toast */
+  .toast {
+    position: fixed;
+    top: calc(80px + var(--safe-top));
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 13px;
+    z-index: 200;
+    opacity: 0;
+    transition: all .3s cubic-bezier(.2,.9,.3,1);
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
 
-/* Toast */
-.toast {
-position: fixed;
-top: calc(80px + var(–safe-top));
-left: 50%;
-transform: translateX(-50%) translateY(-100px);
-background: var(–bg-elevated);
-border: 1px solid var(–border-strong);
-color: var(–text);
-padding: 12px 20px;
-border-radius: 12px;
-font-size: 13px;
-z-index: 200;
-opacity: 0;
-transition: all .3s cubic-bezier(.2,.9,.3,1);
-box-shadow: var(–shadow);
-display: flex;
-align-items: center;
-gap: 8px;
-}
-.toast.show {
-transform: translateX(-50%) translateY(0);
-opacity: 1;
-}
+  /* Settings */
+  .setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .setting-label { font-size: 14px; }
+  .setting-value { color: var(--text-dim); font-size: 13px; }
 
-/* Settings */
-.setting-row {
-display: flex;
-justify-content: space-between;
-align-items: center;
-padding: 16px;
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 14px;
-margin-bottom: 8px;
-cursor: pointer;
-}
-.setting-label { font-size: 14px; }
-.setting-value { color: var(–text-dim); font-size: 13px; }
-
-/* Install banner */
-.install-banner {
-margin: 12px 0 20px;
-padding: 14px 16px;
-background: linear-gradient(135deg, rgba(201,255,61,0.08), rgba(74,222,128,0.04));
-border: 1px solid rgba(201,255,61,0.2);
-border-radius: 14px;
-display: flex;
-align-items: center;
-gap: 12px;
-cursor: pointer;
-}
-.install-banner-icon { font-size: 22px; }
-.install-banner-text { flex: 1; }
-.install-banner-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
-.install-banner-sub { font-size: 11px; color: var(–text-dim); }
-/* ============ v2 COMPASS STYLES ============ */
-
-/* Verdict zones */
-.verdict-card {
-padding: 22px;
-border-radius: 20px;
-margin-bottom: 16px;
-position: relative;
-overflow: hidden;
-}
-.verdict-card.green {
-background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04));
-border: 1px solid rgba(74,222,128,0.3);
-}
-.verdict-card.yellow {
-background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.04));
-border: 1px solid rgba(251,191,36,0.3);
-}
-.verdict-card.red {
-background: linear-gradient(135deg, rgba(255,107,107,0.12), rgba(255,107,107,0.04));
-border: 1px solid rgba(255,107,107,0.3);
-}
-.verdict-label {
-font-size: 11px;
-text-transform: uppercase;
-letter-spacing: 0.15em;
-margin-bottom: 6px;
-font-weight: 600;
-}
-.verdict-card.green .verdict-label { color: var(–income); }
-.verdict-card.yellow .verdict-label { color: var(–warning); }
-.verdict-card.red .verdict-label { color: var(–expense); }
-.verdict-title {
-font-family: ‘Fraunces’, serif;
-font-size: 22px;
-font-weight: 500;
-letter-spacing: -0.02em;
-line-height: 1.2;
-margin-bottom: 12px;
-}
-.verdict-reasoning {
-font-size: 13px;
-color: var(–text-dim);
-line-height: 1.6;
-}
-.verdict-reasoning ul {
-list-style: none;
-margin-top: 8px;
-}
-.verdict-reasoning li {
-padding: 4px 0;
-padding-left: 16px;
-position: relative;
-}
-.verdict-reasoning li::before {
-content: ‘·’;
-position: absolute;
-left: 4px;
-color: var(–text-muted);
-font-size: 18px;
-line-height: 1;
-}
-
-.compass-card {
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 16px;
-padding: 18px;
-margin-bottom: 12px;
-}
-.compass-card-title {
-font-family: ‘Fraunces’, serif;
-font-size: 16px;
-font-weight: 500;
-margin-bottom: 4px;
-}
-.compass-card-sub {
-font-size: 11px;
-color: var(–text-dim);
-margin-bottom: 14px;
-}
-
-/* Health Score */
-.score-ring-wrap {
-display: flex;
-align-items: center;
-gap: 18px;
-padding: 4px 0;
-}
-.score-ring {
-width: 90px; height: 90px;
-flex-shrink: 0;
-}
-.score-text {
-flex: 1;
-}
-.score-value {
-font-family: ‘Fraunces’, serif;
-font-size: 32px;
-font-weight: 500;
-letter-spacing: -0.02em;
-line-height: 1;
-}
-.score-grade {
-font-size: 12px;
-color: var(–text-dim);
-margin-top: 4px;
-}
-
-/* 50/30/20 bars */
-.ratio-row {
-margin-bottom: 14px;
-}
-.ratio-row:last-child { margin-bottom: 0; }
-.ratio-head {
-display: flex;
-justify-content: space-between;
-align-items: center;
-margin-bottom: 6px;
-font-size: 13px;
-}
-.ratio-name {
-font-weight: 500;
-}
-.ratio-vals {
-font-family: ‘Geist Mono’, monospace;
-font-size: 12px;
-color: var(–text-dim);
-}
-.ratio-bar-wrap {
-width: 100%;
-height: 8px;
-background: rgba(255,255,255,0.05);
-border-radius: 4px;
-position: relative;
-overflow: hidden;
-}
-.ratio-bar-target {
-position: absolute;
-top: -2px;
-bottom: -2px;
-width: 2px;
-background: var(–text-muted);
-z-index: 2;
-}
-.ratio-bar-fill {
-height: 100%;
-border-radius: 4px;
-transition: width .5s cubic-bezier(.2,.9,.3,1);
-}
-.ratio-bar-fill.needs { background: #60a5fa; }
-.ratio-bar-fill.wants { background: #f472b6; }
-.ratio-bar-fill.savings { background: var(–income); }
-
-/* Forecast chart */
-.forecast-chart {
-height: 160px;
-position: relative;
-margin: 12px 0;
-}
-.forecast-svg {
-width: 100%;
-height: 100%;
-overflow: visible;
-}
-.forecast-legend {
-display: flex;
-justify-content: space-between;
-font-size: 10px;
-color: var(–text-muted);
-font-family: ‘Geist Mono’, monospace;
-margin-top: 6px;
-}
-.forecast-event {
-position: absolute;
-font-size: 14px;
-transform: translate(-50%, -120%);
-pointer-events: none;
-}
-
-/* Income source cards */
-.income-src-card {
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 14px;
-padding: 14px 16px;
-margin-bottom: 8px;
-cursor: pointer;
-}
-.income-src-head {
-display: flex;
-justify-content: space-between;
-align-items: center;
-margin-bottom: 4px;
-}
-.income-src-name {
-font-size: 14px;
-font-weight: 500;
-}
-.income-src-amount {
-font-family: ‘Geist Mono’, monospace;
-font-size: 14px;
-color: var(–income);
-font-weight: 500;
-}
-.income-src-meta {
-font-size: 11px;
-color: var(–text-dim);
-}
-
-/* Insights list */
-.insight-item {
-display: flex;
-gap: 12px;
-padding: 12px;
-background: rgba(255,255,255,0.02);
-border-radius: 12px;
-margin-bottom: 8px;
-}
-.insight-icon {
-font-size: 18px;
-flex-shrink: 0;
-width: 32px;
-height: 32px;
-display: flex;
-align-items: center;
-justify-content: center;
-background: var(–bg-card);
-border-radius: 8px;
-}
-.insight-body {
-flex: 1;
-font-size: 13px;
-line-height: 1.5;
-}
-.insight-body strong {
-font-weight: 500;
-color: var(–text);
-}
-
-/* Decision journal */
-.decision-item {
-padding: 14px;
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 12px;
-margin-bottom: 8px;
-}
-.decision-head {
-display: flex;
-justify-content: space-between;
-margin-bottom: 6px;
-}
-.decision-what {
-font-size: 13px;
-font-weight: 500;
-}
-.decision-verdict-dot {
-font-size: 11px;
-padding: 2px 8px;
-border-radius: 100px;
-}
-.decision-verdict-dot.green { background: rgba(74,222,128,0.15); color: var(–income); }
-.decision-verdict-dot.yellow { background: rgba(251,191,36,0.15); color: var(–warning); }
-.decision-verdict-dot.red { background: rgba(255,107,107,0.15); color: var(–expense); }
-.decision-meta {
-font-size: 11px;
-color: var(–text-dim);
-}
-.decision-outcome {
-margin-top: 8px;
-padding-top: 8px;
-border-top: 1px solid var(–border);
-font-size: 11px;
-color: var(–text-dim);
-}
-
-/* Confidence indicator */
-.confidence {
-font-size: 10px;
-color: var(–text-muted);
-text-transform: uppercase;
-letter-spacing: 0.08em;
-padding: 3px 8px;
-background: rgba(255,255,255,0.03);
-border-radius: 100px;
-display: inline-block;
-margin-top: 8px;
-}
-
-/* Affordability inline button */
-.compass-cta {
-background: linear-gradient(135deg, var(–accent), var(–accent-dim));
-color: #0a0a0f;
-border: none;
-border-radius: 16px;
-padding: 18px;
-width: 100%;
-font-family: inherit;
-font-size: 15px;
-font-weight: 600;
-cursor: pointer;
-margin-bottom: 20px;
-display: flex;
-align-items: center;
-justify-content: center;
-gap: 8px;
-}
-.compass-cta:active { transform: scale(0.98); }
-
-/* Pay cycle picker */
-.cycle-picker {
-display: grid;
-grid-template-columns: repeat(2, 1fr);
-gap: 8px;
-margin-bottom: 14px;
-}
-.cycle-opt {
-padding: 12px;
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 12px;
-text-align: center;
-cursor: pointer;
-font-size: 13px;
-}
-.cycle-opt.selected {
-border-color: var(–accent);
-background: rgba(201,255,61,0.08);
-}
-.cycle-opt .opt-name { font-weight: 500; }
-.cycle-opt .opt-sub { font-size: 10px; color: var(–text-dim); margin-top: 2px; }
-
-/* ============ v2.1 STYLES ============ */
-
-/* Auto-log banner */
-.auto-log-banner {
-margin: 12px 0 16px;
-padding: 14px 16px;
-background: linear-gradient(135deg, rgba(201,255,61,0.1), rgba(74,222,128,0.05));
-border: 1px solid rgba(201,255,61,0.25);
-border-radius: 14px;
-display: flex;
-align-items: center;
-gap: 12px;
-cursor: pointer;
-}
-.auto-log-icon { font-size: 22px; }
-.auto-log-text { flex: 1; }
-.auto-log-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
-.auto-log-sub { font-size: 11px; color: var(–text-dim); }
-.auto-log-close {
-background: none; border: none; color: var(–text-dim);
-font-size: 18px; cursor: pointer; padding: 4px 8px;
-}
-
-/* Backup warning banner */
-.backup-warn {
-margin: 12px 0 16px;
-padding: 14px 16px;
-border-radius: 14px;
-display: flex;
-align-items: center;
-gap: 12px;
-cursor: pointer;
-}
-.backup-warn.yellow {
-background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(251,191,36,0.04));
-border: 1px solid rgba(251,191,36,0.3);
-}
-.backup-warn.red {
-background: linear-gradient(135deg, rgba(255,107,107,0.1), rgba(255,107,107,0.04));
-border: 1px solid rgba(255,107,107,0.3);
-}
-.backup-warn-icon { font-size: 22px; }
-.backup-warn-text { flex: 1; }
-.backup-warn-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
-.backup-warn.yellow .backup-warn-title { color: var(–warning); }
-.backup-warn.red .backup-warn-title { color: var(–expense); }
-.backup-warn-sub { font-size: 11px; color: var(–text-dim); }
-
-/* Auto-logged badge on transactions */
-.tx-auto-badge {
-display: inline-block;
-font-size: 9px;
-padding: 1px 6px;
-border-radius: 100px;
-background: rgba(201,255,61,0.15);
-color: var(–accent);
-margin-left: 6px;
-text-transform: uppercase;
-letter-spacing: 0.05em;
-font-weight: 500;
-vertical-align: middle;
-}
-
-/* Recurring expense card */
-.rec-exp-card {
-background: var(–bg-card);
-border: 1px solid var(–border);
-border-radius: 14px;
-padding: 14px 16px;
-margin-bottom: 8px;
-cursor: pointer;
-}
-.rec-exp-card.inactive { opacity: 0.5; }
-.rec-exp-head {
-display: flex;
-justify-content: space-between;
-align-items: center;
-margin-bottom: 4px;
-}
-.rec-exp-name {
-font-size: 14px;
-font-weight: 500;
-display: flex;
-align-items: center;
-gap: 8px;
-}
-.rec-exp-amount {
-font-family: ‘Geist Mono’, monospace;
-font-size: 14px;
-color: var(–expense);
-font-weight: 500;
-}
-.rec-exp-meta {
-font-size: 11px;
-color: var(–text-dim);
-}
-
-/* Recovery banner (one-time on fresh launch with backups present) */
-.recovery-card {
-margin: 12px 0 16px;
-padding: 18px;
-background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04));
-border: 1px solid rgba(74,222,128,0.3);
-border-radius: 16px;
-}
-.recovery-title {
-font-family: ‘Fraunces’, serif;
-font-size: 18px;
-color: var(–income);
-margin-bottom: 6px;
-}
-.recovery-text {
-font-size: 13px;
-color: var(–text-dim);
-line-height: 1.5;
-margin-bottom: 14px;
-}
-.recovery-btns {
-display: flex;
-gap: 8px;
-}
-.recovery-btns button {
-flex: 1;
-padding: 12px;
-border-radius: 12px;
-font-family: inherit;
-font-size: 13px;
-font-weight: 500;
-border: none;
-cursor: pointer;
-}
-.recovery-restore {
-background: var(–income);
-color: #0a0a0f;
-}
-/* Weekly Plan card */
-.weekly-plan-toggle {
-display: flex;
-gap: 6px;
-background: rgba(255,255,255,0.03);
-padding: 4px;
-border-radius: 10px;
-margin-bottom: 14px;
-}
-.wp-tab {
-flex: 1;
-padding: 8px 12px;
-background: transparent;
-border: none;
-color: var(–text-dim);
-font-size: 12px;
-font-weight: 500;
-border-radius: 7px;
-cursor: pointer;
-font-family: inherit;
-transition: all .15s ease;
-}
-.wp-tab.active {
-background: var(–bg-card);
-color: var(–text);
-box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-.wp-today-card {
-text-align: center;
-padding: 18px 12px;
-background: linear-gradient(135deg, rgba(201,255,61,0.08), rgba(201,255,61,0.02));
-border: 1px solid rgba(201,255,61,0.2);
-border-radius: 14px;
-margin-bottom: 14px;
-}
-.wp-today-label {
-font-size: 11px;
-color: var(–text-dim);
-text-transform: uppercase;
-letter-spacing: 0.06em;
-font-weight: 500;
-margin-bottom: 4px;
-}
-.wp-today-amount {
-font-family: ‘Fraunces’, serif;
-font-size: 38px;
-font-weight: 500;
-letter-spacing: -0.02em;
-line-height: 1;
-color: var(–accent);
-}
-.wp-today-sub {
-font-size: 12px;
-color: var(–text-dim);
-margin-top: 6px;
-}
-.wp-row {
-display: flex;
-justify-content: space-between;
-align-items: center;
-padding: 10px 0;
-font-size: 13px;
-border-bottom: 1px solid rgba(255,255,255,0.04);
-}
-.wp-row:last-child { border-bottom: none; }
-.wp-row-label { color: var(–text-dim); flex: 1; }
-.wp-row-value { font-family: ‘Geist Mono’, monospace; font-weight: 500; }
-
-.wp-week-card {
-padding: 12px;
-background: var(–bg-card);
-border-radius: 10px;
-margin-bottom: 8px;
-border: 1px solid var(–border);
-}
-.wp-week-card.now {
-border-color: rgba(201,255,61,0.3);
-background: linear-gradient(135deg, rgba(201,255,61,0.04), var(–bg-card));
-}
-.wp-week-card.warn {
-border-color: rgba(251,191,36,0.3);
-}
-.wp-week-card.danger {
-border-color: rgba(239,68,68,0.3);
-}
-.wp-week-head {
-display: flex;
-justify-content: space-between;
-align-items: center;
-margin-bottom: 8px;
-}
-.wp-week-name {
-font-size: 13px;
-font-weight: 500;
-}
-.wp-week-free {
-font-family: ‘Geist Mono’, monospace;
-font-size: 14px;
-font-weight: 600;
-}
-.wp-week-details {
-font-size: 11px;
-color: var(–text-dim);
-line-height: 1.7;
-}
-
-/* Reserved badge on home */
-.reserved-badge {
-display: inline-flex;
-align-items: center;
-gap: 6px;
-padding: 6px 10px;
-background: rgba(168, 85, 247, 0.1);
-border: 1px solid rgba(168, 85, 247, 0.25);
-border-radius: 10px;
-font-size: 11px;
-color: var(–text-dim);
-margin-top: 8px;
-cursor: pointer;
-transition: background .15s ease;
-}
-.reserved-badge:active { background: rgba(168, 85, 247, 0.15); }
-
-/* Inline Smart Cuts on recurring expense cards */
-.save-here-row {
-margin-top: 8px;
-padding: 8px 10px;
-background: rgba(201,255,61,0.05);
-border-radius: 8px;
-cursor: pointer;
-transition: background .15s ease;
-}
-.save-here-row:active { background: rgba(201,255,61,0.1); }
-.save-here-btn {
-display: flex;
-justify-content: space-between;
-align-items: center;
-font-size: 12px;
-font-weight: 500;
-}
-.save-here-chev {
-color: var(–accent);
-font-size: 16px;
-transition: transform .2s ease;
-line-height: 1;
-}
-.save-here-tips {
-margin-top: 6px;
-padding: 10px 12px;
-background: rgba(201,255,61,0.04);
-border-left: 2px solid rgba(201,255,61,0.4);
-border-radius: 0 8px 8px 0;
-font-size: 12px;
-color: var(–text-dim);
-line-height: 1.7;
-}
-.save-tip {
-padding: 4px 0;
-}
-.save-tip:not(:last-child) {
-border-bottom: 1px solid rgba(255,255,255,0.04);
-padding-bottom: 6px;
-margin-bottom: 4px;
-}
-
-/* Collapsible details (see the math) */
-details summary::-webkit-details-marker { display: none; }
-details summary::marker { content: ‘’; }
-details[open] summary { background: rgba(201,255,61,0.1) !important; }
-details summary:hover { background: rgba(201,255,61,0.08) !important; }
-
+  /* Install banner */
+  .install-banner {
+    margin: 12px 0 20px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(201,255,61,0.08), rgba(74,222,128,0.04));
+    border: 1px solid rgba(201,255,61,0.2);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .install-banner-icon { font-size: 22px; }
+  .install-banner-text { flex: 1; }
+  .install-banner-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .install-banner-sub { font-size: 11px; color: var(--text-dim); }
+  /* ============ v2 COMPASS STYLES ============ */
+  
+  /* Verdict zones */
+  .verdict-card {
+    padding: 22px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .verdict-card.green {
+    background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04));
+    border: 1px solid rgba(74,222,128,0.3);
+  }
+  .verdict-card.yellow {
+    background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.04));
+    border: 1px solid rgba(251,191,36,0.3);
+  }
+  .verdict-card.red {
+    background: linear-gradient(135deg, rgba(255,107,107,0.12), rgba(255,107,107,0.04));
+    border: 1px solid rgba(255,107,107,0.3);
+  }
+  .verdict-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .verdict-card.green .verdict-label { color: var(--income); }
+  .verdict-card.yellow .verdict-label { color: var(--warning); }
+  .verdict-card.red .verdict-label { color: var(--expense); }
+  .verdict-title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+  .verdict-reasoning {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .verdict-reasoning ul {
+    list-style: none;
+    margin-top: 8px;
+  }
+  .verdict-reasoning li {
+    padding: 4px 0;
+    padding-left: 16px;
+    position: relative;
+  }
+  .verdict-reasoning li::before {
+    content: '·';
+    position: absolute;
+    left: 4px;
+    color: var(--text-muted);
+    font-size: 18px;
+    line-height: 1;
+  }
+  
+  .compass-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 12px;
+  }
+  .compass-card-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .compass-card-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+  
+  /* Health Score */
+  .score-ring-wrap {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 4px 0;
+  }
+  .score-ring {
+    width: 90px; height: 90px;
+    flex-shrink: 0;
+  }
+  .score-text {
+    flex: 1;
+  }
+  .score-value {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .score-grade {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  
+  /* 50/30/20 bars */
+  .ratio-row {
+    margin-bottom: 14px;
+  }
+  .ratio-row:last-child { margin-bottom: 0; }
+  .ratio-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .ratio-name {
+    font-weight: 500;
+  }
+  .ratio-vals {
+    font-family: 'Geist Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .ratio-bar-wrap {
+    width: 100%;
+    height: 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+  .ratio-bar-target {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    background: var(--text-muted);
+    z-index: 2;
+  }
+  .ratio-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width .5s cubic-bezier(.2,.9,.3,1);
+  }
+  .ratio-bar-fill.needs { background: #60a5fa; }
+  .ratio-bar-fill.wants { background: #f472b6; }
+  .ratio-bar-fill.savings { background: var(--income); }
+  
+  /* Forecast chart */
+  .forecast-chart {
+    height: 160px;
+    position: relative;
+    margin: 12px 0;
+  }
+  .forecast-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .forecast-legend {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: 'Geist Mono', monospace;
+    margin-top: 6px;
+  }
+  .forecast-event {
+    position: absolute;
+    font-size: 14px;
+    transform: translate(-50%, -120%);
+    pointer-events: none;
+  }
+  
+  /* Income source cards */
+  .income-src-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .income-src-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .income-src-name {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .income-src-amount {
+    font-family: 'Geist Mono', monospace;
+    font-size: 14px;
+    color: var(--income);
+    font-weight: 500;
+  }
+  .income-src-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  
+  /* Insights list */
+  .insight-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 12px;
+    margin-bottom: 8px;
+  }
+  .insight-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border-radius: 8px;
+  }
+  .insight-body {
+    flex: 1;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .insight-body strong {
+    font-weight: 500;
+    color: var(--text);
+  }
+  
+  /* Decision journal */
+  .decision-item {
+    padding: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 8px;
+  }
+  .decision-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .decision-what {
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .decision-verdict-dot {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 100px;
+  }
+  .decision-verdict-dot.green { background: rgba(74,222,128,0.15); color: var(--income); }
+  .decision-verdict-dot.yellow { background: rgba(251,191,36,0.15); color: var(--warning); }
+  .decision-verdict-dot.red { background: rgba(255,107,107,0.15); color: var(--expense); }
+  .decision-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .decision-outcome {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  
+  /* Confidence indicator */
+  .confidence {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 8px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 100px;
+    display: inline-block;
+    margin-top: 8px;
+  }
+  
+  /* Affordability inline button */
+  .compass-cta {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+    color: #0a0a0f;
+    border: none;
+    border-radius: 16px;
+    padding: 18px;
+    width: 100%;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .compass-cta:active { transform: scale(0.98); }
+  
+  /* Pay cycle picker */
+  .cycle-picker {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .cycle-opt {
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .cycle-opt.selected {
+    border-color: var(--accent);
+    background: rgba(201,255,61,0.08);
+  }
+  .cycle-opt .opt-name { font-weight: 500; }
+  .cycle-opt .opt-sub { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+  
+  /* ============ v2.1 STYLES ============ */
+  
+  /* Auto-log banner */
+  .auto-log-banner {
+    margin: 12px 0 16px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(201,255,61,0.1), rgba(74,222,128,0.05));
+    border: 1px solid rgba(201,255,61,0.25);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .auto-log-icon { font-size: 22px; }
+  .auto-log-text { flex: 1; }
+  .auto-log-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .auto-log-sub { font-size: 11px; color: var(--text-dim); }
+  .auto-log-close {
+    background: none; border: none; color: var(--text-dim);
+    font-size: 18px; cursor: pointer; padding: 4px 8px;
+  }
+  
+  /* Backup warning banner */
+  .backup-warn {
+    margin: 12px 0 16px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .backup-warn.yellow {
+    background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(251,191,36,0.04));
+    border: 1px solid rgba(251,191,36,0.3);
+  }
+  .backup-warn.red {
+    background: linear-gradient(135deg, rgba(255,107,107,0.1), rgba(255,107,107,0.04));
+    border: 1px solid rgba(255,107,107,0.3);
+  }
+  .backup-warn-icon { font-size: 22px; }
+  .backup-warn-text { flex: 1; }
+  .backup-warn-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .backup-warn.yellow .backup-warn-title { color: var(--warning); }
+  .backup-warn.red .backup-warn-title { color: var(--expense); }
+  .backup-warn-sub { font-size: 11px; color: var(--text-dim); }
+  
+  /* Auto-logged badge on transactions */
+  .tx-auto-badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 100px;
+    background: rgba(201,255,61,0.15);
+    color: var(--accent);
+    margin-left: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+    vertical-align: middle;
+  }
+  
+  /* Recurring expense card */
+  .rec-exp-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .rec-exp-card.inactive { opacity: 0.5; }
+  .rec-exp-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .rec-exp-name {
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rec-exp-amount {
+    font-family: 'Geist Mono', monospace;
+    font-size: 14px;
+    color: var(--expense);
+    font-weight: 500;
+  }
+  .rec-exp-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  
+  /* Recovery banner (one-time on fresh launch with backups present) */
+  .recovery-card {
+    margin: 12px 0 16px;
+    padding: 18px;
+    background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04));
+    border: 1px solid rgba(74,222,128,0.3);
+    border-radius: 16px;
+  }
+  .recovery-title {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    color: var(--income);
+    margin-bottom: 6px;
+  }
+  .recovery-text {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+  .recovery-btns {
+    display: flex;
+    gap: 8px;
+  }
+  .recovery-btns button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+  }
+  .recovery-restore {
+    background: var(--income);
+    color: #0a0a0f;
+  }
+  /* Weekly Plan card */
+  .weekly-plan-toggle {
+    display: flex;
+    gap: 6px;
+    background: rgba(255,255,255,0.03);
+    padding: 4px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+  }
+  .wp-tab {
+    flex: 1;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s ease;
+  }
+  .wp-tab.active {
+    background: var(--bg-card);
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .wp-today-card {
+    text-align: center;
+    padding: 18px 12px;
+    background: linear-gradient(135deg, rgba(201,255,61,0.08), rgba(201,255,61,0.02));
+    border: 1px solid rgba(201,255,61,0.2);
+    border-radius: 14px;
+    margin-bottom: 14px;
+  }
+  .wp-today-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .wp-today-amount {
+    font-family: 'Fraunces', serif;
+    font-size: 38px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--accent);
+  }
+  .wp-today-sub {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+  .wp-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .wp-row:last-child { border-bottom: none; }
+  .wp-row-label { color: var(--text-dim); flex: 1; }
+  .wp-row-value { font-family: 'Geist Mono', monospace; font-weight: 500; }
+  
+  .wp-week-card {
+    padding: 12px;
+    background: var(--bg-card);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+  }
+  .wp-week-card.now {
+    border-color: rgba(201,255,61,0.3);
+    background: linear-gradient(135deg, rgba(201,255,61,0.04), var(--bg-card));
+  }
+  .wp-week-card.warn {
+    border-color: rgba(251,191,36,0.3);
+  }
+  .wp-week-card.danger {
+    border-color: rgba(239,68,68,0.3);
+  }
+  .wp-week-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .wp-week-name {
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .wp-week-free {
+    font-family: 'Geist Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .wp-week-details {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  
+  /* Reserved badge on home */
+  .reserved-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(168, 85, 247, 0.1);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    border-radius: 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 8px;
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+  .reserved-badge:active { background: rgba(168, 85, 247, 0.15); }
+  
+  /* Inline Smart Cuts on recurring expense cards */
+  .save-here-row {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: rgba(201,255,61,0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+  .save-here-row:active { background: rgba(201,255,61,0.1); }
+  .save-here-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .save-here-chev {
+    color: var(--accent);
+    font-size: 16px;
+    transition: transform .2s ease;
+    line-height: 1;
+  }
+  .save-here-tips {
+    margin-top: 6px;
+    padding: 10px 12px;
+    background: rgba(201,255,61,0.04);
+    border-left: 2px solid rgba(201,255,61,0.4);
+    border-radius: 0 8px 8px 0;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  .save-tip {
+    padding: 4px 0;
+  }
+  .save-tip:not(:last-child) {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    padding-bottom: 6px;
+    margin-bottom: 4px;
+  }
+  
+  /* Collapsible details (see the math) */
+  details summary::-webkit-details-marker { display: none; }
+  details summary::marker { content: ''; }
+  details[open] summary { background: rgba(201,255,61,0.1) !important; }
+  details summary:hover { background: rgba(201,255,61,0.08) !important; }
+  
 </style>
 </head>
 <body>
@@ -1744,12 +1741,11 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- HOME PAGE -->
-
 <div class="page active" id="page-home">
   <div id="autoLogBanner"></div>
   <div id="backupWarnBanner"></div>
   <div id="installBanner"></div>
-
+  
   <div class="hero">
     <div class="hero-label">Current Balance</div>
     <div class="hero-amount"><span class="hero-currency" id="currencySymbol">A$</span><span id="balance">0.00</span></div>
@@ -1790,7 +1786,6 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- TRANSACTIONS PAGE -->
-
 <div class="page" id="page-transactions">
   <div class="section-title"><h2>All Transactions</h2></div>
   <div class="filter-pills" id="filterPills">
@@ -1804,7 +1799,6 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- STATS PAGE -->
-
 <div class="page" id="page-stats">
   <div class="section-title"><h2>Insights</h2></div>
   <div class="stat-grid">
@@ -1825,7 +1819,7 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
     <div class="chart-title">Spending by Category</div>
     <div id="categoryBreakdown"></div>
   </div>
-
+  
   <div class="section-title" style="margin-top:24px;">
     <h2>Budgets</h2>
     <span class="link" onclick="openBudgetModal()">+ New</span>
@@ -1834,7 +1828,6 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- LOANS PAGE -->
-
 <div class="page" id="page-loans">
   <div class="section-title">
     <h2>Loans</h2>
@@ -1845,7 +1838,6 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- LOAN DETAIL PAGE -->
-
 <div class="page" id="page-loan-detail">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <button class="back-btn" onclick="goPage('loans')">← Back</button>
@@ -1855,17 +1847,16 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- COMPASS PAGE -->
-
 <div class="page" id="page-compass">
   <div class="section-title">
     <h2>Compass</h2>
     <span class="link" onclick="goPage('decisions')">History →</span>
   </div>
-
+  
   <button class="compass-cta" onclick="openAffordabilityModal()">
     <span style="font-size:18px;">⚖</span> Can I afford this?
   </button>
-
+  
   <div class="compass-card" id="weeklyPlanCard">
     <div class="compass-card-title">Weekly plan</div>
     <div class="compass-card-sub">Smart set-aside for upcoming bills</div>
@@ -1875,25 +1866,25 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
     </div>
     <div id="weeklyPlanContent"></div>
   </div>
-
+  
   <div class="compass-card">
     <div class="compass-card-title">Your monthly picture</div>
     <div class="compass-card-sub">What's coming in vs. what's going out</div>
     <div id="expectedMonthly"></div>
   </div>
-
+  
   <div class="compass-card">
     <div class="compass-card-title">How much to save each week</div>
     <div class="compass-card-sub">A safe amount based on your data — won't stress you out</div>
     <div id="safeSaveContent"></div>
   </div>
-
+  
   <div class="compass-card" id="loanStrategyCard" style="display:none;">
     <div class="compass-card-title">Loan payoff plan</div>
     <div class="compass-card-sub">The smartest order to clear your loans</div>
     <div id="loanStrategyContent"></div>
   </div>
-
+  
   <div class="compass-card">
     <div class="compass-card-title">Budget Health</div>
     <div class="compass-card-sub">How your money is performing this month</div>
@@ -1911,7 +1902,7 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
       </div>
     </div>
   </div>
-
+  
   <div class="compass-card">
     <div class="compass-card-title">Cash Flow Forecast</div>
     <div class="compass-card-sub">Predicted balance over next 30 days</div>
@@ -1919,13 +1910,13 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
     <div class="forecast-legend" id="forecastLegend"></div>
     <div id="forecastConfidence"></div>
   </div>
-
+  
   <div class="compass-card">
     <div class="compass-card-title">50/30/20 Mirror</div>
     <div class="compass-card-sub">Your spending vs. the classic benchmark</div>
     <div id="ratioBars"></div>
   </div>
-
+  
   <div class="compass-card">
     <div class="compass-card-title">Smart Insights</div>
     <div class="compass-card-sub">Patterns from your data</div>
@@ -1934,7 +1925,6 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- DECISION HISTORY PAGE -->
-
 <div class="page" id="page-decisions">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <button class="back-btn" onclick="goPage('compass')">← Back</button>
@@ -1944,10 +1934,9 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- SETTINGS PAGE -->
-
 <div class="page" id="page-settings">
   <div class="section-title"><h2>Settings</h2></div>
-
+  
   <div class="setting-row" onclick="openCurrencyModal()">
     <span class="setting-label">Currency</span>
     <span class="setting-value" id="currencyLabel">AUD (A$)</span>
@@ -2012,7 +2001,6 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- INCOME SOURCES PAGE -->
-
 <div class="page" id="page-income-sources">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <button class="back-btn" onclick="goPage('settings')">← Back</button>
@@ -2026,7 +2014,6 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- RECURRING EXPENSES PAGE -->
-
 <div class="page" id="page-recurring-expenses">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <button class="back-btn" onclick="goPage('settings')">← Back</button>
@@ -2040,22 +2027,21 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- SAVINGS PAGE -->
-
 <div class="page" id="page-savings">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <button class="back-btn" onclick="goPage('settings')">← Back</button>
     <span class="link" onclick="openSavingsModal()">+ Log</span>
   </div>
   <div class="section-title"><h2>Savings & Goals</h2></div>
-
+  
   <div id="savingsTotalCard"></div>
-
+  
   <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px;">
     <h3 style="font-family:'Fraunces',serif;font-size:18px;font-weight:500;letter-spacing:-0.01em;">Goals</h3>
     <span class="link" onclick="openGoalModal()">+ New goal</span>
   </div>
   <div id="goalsList"></div>
-
+  
   <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px;">
     <h3 style="font-family:'Fraunces',serif;font-size:18px;font-weight:500;letter-spacing:-0.01em;">History</h3>
   </div>
@@ -2063,157 +2049,144 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- SAVINGS LOG MODAL -->
-
 <div class="modal-backdrop" id="savingsModal" onclick="closeModalOnBg(event, 'savingsModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="savingsModalTitle">Log Savings</div>
     <div class="modal-sub">Move money to/from savings</div>
-
-```
-<div class="toggle-row">
-  <div class="toggle-opt income" data-savetype="deposit" onclick="setSavingsType('deposit')">📥 Deposit</div>
-  <div class="toggle-opt expense" data-savetype="withdraw" onclick="setSavingsType('withdraw')">📤 Withdraw</div>
-</div>
-
-<div class="field">
-  <label>Amount</label>
-  <div class="amount-input-wrap">
-    <input type="number" inputmode="decimal" id="inpSavingsAmount" class="amount-input" placeholder="0.00" step="0.01">
-  </div>
-</div>
-
-<div class="field">
-  <label>Note (optional)</label>
-  <input type="text" id="inpSavingsNote" placeholder="e.g. Monthly transfer, Trip fund">
-</div>
-
-<div class="field">
-  <label>Goal (optional)</label>
-  <select id="inpSavingsGoal" style="width:100%;padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:inherit;font-size:14px;">
-    <option value="">— No specific goal —</option>
-  </select>
-</div>
-
-<div class="field">
-  <label>Date</label>
-  <input type="date" id="inpSavingsDate">
-</div>
-
-<div class="switch-row">
-  <div>
-    <div class="switch-label">Affect main balance</div>
-    <div class="switch-hint">Treats as an expense/income on your balance</div>
-  </div>
-  <div class="switch on" id="savingsAffectsBalanceSwitch" onclick="toggleSavingsAffectsBalance()"></div>
-</div>
-
-<button class="btn-primary" onclick="saveSavingsEntry()">Save</button>
-<button class="btn-danger" id="savingsDeleteBtn" style="display:none" onclick="deleteSavingsEntry()">Delete</button>
-<button class="btn-secondary" onclick="closeModal('savingsModal')">Cancel</button>
-```
-
+    
+    <div class="toggle-row">
+      <div class="toggle-opt income" data-savetype="deposit" onclick="setSavingsType('deposit')">📥 Deposit</div>
+      <div class="toggle-opt expense" data-savetype="withdraw" onclick="setSavingsType('withdraw')">📤 Withdraw</div>
+    </div>
+    
+    <div class="field">
+      <label>Amount</label>
+      <div class="amount-input-wrap">
+        <input type="number" inputmode="decimal" id="inpSavingsAmount" class="amount-input" placeholder="0.00" step="0.01">
+      </div>
+    </div>
+    
+    <div class="field">
+      <label>Note (optional)</label>
+      <input type="text" id="inpSavingsNote" placeholder="e.g. Monthly transfer, Trip fund">
+    </div>
+    
+    <div class="field">
+      <label>Goal (optional)</label>
+      <select id="inpSavingsGoal" style="width:100%;padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:inherit;font-size:14px;">
+        <option value="">— No specific goal —</option>
+      </select>
+    </div>
+    
+    <div class="field">
+      <label>Date</label>
+      <input type="date" id="inpSavingsDate">
+    </div>
+    
+    <div class="switch-row">
+      <div>
+        <div class="switch-label">Affect main balance</div>
+        <div class="switch-hint">Treats as an expense/income on your balance</div>
+      </div>
+      <div class="switch on" id="savingsAffectsBalanceSwitch" onclick="toggleSavingsAffectsBalance()"></div>
+    </div>
+    
+    <button class="btn-primary" onclick="saveSavingsEntry()">Save</button>
+    <button class="btn-danger" id="savingsDeleteBtn" style="display:none" onclick="deleteSavingsEntry()">Delete</button>
+    <button class="btn-secondary" onclick="closeModal('savingsModal')">Cancel</button>
   </div>
 </div>
 
 <!-- GOAL MODAL -->
-
 <div class="modal-backdrop" id="goalModal" onclick="closeModalOnBg(event, 'goalModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="goalModalTitle">New Goal</div>
     <div class="modal-sub">Set something to save toward</div>
-
-```
-<div class="field">
-  <label>Goal Name</label>
-  <input type="text" id="inpGoalName" placeholder="e.g. Emergency fund, Trip to Japan">
-</div>
-
-<div class="field">
-  <label>Emoji (optional)</label>
-  <input type="text" id="inpGoalEmoji" placeholder="🎯" maxlength="2">
-</div>
-
-<div class="field">
-  <label>Target Amount</label>
-  <div class="amount-input-wrap">
-    <input type="number" inputmode="decimal" id="inpGoalTarget" class="amount-input" placeholder="0.00" step="0.01">
-  </div>
-</div>
-
-<div class="field">
-  <label>Deadline (optional)</label>
-  <input type="date" id="inpGoalDeadline">
-</div>
-
-<button class="btn-primary" onclick="saveGoal()">Save Goal</button>
-<button class="btn-danger" id="goalDeleteBtn" style="display:none" onclick="deleteGoal()">Delete</button>
-<button class="btn-secondary" onclick="closeModal('goalModal')">Cancel</button>
-```
-
+    
+    <div class="field">
+      <label>Goal Name</label>
+      <input type="text" id="inpGoalName" placeholder="e.g. Emergency fund, Trip to Japan">
+    </div>
+    
+    <div class="field">
+      <label>Emoji (optional)</label>
+      <input type="text" id="inpGoalEmoji" placeholder="🎯" maxlength="2">
+    </div>
+    
+    <div class="field">
+      <label>Target Amount</label>
+      <div class="amount-input-wrap">
+        <input type="number" inputmode="decimal" id="inpGoalTarget" class="amount-input" placeholder="0.00" step="0.01">
+      </div>
+    </div>
+    
+    <div class="field">
+      <label>Deadline (optional)</label>
+      <input type="date" id="inpGoalDeadline">
+    </div>
+    
+    <button class="btn-primary" onclick="saveGoal()">Save Goal</button>
+    <button class="btn-danger" id="goalDeleteBtn" style="display:none" onclick="deleteGoal()">Delete</button>
+    <button class="btn-secondary" onclick="closeModal('goalModal')">Cancel</button>
   </div>
 </div>
 
 <!-- ADD/EDIT TX MODAL -->
-
 <div class="modal-backdrop" id="addModal" onclick="closeModalOnBg(event, 'addModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="addModalTitle">Add Transaction</div>
     <div class="modal-sub" id="addModalSub">Track your money</div>
 
-```
-<div class="toggle-row">
-  <div class="toggle-opt income" data-type="income" onclick="setType('income')">Income</div>
-  <div class="toggle-opt expense" data-type="expense" onclick="setType('expense')">Expense</div>
-</div>
+    <div class="toggle-row">
+      <div class="toggle-opt income" data-type="income" onclick="setType('income')">Income</div>
+      <div class="toggle-opt expense" data-type="expense" onclick="setType('expense')">Expense</div>
+    </div>
 
-<div class="field">
-  <label>Amount</label>
-  <div class="amount-input-wrap" id="addAmountWrap">
-    <input type="number" inputmode="decimal" id="inpAmount" class="amount-input" placeholder="0.00" step="0.01">
-  </div>
-</div>
+    <div class="field">
+      <label>Amount</label>
+      <div class="amount-input-wrap" id="addAmountWrap">
+        <input type="number" inputmode="decimal" id="inpAmount" class="amount-input" placeholder="0.00" step="0.01">
+      </div>
+    </div>
 
-<div class="field">
-  <label>Description</label>
-  <input type="text" id="inpDesc" placeholder="e.g. Coffee at café" oninput="onDescInput()">
-</div>
+    <div class="field">
+      <label>Description</label>
+      <input type="text" id="inpDesc" placeholder="e.g. Coffee at café" oninput="onDescInput()">
+    </div>
 
-<div class="field">
-  <label>Category</label>
-  <div class="cat-picker" id="catPicker"></div>
-</div>
+    <div class="field">
+      <label>Category</label>
+      <div class="cat-picker" id="catPicker"></div>
+    </div>
 
-<div class="field">
-  <label>Date</label>
-  <input type="date" id="inpDate">
-</div>
+    <div class="field">
+      <label>Date</label>
+      <input type="date" id="inpDate">
+    </div>
 
-<div class="field">
-  <label>Note (optional)</label>
-  <input type="text" id="inpNote" placeholder="Add a note">
-</div>
+    <div class="field">
+      <label>Note (optional)</label>
+      <input type="text" id="inpNote" placeholder="Add a note">
+    </div>
 
-<div class="switch-row" id="oneTimeRow" style="display:none;">
-  <div>
-    <div class="switch-label">One-time / not typical</div>
-    <div class="switch-hint">Exclude from spending averages</div>
-  </div>
-  <div class="switch" id="oneTimeSwitch" onclick="toggleOneTime()"></div>
-</div>
+    <div class="switch-row" id="oneTimeRow" style="display:none;">
+      <div>
+        <div class="switch-label">One-time / not typical</div>
+        <div class="switch-hint">Exclude from spending averages</div>
+      </div>
+      <div class="switch" id="oneTimeSwitch" onclick="toggleOneTime()"></div>
+    </div>
 
-<button class="btn-primary" onclick="saveTransaction()">Save</button>
-<button class="btn-danger" id="deleteBtn" style="display:none" onclick="deleteCurrentTransaction()">Delete</button>
-<button class="btn-secondary" onclick="closeModal('addModal')">Cancel</button>
-```
-
+    <button class="btn-primary" onclick="saveTransaction()">Save</button>
+    <button class="btn-danger" id="deleteBtn" style="display:none" onclick="deleteCurrentTransaction()">Delete</button>
+    <button class="btn-secondary" onclick="closeModal('addModal')">Cancel</button>
   </div>
 </div>
 
 <!-- BUDGET MODAL -->
-
 <div class="modal-backdrop" id="budgetModal" onclick="closeModalOnBg(event, 'budgetModal')">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -2235,7 +2208,6 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- CURRENCY MODAL -->
-
 <div class="modal-backdrop" id="currencyModal" onclick="closeModalOnBg(event, 'currencyModal')">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -2247,7 +2219,6 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- SEARCH MODAL -->
-
 <div class="modal-backdrop" id="searchModal" onclick="closeModalOnBg(event, 'searchModal')">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -2262,77 +2233,72 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- LOAN MODAL -->
-
 <div class="modal-backdrop" id="loanModal" onclick="closeModalOnBg(event, 'loanModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="loanModalTitle">Add Loan</div>
     <div class="modal-sub">Track a debt you owe</div>
 
-```
-<div class="field">
-  <label>Loan Name</label>
-  <input type="text" id="inpLoanName" placeholder="e.g. Car Loan, Student Loan">
-</div>
+    <div class="field">
+      <label>Loan Name</label>
+      <input type="text" id="inpLoanName" placeholder="e.g. Car Loan, Student Loan">
+    </div>
 
-<div class="field">
-  <label>Lender</label>
-  <input type="text" id="inpLoanLender" placeholder="e.g. NAB, HECS, Friend">
-</div>
+    <div class="field">
+      <label>Lender</label>
+      <input type="text" id="inpLoanLender" placeholder="e.g. NAB, HECS, Friend">
+    </div>
 
-<div class="field">
-  <label>Total Amount Borrowed</label>
-  <div class="amount-input-wrap" id="loanTotalWrap">
-    <input type="number" inputmode="decimal" id="inpLoanTotal" class="amount-input" placeholder="0.00" step="0.01">
-  </div>
-</div>
+    <div class="field">
+      <label>Total Amount Borrowed</label>
+      <div class="amount-input-wrap" id="loanTotalWrap">
+        <input type="number" inputmode="decimal" id="inpLoanTotal" class="amount-input" placeholder="0.00" step="0.01">
+      </div>
+    </div>
 
-<div class="field">
-  <label>Interest Rate (% per year) <span style="color:var(--accent);">*required</span></label>
-  <input type="number" inputmode="decimal" id="inpLoanRate" placeholder="e.g. 7.5" step="0.1" min="0" max="50" onchange="onRateChange()">
-  <div id="rateHint" style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">
-    Typical: HECS 7.5% · Credit card 18-22% · Car 6-9% · Mortgage 5-7% · Family loan 0%
-  </div>
-  <div id="rateReviewWarning" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:11px;color:var(--warning);line-height:1.5;">
-    ⚠ Please confirm this rate — we estimated it. Set the real one for accurate interest calculations.
-  </div>
-</div>
+    <div class="field">
+      <label>Interest Rate (% per year) <span style="color:var(--accent);">*required</span></label>
+      <input type="number" inputmode="decimal" id="inpLoanRate" placeholder="e.g. 7.5" step="0.1" min="0" max="50" onchange="onRateChange()">
+      <div id="rateHint" style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">
+        Typical: HECS 7.5% · Credit card 18-22% · Car 6-9% · Mortgage 5-7% · Family loan 0%
+      </div>
+      <div id="rateReviewWarning" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:11px;color:var(--warning);line-height:1.5;">
+        ⚠ Please confirm this rate — we estimated it. Set the real one for accurate interest calculations.
+      </div>
+    </div>
 
-<div class="field">
-  <label>Already Paid (optional)</label>
-  <div class="amount-input-wrap" id="loanPaidWrap">
-    <input type="number" inputmode="decimal" id="inpLoanPaid" class="amount-input" placeholder="0.00" step="0.01">
-  </div>
-</div>
+    <div class="field">
+      <label>Already Paid (optional)</label>
+      <div class="amount-input-wrap" id="loanPaidWrap">
+        <input type="number" inputmode="decimal" id="inpLoanPaid" class="amount-input" placeholder="0.00" step="0.01">
+      </div>
+    </div>
 
-<div class="field">
-  <label>Start Date</label>
-  <input type="date" id="inpLoanDate">
-</div>
+    <div class="field">
+      <label>Start Date</label>
+      <input type="date" id="inpLoanDate">
+    </div>
 
-<div class="switch-row">
-  <div>
-    <div class="switch-label">Count payments as expenses</div>
-    <div class="switch-hint">Deduct from balance when paid</div>
-  </div>
-  <div class="switch" id="loanDeductSwitch" onclick="toggleLoanDeduct()"></div>
-</div>
+    <div class="switch-row">
+      <div>
+        <div class="switch-label">Count payments as expenses</div>
+        <div class="switch-hint">Deduct from balance when paid</div>
+      </div>
+      <div class="switch" id="loanDeductSwitch" onclick="toggleLoanDeduct()"></div>
+    </div>
 
-<div class="field">
-  <label>Note (optional)</label>
-  <input type="text" id="inpLoanNote" placeholder="Interest rate, terms">
-</div>
+    <div class="field">
+      <label>Note (optional)</label>
+      <input type="text" id="inpLoanNote" placeholder="Interest rate, terms">
+    </div>
 
-<button class="btn-primary" onclick="saveLoan()">Save Loan</button>
-<button class="btn-danger" id="deleteLoanBtn" style="display:none" onclick="deleteCurrentLoan()">Delete Loan</button>
-<button class="btn-secondary" onclick="closeModal('loanModal')">Cancel</button>
-```
-
+    <button class="btn-primary" onclick="saveLoan()">Save Loan</button>
+    <button class="btn-danger" id="deleteLoanBtn" style="display:none" onclick="deleteCurrentLoan()">Delete Loan</button>
+    <button class="btn-secondary" onclick="closeModal('loanModal')">Cancel</button>
   </div>
 </div>
 
 <!-- PAYMENT MODAL -->
-
 <div class="modal-backdrop" id="paymentModal" onclick="closeModalOnBg(event, 'paymentModal')">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -2358,7 +2324,6 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- CUSTOM CATEGORY MODAL -->
-
 <div class="modal-backdrop" id="catModal" onclick="closeModalOnBg(event, 'catModal')">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -2378,191 +2343,177 @@ details summary:hover { background: rgba(201,255,61,0.08) !important; }
 </div>
 
 <!-- AFFORDABILITY MODAL -->
-
 <div class="modal-backdrop" id="affordModal" onclick="closeModalOnBg(event, 'affordModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">Can I afford it?</div>
     <div class="modal-sub">A real check using your income, bills, and savings</div>
-
-```
-<div id="affordInputView">
-  <div class="field">
-    <label>Amount</label>
-    <div class="amount-input-wrap" id="affordAmtWrap">
-      <input type="number" inputmode="decimal" id="inpAffordAmount" class="amount-input" placeholder="0.00" step="0.01">
+    
+    <div id="affordInputView">
+      <div class="field">
+        <label>Amount</label>
+        <div class="amount-input-wrap" id="affordAmtWrap">
+          <input type="number" inputmode="decimal" id="inpAffordAmount" class="amount-input" placeholder="0.00" step="0.01">
+        </div>
+      </div>
+      
+      <div class="field">
+        <label>What for? (optional)</label>
+        <input type="text" id="inpAffordWhat" placeholder="e.g. New iPad, weekend trip">
+      </div>
+      
+      <button class="btn-primary" onclick="runAffordabilityCheck()">Run Check</button>
+      <button class="btn-secondary" onclick="closeModal('affordModal')">Cancel</button>
     </div>
-  </div>
-  
-  <div class="field">
-    <label>What for? (optional)</label>
-    <input type="text" id="inpAffordWhat" placeholder="e.g. New iPad, weekend trip">
-  </div>
-  
-  <button class="btn-primary" onclick="runAffordabilityCheck()">Run Check</button>
-  <button class="btn-secondary" onclick="closeModal('affordModal')">Cancel</button>
-</div>
-
-<div id="affordResultView" style="display:none;">
-  <div id="affordVerdict"></div>
-  <button class="btn-primary" onclick="saveDecision('yes')" style="margin-top:12px;">I'm buying it</button>
-  <button class="btn-secondary" onclick="saveDecision('no')">I'll wait / skip</button>
-  <button class="btn-secondary" onclick="closeModal('affordModal')">Close</button>
-</div>
-```
-
+    
+    <div id="affordResultView" style="display:none;">
+      <div id="affordVerdict"></div>
+      <button class="btn-primary" onclick="saveDecision('yes')" style="margin-top:12px;">I'm buying it</button>
+      <button class="btn-secondary" onclick="saveDecision('no')">I'll wait / skip</button>
+      <button class="btn-secondary" onclick="closeModal('affordModal')">Close</button>
+    </div>
   </div>
 </div>
 
 <!-- INCOME SOURCE MODAL -->
-
 <div class="modal-backdrop" id="incomeSrcModal" onclick="closeModalOnBg(event, 'incomeSrcModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="incSrcModalTitle">Add Income Source</div>
     <div class="modal-sub">Set up a paycheck</div>
-
-```
-<div class="field">
-  <label>Source Name</label>
-  <input type="text" id="inpIncSrcName" placeholder="e.g. Grant Guru, Freelance Client">
-</div>
-
-<div class="field">
-  <label>Amount per pay</label>
-  <div class="amount-input-wrap" id="incSrcAmtWrap">
-    <input type="number" inputmode="decimal" id="inpIncSrcAmount" class="amount-input" placeholder="0.00" step="0.01">
-  </div>
-</div>
-
-<div class="field">
-  <label>Pay Cycle</label>
-  <div class="cycle-picker" id="cyclePicker">
-    <div class="cycle-opt" data-cycle="weekly" onclick="selectCycle('weekly')">
-      <div class="opt-name">Weekly</div>
-      <div class="opt-sub">Every 7 days</div>
+    
+    <div class="field">
+      <label>Source Name</label>
+      <input type="text" id="inpIncSrcName" placeholder="e.g. Grant Guru, Freelance Client">
     </div>
-    <div class="cycle-opt selected" data-cycle="fortnightly" onclick="selectCycle('fortnightly')">
-      <div class="opt-name">Fortnightly</div>
-      <div class="opt-sub">Every 14 days</div>
+    
+    <div class="field">
+      <label>Amount per pay</label>
+      <div class="amount-input-wrap" id="incSrcAmtWrap">
+        <input type="number" inputmode="decimal" id="inpIncSrcAmount" class="amount-input" placeholder="0.00" step="0.01">
+      </div>
     </div>
-    <div class="cycle-opt" data-cycle="monthly" onclick="selectCycle('monthly')">
-      <div class="opt-name">Monthly</div>
-      <div class="opt-sub">Same date each month</div>
+    
+    <div class="field">
+      <label>Pay Cycle</label>
+      <div class="cycle-picker" id="cyclePicker">
+        <div class="cycle-opt" data-cycle="weekly" onclick="selectCycle('weekly')">
+          <div class="opt-name">Weekly</div>
+          <div class="opt-sub">Every 7 days</div>
+        </div>
+        <div class="cycle-opt selected" data-cycle="fortnightly" onclick="selectCycle('fortnightly')">
+          <div class="opt-name">Fortnightly</div>
+          <div class="opt-sub">Every 14 days</div>
+        </div>
+        <div class="cycle-opt" data-cycle="monthly" onclick="selectCycle('monthly')">
+          <div class="opt-name">Monthly</div>
+          <div class="opt-sub">Same date each month</div>
+        </div>
+        <div class="cycle-opt" data-cycle="irregular" onclick="selectCycle('irregular')">
+          <div class="opt-name">Irregular</div>
+          <div class="opt-sub">Variable / ad-hoc</div>
+        </div>
+      </div>
     </div>
-    <div class="cycle-opt" data-cycle="irregular" onclick="selectCycle('irregular')">
-      <div class="opt-name">Irregular</div>
-      <div class="opt-sub">Variable / ad-hoc</div>
+    
+    <div class="field" id="nextPayField">
+      <label>Next pay date</label>
+      <input type="date" id="inpIncSrcNextPay">
     </div>
-  </div>
-</div>
-
-<div class="field" id="nextPayField">
-  <label>Next pay date</label>
-  <input type="date" id="inpIncSrcNextPay">
-</div>
-
-<div class="switch-row">
-  <div>
-    <div class="switch-label">Auto-log on pay date</div>
-    <div class="switch-hint">Creates the income entry automatically</div>
-  </div>
-  <div class="switch" id="incSrcAutoLogSwitch" onclick="toggleIncSrcAutoLog()"></div>
-</div>
-
-<div class="field">
-  <label>Note (optional)</label>
-  <input type="text" id="inpIncSrcNote" placeholder="e.g. After tax, gross">
-</div>
-
-<button class="btn-primary" onclick="saveIncomeSource()">Save</button>
-<button class="btn-danger" id="deleteIncSrcBtn" style="display:none" onclick="deleteCurrentIncomeSource()">Delete</button>
-<button class="btn-secondary" onclick="closeModal('incomeSrcModal')">Cancel</button>
-```
-
+    
+    <div class="switch-row">
+      <div>
+        <div class="switch-label">Auto-log on pay date</div>
+        <div class="switch-hint">Creates the income entry automatically</div>
+      </div>
+      <div class="switch" id="incSrcAutoLogSwitch" onclick="toggleIncSrcAutoLog()"></div>
+    </div>
+    
+    <div class="field">
+      <label>Note (optional)</label>
+      <input type="text" id="inpIncSrcNote" placeholder="e.g. After tax, gross">
+    </div>
+    
+    <button class="btn-primary" onclick="saveIncomeSource()">Save</button>
+    <button class="btn-danger" id="deleteIncSrcBtn" style="display:none" onclick="deleteCurrentIncomeSource()">Delete</button>
+    <button class="btn-secondary" onclick="closeModal('incomeSrcModal')">Cancel</button>
   </div>
 </div>
 
 <!-- RECURRING EXPENSE MODAL -->
-
 <div class="modal-backdrop" id="recExpModal" onclick="closeModalOnBg(event, 'recExpModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="recExpModalTitle">Add Recurring Expense</div>
     <div class="modal-sub">Auto-logs on the due date</div>
 
-```
-<div class="field">
-  <label>Name</label>
-  <input type="text" id="inpRecExpName" placeholder="e.g. Rent, Netflix, Gym">
-</div>
-
-<div class="field">
-  <label>Amount</label>
-  <div class="amount-input-wrap" id="recExpAmtWrap">
-    <input type="number" inputmode="decimal" id="inpRecExpAmount" class="amount-input" placeholder="0.00" step="0.01">
-  </div>
-</div>
-
-<div class="field">
-  <label>Category</label>
-  <div class="cat-picker" id="recExpCatPicker"></div>
-</div>
-
-<div class="field">
-  <label>Frequency</label>
-  <div class="cycle-picker" id="recCyclePicker">
-    <div class="cycle-opt" data-cycle="weekly" onclick="selectRecCycle('weekly')">
-      <div class="opt-name">Weekly</div>
-      <div class="opt-sub">Every 7 days</div>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="inpRecExpName" placeholder="e.g. Rent, Netflix, Gym">
     </div>
-    <div class="cycle-opt" data-cycle="fortnightly" onclick="selectRecCycle('fortnightly')">
-      <div class="opt-name">Fortnightly</div>
-      <div class="opt-sub">Every 14 days</div>
+
+    <div class="field">
+      <label>Amount</label>
+      <div class="amount-input-wrap" id="recExpAmtWrap">
+        <input type="number" inputmode="decimal" id="inpRecExpAmount" class="amount-input" placeholder="0.00" step="0.01">
+      </div>
     </div>
-    <div class="cycle-opt selected" data-cycle="monthly" onclick="selectRecCycle('monthly')">
-      <div class="opt-name">Monthly</div>
-      <div class="opt-sub">Same date each month</div>
+
+    <div class="field">
+      <label>Category</label>
+      <div class="cat-picker" id="recExpCatPicker"></div>
     </div>
-    <div class="cycle-opt" data-cycle="yearly" onclick="selectRecCycle('yearly')">
-      <div class="opt-name">Yearly</div>
-      <div class="opt-sub">Same date each year</div>
+
+    <div class="field">
+      <label>Frequency</label>
+      <div class="cycle-picker" id="recCyclePicker">
+        <div class="cycle-opt" data-cycle="weekly" onclick="selectRecCycle('weekly')">
+          <div class="opt-name">Weekly</div>
+          <div class="opt-sub">Every 7 days</div>
+        </div>
+        <div class="cycle-opt" data-cycle="fortnightly" onclick="selectRecCycle('fortnightly')">
+          <div class="opt-name">Fortnightly</div>
+          <div class="opt-sub">Every 14 days</div>
+        </div>
+        <div class="cycle-opt selected" data-cycle="monthly" onclick="selectRecCycle('monthly')">
+          <div class="opt-name">Monthly</div>
+          <div class="opt-sub">Same date each month</div>
+        </div>
+        <div class="cycle-opt" data-cycle="yearly" onclick="selectRecCycle('yearly')">
+          <div class="opt-name">Yearly</div>
+          <div class="opt-sub">Same date each year</div>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
 
-<div class="field">
-  <label>Next due date</label>
-  <input type="date" id="inpRecExpNextDue">
-</div>
+    <div class="field">
+      <label>Next due date</label>
+      <input type="date" id="inpRecExpNextDue">
+    </div>
 
-<div class="switch-row">
-  <div>
-    <div class="switch-label">Active</div>
-    <div class="switch-hint">Turn off to pause auto-logging</div>
-  </div>
-  <div class="switch on" id="recExpActiveSwitch" onclick="toggleRecExpActive()"></div>
-</div>
+    <div class="switch-row">
+      <div>
+        <div class="switch-label">Active</div>
+        <div class="switch-hint">Turn off to pause auto-logging</div>
+      </div>
+      <div class="switch on" id="recExpActiveSwitch" onclick="toggleRecExpActive()"></div>
+    </div>
 
-<div class="field">
-  <label>Note (optional)</label>
-  <input type="text" id="inpRecExpNote" placeholder="">
-</div>
+    <div class="field">
+      <label>Note (optional)</label>
+      <input type="text" id="inpRecExpNote" placeholder="">
+    </div>
 
-<button class="btn-primary" onclick="saveRecExp()">Save</button>
-<button class="btn-danger" id="deleteRecExpBtn" style="display:none" onclick="deleteCurrentRecExp()">Delete</button>
-<button class="btn-secondary" onclick="closeModal('recExpModal')">Cancel</button>
-```
-
+    <button class="btn-primary" onclick="saveRecExp()">Save</button>
+    <button class="btn-danger" id="deleteRecExpBtn" style="display:none" onclick="deleteCurrentRecExp()">Delete</button>
+    <button class="btn-secondary" onclick="closeModal('recExpModal')">Cancel</button>
   </div>
 </div>
 
 <!-- TOAST -->
-
 <div class="toast" id="toast"><span id="toastIcon">✓</span><span id="toastMsg">Saved</span></div>
 
 <!-- BOTTOM NAV -->
-
 <div class="bottom-nav">
   <button class="nav-item active" data-page="home" onclick="goPage('home')">
     <span class="nav-icon">⌂</span> Home
@@ -7245,6 +7196,5 @@ function init() {
 
 init();
 </script>
-
 </body>
 </html>
