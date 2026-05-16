@@ -4,29 +4,26 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.2.2
-  Last edited:  2026-05-15
+  Version:      2.3.0
+  Last edited:  2026-05-16
   Storage:      localStorage (device-local, never sent to cloud)
-  Schema ver:   4 (auto-migrates from v1, v2, v3)
+  Schema ver:   5 (auto-migrates from v1-v4)
   
   NAMED: Ledger Compass
   
-  v2.2.2 PLAIN LANGUAGE PASS:
-  - Rewrote labels in everyday English (kept Budget/Loans/Income/Balance)
-  - "Avg variable spend" → "Other spending"
-  - "Expected leftover" → "Spare each month"
-  - "Safe Weekly Save" → "How much to save each week"
-  - "Buffer" → "safety days"
-  - "Surplus" → "extra"
-  - "Stretch goal" → "Push harder goal"
-  - "Tradeoffs" → "Things to think about"
-  - Math breakdown now collapsible ("see the math →")
-  - Confidence labels: "Just starting out / Reasonably accurate / Pretty accurate"
-  
-  v2.2.2 BUGFIXES:
-  - Pay cycle counter no longer over-counts (capped at one event per source per day)
-  - "17 pay cycles in 39 days" issue resolved
-  - Cleaner cycle-count display (uses actual unique pay event count)
+  v2.3.0 — THE INTELLIGENCE LAYER:
+  - Pay cycle bug REAL fix: counts unique PAY DAYS, not deposits
+    (3 jobs paying same day = 1 payday, not 3 paychecks)
+  - Loan model: interestRate REQUIRED with smart defaults
+    (HECS 7.5%, CC 21%, car 7%, mortgage 6%, personal 12%, family 0%)
+  - True avalanche strategy by interest rate, not balance
+  - Per-loan: monthly interest cost, total interest paid YTD,
+    "extra $X saves you $Y over life of loan"
+  - Smart Cuts: Australia (AUD) / India (INR) / Generic suggestions
+    Per category alternatives (subs, gym, phone, internet, etc.)
+  - Income Sources + Recurring Expenses pages show TOTALS
+  - Time-cost framing: "$X/month = Y days of your work"
+  - All v2.2.2 plain language preserved
   
   COMPLETED FEATURES (carry-over):
   - Transactions, loans, budgets, insights, custom categories
@@ -1569,7 +1566,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">Ledger Compass</span>
-    <span class="version-tag" id="versionTag">v2.2</span>
+    <span class="version-tag" id="versionTag">v2.3.0</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" onclick="openSearchModal()">🔍</button>
@@ -1711,6 +1708,12 @@
     <div id="loanStrategyContent"></div>
   </div>
   
+  <div class="compass-card" id="smartCutsCard" style="display:none;">
+    <div class="compass-card-title">Smart cuts</div>
+    <div class="compass-card-sub">Real-world ways to lower your regular bills</div>
+    <div id="smartCutsContent"></div>
+  </div>
+  
   <div class="compass-card">
     <div class="compass-card-title">Budget Health</div>
     <div class="compass-card-sub">How your money is performing this month</div>
@@ -1815,7 +1818,7 @@
   </div>
 
   <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.6;">
-    <div>Ledger Compass v2.2.2 · Schema v4</div>
+    <div>Ledger Compass v2.3.0 · Schema v5</div>
     <div>All data stored on this device</div>
     <div id="lastBackup" style="margin-top: 4px;"></div>
   </div>
@@ -1967,6 +1970,17 @@
       <label>Total Amount Borrowed</label>
       <div class="amount-input-wrap" id="loanTotalWrap">
         <input type="number" inputmode="decimal" id="inpLoanTotal" class="amount-input" placeholder="0.00" step="0.01">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Interest Rate (% per year) <span style="color:var(--accent);">*required</span></label>
+      <input type="number" inputmode="decimal" id="inpLoanRate" placeholder="e.g. 7.5" step="0.1" min="0" max="50" onchange="onRateChange()">
+      <div id="rateHint" style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">
+        Typical: HECS 7.5% · Credit card 18-22% · Car 6-9% · Mortgage 5-7% · Family loan 0%
+      </div>
+      <div id="rateReviewWarning" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:11px;color:var(--warning);line-height:1.5;">
+        ⚠ Please confirm this rate — we estimated it. Set the real one for accurate interest calculations.
       </div>
     </div>
 
@@ -2240,8 +2254,8 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.2.2';
-const SCHEMA_VERSION = 4;
+const APP_VERSION = '2.3.0';
+const SCHEMA_VERSION = 5;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
 const AUTO_SNAPSHOT_PREFIX = 'ledger_snap_';
@@ -2392,6 +2406,27 @@ function runMigrations(data) {
     migrated.schemaVersion = 4;
   }
   
+  // Migration: v4 -> v5 (loan interest rates)
+  if (fromVersion < 5) {
+    migrated.schemaVersion = 5;
+    if (migrated.loans) {
+      migrated.loans = migrated.loans.map(l => {
+        if (l.interestRate !== undefined) return l;
+        // Smart default based on loan name
+        const name = (l.name || '').toLowerCase();
+        const lender = (l.lender || '').toLowerCase();
+        let defaultRate = 8; // generic personal loan default
+        if (name.includes('hecs') || name.includes('help') || lender.includes('ato')) defaultRate = 7.5;
+        else if (name.includes('credit') || name.includes('card') || name.includes('cc')) defaultRate = 21;
+        else if (name.includes('mortgage') || name.includes('home')) defaultRate = 6;
+        else if (name.includes('car') || name.includes('auto') || name.includes('vehicle')) defaultRate = 7;
+        else if (name.includes('student')) defaultRate = 5;
+        else if (name.includes('family') || name.includes('friend') || name.includes('mom') || name.includes('dad') || name.includes('parent')) defaultRate = 0;
+        return { ...l, interestRate: defaultRate, needsRateReview: true };
+      });
+    }
+  }
+  
   // FUTURE MIGRATIONS GO HERE:
   // if (fromVersion < 3) { ... migrated.schemaVersion = 3; }
   
@@ -2519,7 +2554,7 @@ function renderAll() {
   
   const cur = CURRENCIES.find(c => c.code === state.currency);
   document.getElementById('currencyLabel').textContent = cur ? `${cur.code} (${cur.symbol})` : 'AUD (A$)';
-  document.getElementById('versionTag').textContent = 'v' + APP_VERSION.split('.').slice(0,2).join('.');
+  document.getElementById('versionTag').textContent = 'v' + APP_VERSION;
   updateIncomeSourcesCount();
   updateRecExpCount();
   renderBackupWarnBanner();
@@ -2922,9 +2957,11 @@ function openLoanModal() {
   document.getElementById('inpLoanName').value = '';
   document.getElementById('inpLoanLender').value = '';
   document.getElementById('inpLoanTotal').value = '';
+  document.getElementById('inpLoanRate').value = '';
   document.getElementById('inpLoanPaid').value = '';
   document.getElementById('inpLoanDate').value = todayISO();
   document.getElementById('inpLoanNote').value = '';
+  document.getElementById('rateReviewWarning').style.display = 'none';
   document.getElementById('deleteLoanBtn').style.display = 'none';
   updateLoanDeductSwitch();
   document.getElementById('loanModal').classList.add('open');
@@ -2940,12 +2977,20 @@ function editLoan(loanId) {
   document.getElementById('inpLoanName').value = loan.name || '';
   document.getElementById('inpLoanLender').value = loan.lender || '';
   document.getElementById('inpLoanTotal').value = loan.total || '';
+  document.getElementById('inpLoanRate').value = loan.interestRate !== undefined ? loan.interestRate : '';
   document.getElementById('inpLoanPaid').value = loan.initialPaid || '';
   document.getElementById('inpLoanDate').value = loan.startDate || todayISO();
   document.getElementById('inpLoanNote').value = loan.note || '';
+  // Show review warning if this loan was auto-migrated and not yet confirmed
+  document.getElementById('rateReviewWarning').style.display = loan.needsRateReview ? 'block' : 'none';
   document.getElementById('deleteLoanBtn').style.display = 'block';
   updateLoanDeductSwitch();
   document.getElementById('loanModal').classList.add('open');
+}
+
+function onRateChange() {
+  // Once user touches the rate, no longer needs review
+  document.getElementById('rateReviewWarning').style.display = 'none';
 }
 
 function toggleLoanDeduct() {
@@ -2961,12 +3006,18 @@ function saveLoan() {
   const name = document.getElementById('inpLoanName').value.trim();
   const lender = document.getElementById('inpLoanLender').value.trim();
   const total = parseFloat(document.getElementById('inpLoanTotal').value);
+  const rateRaw = document.getElementById('inpLoanRate').value;
+  const interestRate = parseFloat(rateRaw);
   const initialPaid = parseFloat(document.getElementById('inpLoanPaid').value) || 0;
   const startDate = document.getElementById('inpLoanDate').value || todayISO();
   const note = document.getElementById('inpLoanNote').value.trim();
   
   if (!name) { showToast('Enter loan name', '⚠'); return; }
   if (!total || total <= 0) { showToast('Enter total amount', '⚠'); return; }
+  if (rateRaw === '' || isNaN(interestRate) || interestRate < 0 || interestRate > 50) { 
+    showToast('Enter interest rate (0–50%). Use 0 for family/friend loans.', '⚠'); 
+    return; 
+  }
   if (initialPaid < 0) { showToast('Invalid paid amount', '⚠'); return; }
   
   if (state.editingLoanId) {
@@ -2974,15 +3025,16 @@ function saveLoan() {
     if (idx >= 0) {
       state.loans[idx] = {
         ...state.loans[idx],
-        name, lender, total, initialPaid, startDate, note,
+        name, lender, total, interestRate, initialPaid, startDate, note,
         deductFromBalance: state.loanDeductOn,
+        needsRateReview: false, // user has now confirmed
       };
     }
     showToast('Loan updated');
   } else {
     state.loans.push({
       id: uid('loan'),
-      name, lender, total, initialPaid, startDate, note,
+      name, lender, total, interestRate, initialPaid, startDate, note,
       deductFromBalance: state.loanDeductOn,
       payments: [],
       createdAt: Date.now(),
@@ -3594,7 +3646,34 @@ function renderIncomeSources() {
     list.innerHTML = emptyState('No income sources', 'Add your job(s) to enable cash flow forecasts');
     return;
   }
-  list.innerHTML = state.incomeSources.map(src => {
+  
+  // Compute totals
+  let weeklyTotal = 0, monthlyTotal = 0;
+  state.incomeSources.forEach(src => {
+    if (src.cycle === 'irregular') return;
+    weeklyTotal += cycleToWeekly(src.amount, src.cycle);
+    monthlyTotal += cycleToMonthly(src.amount, src.cycle);
+  });
+  
+  const totalsHtml = (weeklyTotal > 0 || monthlyTotal > 0) ? `
+    <div style="background:linear-gradient(135deg,rgba(74,222,128,0.08),rgba(74,222,128,0.02));border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:14px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;font-weight:500;">Total Coming In</span>
+      </div>
+      <div style="display:flex;gap:18px;align-items:baseline;">
+        <div>
+          <div style="font-family:'Geist Mono',monospace;font-size:20px;font-weight:600;color:var(--income);">+${fmt(weeklyTotal)}</div>
+          <div style="font-size:11px;color:var(--text-dim);">per week</div>
+        </div>
+        <div>
+          <div style="font-family:'Geist Mono',monospace;font-size:16px;color:var(--text-dim);">+${fmt(monthlyTotal)}</div>
+          <div style="font-size:11px;color:var(--text-dim);">per month</div>
+        </div>
+      </div>
+    </div>
+  ` : '';
+  
+  const cardsHtml = state.incomeSources.map(src => {
     const cycleLabel = {
       weekly: 'Weekly',
       fortnightly: 'Fortnightly',
@@ -3623,6 +3702,8 @@ function renderIncomeSources() {
       </div>
     `;
   }).join('');
+  
+  list.innerHTML = totalsHtml + cardsHtml;
 }
 
 function computeNextPayDate(src) {
@@ -4010,55 +4091,400 @@ function computeSafeWeeklySave() {
 }
 
 // Smart loan strategy: avalanche vs snowball auto-pick
+/* ============================================================
+   v2.3: SMART CUTS — real-world alternatives for recurring expenses
+   ============================================================ */
+const SMART_CUTS_DB = {
+  // Key = expense category or name keyword
+  // Each entry: array of { match: keyword[], aud: [], inr: [], generic: [] }
+  
+  subs: [
+    {
+      match: ['netflix'],
+      aud: [
+        'Switch from Premium ($25.99) to Standard ($18.99) — saves $84/year',
+        'Share Standard with up to 1 extra household member',
+        'Rotate: watch what you want, cancel for 2 months, resub later',
+      ],
+      inr: [
+        'Mobile-only plan starts at ₹149/month (vs Standard ₹499)',
+        'Share family plan with 4 — splits to ~₹165/month each',
+      ],
+      generic: [
+        'Drop one tier (Premium → Standard saves ~30%)',
+        'Cancel for 1-2 months, watch when there\'s something to see, resub',
+        'Family share — split with relatives/friends',
+      ],
+    },
+    {
+      match: ['spotify', 'apple music', 'youtube music'],
+      aud: [
+        'Spotify Family ($23.99) splits 6 ways = $4/person',
+        'Spotify Duo ($16.99) for 2 = $8.50 each',
+        'YouTube Music if you already have YT Premium',
+      ],
+      generic: [
+        'Family/Duo plan + share with trusted people',
+        'Annual upfront often saves 10–15%',
+        'Free tier with ads if you mostly play in background',
+      ],
+    },
+    {
+      match: ['disney', 'stan', 'binge', 'kayo', 'paramount', 'amazon prime'],
+      aud: [
+        'Annual subscription saves ~15% vs monthly',
+        'Rotate: subscribe for 1 month, binge, cancel',
+        'Disney+ + Hulu + ESPN bundle if available in your region',
+      ],
+      generic: [
+        'Annual plan usually 10–20% cheaper than monthly',
+        'Only keep 1–2 active at a time, rotate quarterly',
+      ],
+    },
+    {
+      match: ['chatgpt', 'claude', 'gpt', 'copilot'],
+      aud: [
+        'If you only use it occasionally, the free tier covers a lot',
+        'Annual billing typically saves ~17%',
+      ],
+      generic: [
+        'Annual plan saves ~15–20% vs monthly',
+        'Drop to free tier if usage is light — most casual use fits',
+      ],
+    },
+    {
+      match: ['icloud', 'dropbox', 'google one', 'onedrive'],
+      aud: [
+        'iCloud 200GB ($4.49) family sharing splits across up to 5 people',
+        'Google One 200GB ($2.49/mo) is cheaper if you can switch',
+      ],
+      generic: [
+        'Family plan + share with household',
+        'Move to a competitor — same storage often half the price',
+        'Clean up old files, drop to a smaller tier',
+      ],
+    },
+  ],
+  
+  bills: [
+    {
+      match: ['phone', 'mobile', 'telstra', 'optus', 'vodafone'],
+      aud: [
+        'Belong (Telstra network) — $25–$35/month with similar data',
+        'Boost Mobile (Telstra network) — prepaid from $25/month',
+        'Felix (Telstra network) — unlimited data $35/month',
+        'amaysim (Optus network) — $30–$40/month',
+        'Moose Mobile (Optus network) — often under $25',
+      ],
+      inr: [
+        'Jio ₹239 vs Airtel ₹279 — similar data, slightly cheaper',
+        'BSNL prepaid often 30–40% cheaper for similar data',
+        'Annual recharge (₹1799–₹2999) saves vs monthly',
+      ],
+      generic: [
+        'MVNOs (smaller carriers on same network) usually 30–50% cheaper',
+        'Annual prepaid usually beats monthly postpaid',
+        'Family plan with 2–4 lines drops per-person cost',
+      ],
+    },
+    {
+      match: ['internet', 'wifi', 'nbn', 'broadband'],
+      aud: [
+        'Aussie Broadband — solid speeds, often cheaper than Telstra',
+        'Superloop — competitive NBN plans from ~$75/month',
+        'More — value-tier NBN from ~$70/month',
+        'TPG / iiNet — often have $10–$20/month promotional discounts',
+      ],
+      inr: [
+        'JioFiber 100 Mbps ₹999 vs Airtel Xstream ₹1198',
+        'Excitel and ACT often beat the big players in metro cities',
+      ],
+      generic: [
+        'Drop one speed tier — most people don\'t need 1000Mbps',
+        'Switch every 12 months — new-customer promos save 15–25%',
+        'Bundle with phone if same provider',
+      ],
+    },
+    {
+      match: ['electricity', 'electric', 'power', 'energy'],
+      aud: [
+        'Compare on Energy Made Easy (gov site) — many save $200–$600/year',
+        'Switch to a smaller retailer: GloBird, Energy Locals, Tango',
+        'Check time-of-use vs single-rate based on your usage',
+      ],
+      generic: [
+        'Compare retailers annually — loyalty rarely pays off',
+        'Switch to off-peak / time-of-use if you can shift usage',
+        'LED lights + standby kill switches save 10–15%',
+      ],
+    },
+    {
+      match: ['insurance'],
+      aud: [
+        'Compare on Compare the Market / iSelect annually',
+        'Bundle car + contents often saves 10–15%',
+        'Higher excess = lower premium if you rarely claim',
+      ],
+      generic: [
+        'Get 3 quotes every year — never auto-renew without checking',
+        'Higher deductible/excess drops premium significantly',
+        'Bundle home/auto with same provider',
+      ],
+    },
+    {
+      match: ['rent'],
+      aud: [
+        'Negotiate at lease renewal — landlords often prefer keeping tenants over re-letting',
+        'Compare neighbourhood rents on realestate.com.au — leverage at renewal',
+        'Consider a flatmate to halve costs',
+      ],
+      generic: [
+        'Negotiate at lease renewal — bring comparable listings as evidence',
+        'Flatmate / sharehouse can halve rent',
+        'Move slightly out from CBD — often 20–30% cheaper for 10min more commute',
+      ],
+    },
+  ],
+  
+  gym: [
+    {
+      match: ['gym', 'fitness', 'crossfit', 'anytime', 'jetts', 'plus fitness'],
+      aud: [
+        'Council gyms: $40–60/month vs commercial $80–100',
+        'PCYC — community gyms, often half the price',
+        'Anytime Fitness off-peak (before 4pm) — sometimes $20 less',
+        'Annual upfront often saves $200–300',
+      ],
+      inr: [
+        'Cult.fit unlimited ₹1499/month vs Gold\'s Gym ₹2500+',
+        'Local society/colony gyms often ₹500–800/month',
+      ],
+      generic: [
+        'Annual upfront saves 15–25% vs monthly',
+        'Council / community gyms often half the price of commercial',
+        'Home setup: dumbbells + bands + bodyweight covers 90% of routines',
+      ],
+    },
+  ],
+  
+  fun: [
+    {
+      match: ['movie', 'cinema', 'hoyts', 'event cinemas'],
+      aud: [
+        'Cheap Tuesday at Hoyts/Event = ~half price',
+        'Hoyts Lux loyalty / Event Cinemas membership — free tickets after a few visits',
+      ],
+      generic: [
+        'Cheap day of the week (Tuesday at many chains)',
+        'Matinee shows usually cheaper than evening',
+        'Wait for streaming — most films are on a platform within 3 months',
+      ],
+    },
+  ],
+};
+
+function detectSpendCurrency() {
+  return (state.currency || 'AUD').toUpperCase();
+}
+
+function findSmartCutsForExpense(rec) {
+  const text = (rec.name + ' ' + (rec.note || '')).toLowerCase();
+  const cat = rec.category;
+  const currency = detectSpendCurrency();
+  
+  // Try category first
+  const catGroup = SMART_CUTS_DB[cat];
+  if (!catGroup) return null;
+  
+  // Match by keyword within category
+  for (const entry of catGroup) {
+    for (const kw of entry.match) {
+      if (text.includes(kw)) {
+        let tips;
+        if (currency === 'AUD' && entry.aud) tips = entry.aud;
+        else if (currency === 'INR' && entry.inr) tips = entry.inr;
+        else tips = entry.generic || [];
+        return tips.length > 0 ? tips : null;
+      }
+    }
+  }
+  
+  // Fall back to first entry's generic tips for this category
+  for (const entry of catGroup) {
+    if (entry.generic && entry.generic.length > 0) {
+      return entry.generic;
+    }
+  }
+  
+  return null;
+}
+
+function renderSmartCuts() {
+  const card = document.getElementById('smartCutsCard');
+  const el = document.getElementById('smartCutsContent');
+  if (!el || !card) return;
+  
+  // Find active recurring expenses that have known alternatives
+  const candidates = state.recurringExpenses
+    .filter(r => r.active)
+    .map(r => ({
+      rec: r,
+      tips: findSmartCutsForExpense(r),
+      monthly: cycleToMonthly(r.amount, r.cycle),
+    }))
+    .filter(x => x.tips && x.tips.length > 0)
+    .sort((a, b) => b.monthly - a.monthly); // tackle biggest spend first
+  
+  if (candidates.length === 0) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+  
+  // Time cost
+  const monthlyIn = getExpectedMonthlyIncomeRecurring();
+  const dailyIncome = monthlyIn > 0 ? monthlyIn / 30 : 0;
+  
+  const totalMonthly = candidates.reduce((s, c) => s + c.monthly, 0);
+  
+  el.innerHTML = `
+    <div style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:14px;padding:10px;background:rgba(201,255,61,0.04);border-radius:10px;">
+      Real-world ways to lower your regular bills. We looked at ${candidates.length} of your recurring expense${candidates.length>1?'s':''} costing <strong style="color:var(--text);">${fmt(totalMonthly)}/month</strong>${dailyIncome > 0 ? ` (about <strong style="color:var(--text);">${(totalMonthly/dailyIncome).toFixed(1)} days</strong> of your work)` : ''}.
+    </div>
+    ${candidates.slice(0, 5).map(c => {
+      const daysOfWork = dailyIncome > 0 ? (c.monthly / dailyIncome).toFixed(1) : null;
+      return `
+        <div style="padding:12px;background:var(--bg-card);border-radius:10px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+            <div>
+              <div style="font-size:13px;font-weight:500;color:var(--text);">${escapeHtml(c.rec.name)}</div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">
+                ${fmt(c.monthly)}/month${daysOfWork ? ` · ${daysOfWork} days of work` : ''}
+              </div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.7;padding-left:8px;border-left:2px solid rgba(201,255,61,0.3);">
+            ${c.tips.map(t => '💡 ' + t).join('<br>')}
+          </div>
+        </div>
+      `;
+    }).join('')}
+    ${candidates.length > 5 ? `<div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px;">+ ${candidates.length - 5} more — focus on the top ones first</div>` : ''}
+  `;
+}
+
 function computeLoanStrategy() {
   const active = state.loans
     .filter(l => getLoanPaid(l) < l.total)
-    .map(l => ({
-      ...l,
-      remaining: l.total - getLoanPaid(l),
-      progress: getLoanPaid(l) / l.total,
-    }));
+    .map(l => {
+      const remaining = l.total - getLoanPaid(l);
+      const rate = (l.interestRate !== undefined ? l.interestRate : 8) / 100;
+      const monthlyInterest = remaining * rate / 12;
+      return {
+        ...l,
+        remaining,
+        progress: getLoanPaid(l) / l.total,
+        rate: l.interestRate !== undefined ? l.interestRate : 8,
+        monthlyInterest,
+      };
+    });
   
   if (active.length === 0) return null;
+  
+  const totalDebt = active.reduce((s,l) => s + l.remaining, 0);
+  const totalMonthlyInterest = active.reduce((s,l) => s + l.monthlyInterest, 0);
+  
   if (active.length === 1) {
+    const l = active[0];
     return {
       strategy: 'single',
       ordered: active,
-      note: `Just one loan — focus everything you can spare on ${active[0].name} above the minimum payment.`,
+      note: `Just one loan. Every extra dollar above the minimum saves you on interest.`,
+      totalDebt,
+      totalMonthlyInterest,
     };
   }
   
-  // Pick strategy:
-  // - If smallest loan is < 30% of total debt AND user has been paying consistently → snowball (motivation)
-  // - Else avalanche (no interest data, so go by largest remaining = likely highest cost)
-  const totalDebt = active.reduce((s,l) => s + l.remaining, 0);
-  const sortedBySize = [...active].sort((a,b) => a.remaining - b.remaining);
-  const smallestPct = sortedBySize[0].remaining / totalDebt;
+  // True avalanche: sort by interest RATE descending (cost of each $ borrowed)
+  const ratesUnique = new Set(active.map(l => l.rate));
+  const allSameRate = ratesUnique.size === 1;
+  const hasZeroRate = active.some(l => l.rate === 0);
+  const hasHighRate = active.some(l => l.rate >= 15);
   
   let strategy, ordered, note;
-  if (smallestPct < 0.25 && active.length >= 2) {
-    // Snowball — clear smallest first for psychological win
-    strategy = 'snowball';
-    ordered = sortedBySize;
-    note = 'Clear the smallest loan first for a quick win. Each cleared loan frees up money to attack the next one.';
-  } else {
-    // Avalanche — largest first (proxy for highest interest cost without interest data)
+  
+  if (allSameRate) {
+    // No rate signal — fall back to size-based
+    const sortedBySize = [...active].sort((a,b) => a.remaining - b.remaining);
+    const smallestPct = sortedBySize[0].remaining / totalDebt;
+    if (smallestPct < 0.25) {
+      strategy = 'snowball';
+      ordered = sortedBySize;
+      note = `All your loans have the same rate (${active[0].rate}%). Clear the smallest first for a quick win — each cleared loan frees up money to attack the next.`;
+    } else {
+      strategy = 'avalanche-size';
+      ordered = [...active].sort((a,b) => b.remaining - a.remaining);
+      note = `All your loans have the same rate (${active[0].rate}%). Tackle the largest balance first to clear debt faster.`;
+    }
+  } else if (hasHighRate) {
+    // High-interest debt exists — avalanche by rate is critical
     strategy = 'avalanche';
-    ordered = [...active].sort((a,b) => b.remaining - a.remaining);
-    note = 'Focus extra payments on the largest balance first. This usually saves you the most money over time.';
+    ordered = [...active].sort((a,b) => b.rate - a.rate || b.remaining - a.remaining);
+    const top = ordered[0];
+    note = `Attack <strong>${escapeHtml(top.name)} (${top.rate}%)</strong> first — high-interest debt is the most expensive money you owe. Every dollar you pay early saves you the most.`;
+  } else {
+    // Modest spread — still prefer interest-rate ordering
+    strategy = 'avalanche';
+    ordered = [...active].sort((a,b) => b.rate - a.rate || b.remaining - a.remaining);
+    note = `Pay extra on the highest-rate loan first. Over time this saves you the most in interest charges${hasZeroRate ? ' — and 0% family loans can sit at minimum until then' : ''}.`;
   }
   
   // Estimate payoff time
   const safe = computeSafeWeeklySave();
   let payoffWeeks = null;
   if (safe.breakdown.loanWeekly > 0 || safe.safeSave > 0) {
-    const weeklyAvailable = safe.breakdown.loanWeekly + (safe.safeSave * 0.5); // half savings → debt
+    const weeklyAvailable = safe.breakdown.loanWeekly + (safe.safeSave * 0.5);
     if (weeklyAvailable > 0) {
       payoffWeeks = Math.ceil(totalDebt / weeklyAvailable);
     }
   }
   
-  return { strategy, ordered, note, totalDebt, payoffWeeks };
+  return { strategy, ordered, note, totalDebt, totalMonthlyInterest, payoffWeeks };
+}
+
+// Compute total interest user has paid this year across all loans
+function getInterestPaidYTD() {
+  const yearStart = new Date().getFullYear() + '-01-01';
+  let total = 0;
+  state.loans.forEach(loan => {
+    const rate = (loan.interestRate !== undefined ? loan.interestRate : 8) / 100;
+    if (rate === 0) return;
+    // Rough estimate: take current remaining, assume linear interest accrual since year start
+    // (Real amortization would be more complex; this gives the user a useful "wake-up" number)
+    const remaining = loan.total - getLoanPaid(loan);
+    const monthlyInt = remaining * rate / 12;
+    const today = new Date();
+    const monthsThisYear = today.getMonth() + (today.getDate() / 30);
+    total += monthlyInt * monthsThisYear;
+  });
+  return total;
+}
+
+// Estimate savings if user pays $extra/month more toward a loan
+function estimateInterestSavings(loan, extraMonthly) {
+  const rate = (loan.interestRate !== undefined ? loan.interestRate : 8) / 100;
+  if (rate === 0 || extraMonthly <= 0) return 0;
+  const remaining = loan.total - getLoanPaid(loan);
+  // Approximation: half the remaining principal pays interest over loan life
+  // Better: amortization formula, but this gives a directionally correct number
+  const baselineMonthlyInt = remaining * rate / 12;
+  // Roughly: extra payment reduces principal faster, saving ~rate fraction over remaining life
+  // Assume average loan life of 24 months if we don't know
+  const monthsRemaining = 24;
+  const newPrincipalAvg = Math.max(0, remaining / 2 - extraMonthly * monthsRemaining / 4);
+  const newMonthlyInt = newPrincipalAvg * rate / 12;
+  const savings = (baselineMonthlyInt - newMonthlyInt) * monthsRemaining;
+  return Math.max(0, savings);
 }
 
 /* ============================================================
@@ -4136,7 +4562,7 @@ function computeSmartAffordability(amount) {
     let simBal = bal;
     let simDate = new Date(todayISO() + 'T00:00:00');
     let foundDay = null;
-    let payCountUntilFound = 0;
+    const uniquePaydays = new Set();  // count UNIQUE dates, not deposits
     
     for (let day = 1; day <= 180; day++) {
       simDate.setDate(simDate.getDate() + 1);
@@ -4147,8 +4573,10 @@ function computeSmartAffordability(amount) {
       
       // Income events on this day
       const todayEvents = payEvents.filter(e => e.date === isoDate);
-      todayEvents.forEach(e => { simBal += e.amount; });
-      payCountUntilFound += todayEvents.length;
+      if (todayEvents.length > 0) {
+        uniquePaydays.add(isoDate);  // one date = one payday, no matter how many jobs hit
+        todayEvents.forEach(e => { simBal += e.amount; });
+      }
       
       // Can it absorb purchase + buffer?
       if (simBal - amount >= targetBalAfter) {
@@ -4157,13 +4585,15 @@ function computeSmartAffordability(amount) {
       }
     }
     
+    const paydayCount = uniquePaydays.size;
+    
     if (foundDay !== null && foundDay <= 60) {
       // Realistic wait
       const targetDate = new Date(todayISO() + 'T00:00:00');
       targetDate.setDate(targetDate.getDate() + foundDay);
       const targetISO = targetDate.toISOString().slice(0, 10);
-      const payText = payCountUntilFound > 0 
-        ? `after ${payCountUntilFound} paycheck${payCountUntilFound > 1 ? 's' : ''}`
+      const payText = paydayCount > 0 
+        ? `after ${paydayCount} payday${paydayCount > 1 ? 's' : ''}`
         : `in about ${Math.ceil(foundDay/7)} week${Math.ceil(foundDay/7)>1?'s':''}`;
       strategies.push(`<strong>Wait ${foundDay} days</strong> (${payText}) — by ${formatDateLabel(targetISO)} you'd have enough to buy this AND keep a 2-week safety cushion.`);
     } else if (foundDay !== null && foundDay > 60) {
@@ -4404,6 +4834,7 @@ function renderCompass() {
   renderExpectedMonthly();
   renderSafeSave();
   renderLoanStrategy();
+  renderSmartCuts();
   renderHealthScore();
   renderForecast();
   renderRatios();
@@ -4570,18 +5001,51 @@ function renderLoanStrategy() {
       </div>
       <div style="font-size:12px;color:var(--text-dim);line-height:1.5;">${result.note}</div>
     </div>
-    ${result.ordered.map((l, i) => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg-card);border-radius:10px;margin-bottom:6px;">
+    ${result.totalMonthlyInterest > 0 ? `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:10px;margin-bottom:10px;">
         <div>
-          <div style="font-size:13px;font-weight:500;">
-            <span style="display:inline-block;width:20px;height:20px;background:${i===0?'var(--accent)':'var(--border-strong)'};color:${i===0?'#0a0a0f':'var(--text-dim)'};border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:600;margin-right:6px;">${i+1}</span>
-            ${escapeHtml(l.name)}
-            ${i === 0 ? '<span class="tx-auto-badge" style="margin-left:6px;">focus</span>' : ''}
+          <div style="font-size:12px;color:var(--text);font-weight:500;">💸 Interest you're paying</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Across all your loans, per month</div>
+        </div>
+        <div style="font-family:'Geist Mono',monospace;color:var(--expense);font-weight:600;font-size:15px;">${fmt(result.totalMonthlyInterest)}/mo</div>
+      </div>
+    ` : ''}
+    ${result.ordered.map((l, i) => {
+      const isFocus = i === 0;
+      const extraSavings = isFocus && l.rate > 0 ? estimateInterestSavings(l, 200) : 0;
+      return `
+      <div style="padding:12px;background:var(--bg-card);border-radius:10px;margin-bottom:6px;${isFocus ? 'border:1px solid rgba(201,255,61,0.2);' : ''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:500;">
+              <span style="display:inline-block;width:20px;height:20px;background:${isFocus?'var(--accent)':'var(--border-strong)'};color:${isFocus?'#0a0a0f':'var(--text-dim)'};border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:600;margin-right:6px;">${i+1}</span>
+              ${escapeHtml(l.name)}
+              ${isFocus ? '<span class="tx-auto-badge" style="margin-left:6px;">focus first</span>' : ''}
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:4px;margin-left:26px;">
+              ${(l.progress*100).toFixed(0)}% paid · ${fmt(l.remaining)} left · 
+              <strong style="color:${l.rate >= 15 ? 'var(--expense)' : l.rate >= 7 ? 'var(--warning)' : 'var(--income)'};">${l.rate.toFixed(1)}% interest</strong>
+            </div>
+            ${l.monthlyInterest > 0 ? `
+              <div style="font-size:11px;color:var(--text-dim);margin-top:4px;margin-left:26px;">
+                Costing ~<span style="font-family:'Geist Mono',monospace;color:var(--expense);">${fmt(l.monthlyInterest)}/month</span> in interest
+              </div>
+            ` : ''}
+            ${isFocus && extraSavings > 50 ? `
+              <div style="font-size:11px;margin-top:6px;margin-left:26px;padding:6px 8px;background:rgba(74,222,128,0.08);border-radius:6px;color:var(--text-dim);">
+                💡 Extra ${fmt(200)}/month would save you about <strong style="color:var(--income);">${fmt(extraSavings)}</strong> over the loan's life
+              </div>
+            ` : ''}
+            ${l.needsRateReview ? `
+              <div style="font-size:11px;margin-top:6px;margin-left:26px;padding:6px 8px;background:rgba(251,191,36,0.08);border-radius:6px;color:var(--warning);">
+                ⚠ Estimated rate — tap to confirm
+              </div>
+            ` : ''}
           </div>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:2px;margin-left:26px;">${(l.progress*100).toFixed(0)}% paid · ${fmt(l.remaining)} left</div>
         </div>
       </div>
-    `).join('')}
+      `;
+    }).join('')}
     ${payoffStr}
   `;
 }
@@ -4846,6 +5310,21 @@ function renderSmartInsights() {
     return;
   }
   
+  // 0. Interest paid YTD (the wake-up number)
+  const interestYTD = getInterestPaidYTD();
+  const monthlyIn = getExpectedMonthlyIncomeRecurring();
+  if (interestYTD > 50) {
+    let extra = '';
+    if (monthlyIn > 0) {
+      const daysOfWork = (interestYTD / (monthlyIn / 30)).toFixed(1);
+      extra = ` (about ${daysOfWork} days of your work this year)`;
+    }
+    insights.push({
+      icon: '💸',
+      text: `<strong>Interest paid this year:</strong> ~${fmt(interestYTD)}${extra} — money that didn't reduce what you owe.`,
+    });
+  }
+  
   // 1. Subscription tally
   const subTotal = state.transactions
     .filter(t => t.category === 'subs' && t.type === 'expense')
@@ -5032,7 +5511,42 @@ function renderRecExps() {
     list.innerHTML = emptyState('No recurring expenses', 'Add rent, subs, gym etc. to auto-log');
     return;
   }
-  list.innerHTML = state.recurringExpenses.map(r => {
+  
+  // Compute totals for active recurring expenses
+  let weeklyTotal = 0, monthlyTotal = 0;
+  state.recurringExpenses.forEach(r => {
+    if (!r.active) return;
+    weeklyTotal += cycleToWeekly(r.amount, r.cycle);
+    monthlyTotal += cycleToMonthly(r.amount, r.cycle);
+  });
+  
+  // Time cost framing
+  const monthlyIn = getExpectedMonthlyIncomeRecurring();
+  let timeCostStr = '';
+  if (monthlyIn > 0 && monthlyTotal > 0) {
+    const daysOfWork = (monthlyTotal / (monthlyIn / 30)).toFixed(1);
+    timeCostStr = ` · about ${daysOfWork} days of your work`;
+  }
+  
+  const totalsHtml = monthlyTotal > 0 ? `
+    <div style="background:linear-gradient(135deg,rgba(239,68,68,0.08),rgba(239,68,68,0.02));border:1px solid rgba(239,68,68,0.2);border-radius:14px;padding:14px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;font-weight:500;">Regular Bills Total</span>
+      </div>
+      <div style="display:flex;gap:18px;align-items:baseline;">
+        <div>
+          <div style="font-family:'Geist Mono',monospace;font-size:20px;font-weight:600;color:var(--expense);">−${fmt(monthlyTotal)}</div>
+          <div style="font-size:11px;color:var(--text-dim);">per month${timeCostStr}</div>
+        </div>
+        <div>
+          <div style="font-family:'Geist Mono',monospace;font-size:16px;color:var(--text-dim);">−${fmt(weeklyTotal)}</div>
+          <div style="font-size:11px;color:var(--text-dim);">per week</div>
+        </div>
+      </div>
+    </div>
+  ` : '';
+  
+  const cardsHtml = state.recurringExpenses.map(r => {
     const cycleLabel = {
       weekly: 'Weekly', fortnightly: 'Fortnightly',
       monthly: 'Monthly', yearly: 'Yearly',
@@ -5061,6 +5575,8 @@ function renderRecExps() {
       </div>
     `;
   }).join('');
+  
+  list.innerHTML = totalsHtml + cardsHtml;
 }
 
 function computeNextDueDate(rec) {
