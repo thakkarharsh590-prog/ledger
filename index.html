@@ -4,26 +4,28 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.3.0
+  Version:      2.4.0
   Last edited:  2026-05-16
   Storage:      localStorage (device-local, never sent to cloud)
-  Schema ver:   5 (auto-migrates from v1-v4)
+  Schema ver:   6 (auto-migrates from v1-v5)
   
   NAMED: Ledger Compass
   
-  v2.3.0 — THE INTELLIGENCE LAYER:
-  - Pay cycle bug REAL fix: counts unique PAY DAYS, not deposits
-    (3 jobs paying same day = 1 payday, not 3 paychecks)
-  - Loan model: interestRate REQUIRED with smart defaults
-    (HECS 7.5%, CC 21%, car 7%, mortgage 6%, personal 12%, family 0%)
-  - True avalanche strategy by interest rate, not balance
-  - Per-loan: monthly interest cost, total interest paid YTD,
-    "extra $X saves you $Y over life of loan"
-  - Smart Cuts: Australia (AUD) / India (INR) / Generic suggestions
-    Per category alternatives (subs, gym, phone, internet, etc.)
-  - Income Sources + Recurring Expenses pages show TOTALS
-  - Time-cost framing: "$X/month = Y days of your work"
-  - All v2.2.2 plain language preserved
+  v2.4.0 — SAVINGS + INLINE SMART CUTS:
+  - Pay cycle text now uses WEEKS not paydays
+    (3 jobs on different days = many "paydays" was confusing,
+     so we drop that number entirely — "after 5 weeks" is clear)
+  - NEW: Savings tab with deposits/withdrawals + goals
+    * Track money set aside
+    * Reflects in cash flow forecast
+    * Optional goals (Emergency Fund, Trip, etc.) with progress
+  - Smart Cuts moved INLINE to each recurring expense
+    * "💡 Save here" button on each card
+    * Tap to expand alternatives
+    * Strict matching — no wrong suggestions
+  - Compass slimmed: removed Smart Cuts card (now inline)
+  - Smart Cuts matcher rewritten: returns null on no match,
+    no more falling through to wrong category tips
   
   COMPLETED FEATURES (carry-over):
   - Transactions, loans, budgets, insights, custom categories
@@ -159,11 +161,16 @@
     flex-shrink: 0;
   }
   .version-tag {
-    font-size: 9px;
-    color: var(--text-muted);
+    font-size: 10px;
+    color: var(--accent);
+    background: rgba(201,255,61,0.1);
+    border: 1px solid rgba(201,255,61,0.3);
+    padding: 2px 6px;
+    border-radius: 6px;
     font-family: 'Geist Mono', monospace;
     margin-left: 4px;
-    vertical-align: super;
+    font-weight: 500;
+    letter-spacing: 0;
   }
   .topbar-actions { display: flex; gap: 8px; }
   .icon-btn {
@@ -1548,6 +1555,48 @@
     background: var(--income);
     color: #0a0a0f;
   }
+  /* Inline Smart Cuts on recurring expense cards */
+  .save-here-row {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: rgba(201,255,61,0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+  .save-here-row:active { background: rgba(201,255,61,0.1); }
+  .save-here-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .save-here-chev {
+    color: var(--accent);
+    font-size: 16px;
+    transition: transform .2s ease;
+    line-height: 1;
+  }
+  .save-here-tips {
+    margin-top: 6px;
+    padding: 10px 12px;
+    background: rgba(201,255,61,0.04);
+    border-left: 2px solid rgba(201,255,61,0.4);
+    border-radius: 0 8px 8px 0;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  .save-tip {
+    padding: 4px 0;
+  }
+  .save-tip:not(:last-child) {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    padding-bottom: 6px;
+    margin-bottom: 4px;
+  }
+  
   /* Collapsible details (see the math) */
   details summary::-webkit-details-marker { display: none; }
   details summary::marker { content: ''; }
@@ -1566,7 +1615,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">Ledger Compass</span>
-    <span class="version-tag" id="versionTag">v2.3.0</span>
+    <span class="version-tag" id="versionTag">v2.4.0</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" onclick="openSearchModal()">🔍</button>
@@ -1708,12 +1757,6 @@
     <div id="loanStrategyContent"></div>
   </div>
   
-  <div class="compass-card" id="smartCutsCard" style="display:none;">
-    <div class="compass-card-title">Smart cuts</div>
-    <div class="compass-card-sub">Real-world ways to lower your regular bills</div>
-    <div id="smartCutsContent"></div>
-  </div>
-  
   <div class="compass-card">
     <div class="compass-card-title">Budget Health</div>
     <div class="compass-card-sub">How your money is performing this month</div>
@@ -1781,6 +1824,11 @@
     <span class="setting-value" id="recurringExpensesCount">—</span>
   </div>
 
+  <div class="setting-row" onclick="goPage('savings')">
+    <span class="setting-label">💰 Savings & Goals</span>
+    <span class="setting-value" id="savingsCount">—</span>
+  </div>
+
   <div class="setting-row" onclick="exportData()">
     <span class="setting-label">Export Data (JSON)</span>
     <span class="setting-value">↓</span>
@@ -1809,7 +1857,7 @@
 
   <div class="setting-row" onclick="refreshApp()" style="border-color: rgba(201,255,61,0.2);">
     <span class="setting-label" style="color: var(--accent);">↻ Refresh App (Force Update)</span>
-    <span class="setting-value" id="versionDisplay">v2.1.0</span>
+    <span class="setting-value" id="versionDisplay">v2.4.0</span>
   </div>
 
   <div class="setting-row" style="border-color: rgba(255,107,107,0.2);" onclick="confirmClearAll()">
@@ -1818,7 +1866,7 @@
   </div>
 
   <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.6;">
-    <div>Ledger Compass v2.3.0 · Schema v5</div>
+    <div>Ledger Compass v2.4.0 · Schema v6</div>
     <div>All data stored on this device</div>
     <div id="lastBackup" style="margin-top: 4px;"></div>
   </div>
@@ -1848,6 +1896,113 @@
     Set fixed expenses (rent, Netflix, gym) to auto-log on their due dates. Skip the manual entry forever.
   </div>
   <div id="recExpList"></div>
+</div>
+
+<!-- SAVINGS PAGE -->
+<div class="page" id="page-savings">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <button class="back-btn" onclick="goPage('settings')">← Back</button>
+    <span class="link" onclick="openSavingsModal()">+ Log</span>
+  </div>
+  <div class="section-title"><h2>Savings & Goals</h2></div>
+  
+  <div id="savingsTotalCard"></div>
+  
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px;">
+    <h3 style="font-family:'Fraunces',serif;font-size:18px;font-weight:500;letter-spacing:-0.01em;">Goals</h3>
+    <span class="link" onclick="openGoalModal()">+ New goal</span>
+  </div>
+  <div id="goalsList"></div>
+  
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px;">
+    <h3 style="font-family:'Fraunces',serif;font-size:18px;font-weight:500;letter-spacing:-0.01em;">History</h3>
+  </div>
+  <div id="savingsHistory"></div>
+</div>
+
+<!-- SAVINGS LOG MODAL -->
+<div class="modal-backdrop" id="savingsModal" onclick="closeModalOnBg(event, 'savingsModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="savingsModalTitle">Log Savings</div>
+    <div class="modal-sub">Move money to/from savings</div>
+    
+    <div class="toggle-row">
+      <div class="toggle-opt income" data-savetype="deposit" onclick="setSavingsType('deposit')">📥 Deposit</div>
+      <div class="toggle-opt expense" data-savetype="withdraw" onclick="setSavingsType('withdraw')">📤 Withdraw</div>
+    </div>
+    
+    <div class="field">
+      <label>Amount</label>
+      <div class="amount-input-wrap">
+        <input type="number" inputmode="decimal" id="inpSavingsAmount" class="amount-input" placeholder="0.00" step="0.01">
+      </div>
+    </div>
+    
+    <div class="field">
+      <label>Note (optional)</label>
+      <input type="text" id="inpSavingsNote" placeholder="e.g. Monthly transfer, Trip fund">
+    </div>
+    
+    <div class="field">
+      <label>Goal (optional)</label>
+      <select id="inpSavingsGoal" style="width:100%;padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:inherit;font-size:14px;">
+        <option value="">— No specific goal —</option>
+      </select>
+    </div>
+    
+    <div class="field">
+      <label>Date</label>
+      <input type="date" id="inpSavingsDate">
+    </div>
+    
+    <div class="switch-row">
+      <div>
+        <div class="switch-label">Affect main balance</div>
+        <div class="switch-hint">Treats as an expense/income on your balance</div>
+      </div>
+      <div class="switch on" id="savingsAffectsBalanceSwitch" onclick="toggleSavingsAffectsBalance()"></div>
+    </div>
+    
+    <button class="btn-primary" onclick="saveSavingsEntry()">Save</button>
+    <button class="btn-danger" id="savingsDeleteBtn" style="display:none" onclick="deleteSavingsEntry()">Delete</button>
+    <button class="btn-secondary" onclick="closeModal('savingsModal')">Cancel</button>
+  </div>
+</div>
+
+<!-- GOAL MODAL -->
+<div class="modal-backdrop" id="goalModal" onclick="closeModalOnBg(event, 'goalModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="goalModalTitle">New Goal</div>
+    <div class="modal-sub">Set something to save toward</div>
+    
+    <div class="field">
+      <label>Goal Name</label>
+      <input type="text" id="inpGoalName" placeholder="e.g. Emergency fund, Trip to Japan">
+    </div>
+    
+    <div class="field">
+      <label>Emoji (optional)</label>
+      <input type="text" id="inpGoalEmoji" placeholder="🎯" maxlength="2">
+    </div>
+    
+    <div class="field">
+      <label>Target Amount</label>
+      <div class="amount-input-wrap">
+        <input type="number" inputmode="decimal" id="inpGoalTarget" class="amount-input" placeholder="0.00" step="0.01">
+      </div>
+    </div>
+    
+    <div class="field">
+      <label>Deadline (optional)</label>
+      <input type="date" id="inpGoalDeadline">
+    </div>
+    
+    <button class="btn-primary" onclick="saveGoal()">Save Goal</button>
+    <button class="btn-danger" id="goalDeleteBtn" style="display:none" onclick="deleteGoal()">Delete</button>
+    <button class="btn-secondary" onclick="closeModal('goalModal')">Cancel</button>
+  </div>
 </div>
 
 <!-- ADD/EDIT TX MODAL -->
@@ -2254,8 +2409,8 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.3.0';
-const SCHEMA_VERSION = 5;
+const APP_VERSION = '2.4.0';
+const SCHEMA_VERSION = 6;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
 const AUTO_SNAPSHOT_PREFIX = 'ledger_snap_';
@@ -2309,6 +2464,8 @@ let state = {
   incomeSources: [],
   decisions: [],
   recurringExpenses: [],
+  savings: [],        // v2.4: savings deposits/withdrawals
+  savingsGoals: [],   // v2.4: optional savings goals
   currency: 'AUD',
   // UI-only state (not persisted)
   currentType: 'expense',
@@ -2349,6 +2506,8 @@ function loadData() {
     state.incomeSources = migrated.incomeSources || [];
     state.decisions = migrated.decisions || [];
     state.recurringExpenses = migrated.recurringExpenses || [];
+    state.savings = migrated.savings || [];
+    state.savingsGoals = migrated.savingsGoals || [];
     state.currency = migrated.currency || 'AUD';
   } catch (e) {
     console.error('Load error:', e);
@@ -2427,6 +2586,13 @@ function runMigrations(data) {
     }
   }
   
+  // Migration: v5 -> v6 (savings system)
+  if (fromVersion < 6) {
+    migrated.schemaVersion = 6;
+    if (!migrated.savings) migrated.savings = [];        // savings transactions
+    if (!migrated.savingsGoals) migrated.savingsGoals = []; // optional goals
+  }
+  
   // FUTURE MIGRATIONS GO HERE:
   // if (fromVersion < 3) { ... migrated.schemaVersion = 3; }
   
@@ -2444,6 +2610,8 @@ function saveData() {
       incomeSources: state.incomeSources,
       decisions: state.decisions,
       recurringExpenses: state.recurringExpenses,
+      savings: state.savings,
+      savingsGoals: state.savingsGoals,
       currency: state.currency,
       lastSaved: Date.now(),
     };
@@ -2535,7 +2703,8 @@ function goPage(name) {
   if (name === 'decisions') renderDecisions();
   if (name === 'income-sources') renderIncomeSources();
   if (name === 'recurring-expenses') renderRecExps();
-  if (name === 'settings') { updateStorageInfo(); updateIncomeSourcesCount(); updateRecExpCount(); updateSnapshotsCount(); }
+  if (name === 'savings') renderSavingsPage();
+  if (name === 'settings') { updateStorageInfo(); updateIncomeSourcesCount(); updateRecExpCount(); updateSavingsCount(); updateSnapshotsCount(); }
   window.scrollTo(0, 0);
 }
 
@@ -2555,9 +2724,24 @@ function renderAll() {
   const cur = CURRENCIES.find(c => c.code === state.currency);
   document.getElementById('currencyLabel').textContent = cur ? `${cur.code} (${cur.symbol})` : 'AUD (A$)';
   document.getElementById('versionTag').textContent = 'v' + APP_VERSION;
+  const versionDisplay = document.getElementById('versionDisplay');
+  if (versionDisplay) versionDisplay.textContent = 'v' + APP_VERSION;
   updateIncomeSourcesCount();
   updateRecExpCount();
+  updateSavingsCount();
   renderBackupWarnBanner();
+}
+
+function updateSavingsCount() {
+  const el = document.getElementById('savingsCount');
+  if (!el) return;
+  const total = getSavingsBalance();
+  const goalCount = state.savingsGoals.length;
+  if (state.savings.length === 0 && goalCount === 0) {
+    el.textContent = 'Not set up';
+  } else {
+    el.textContent = fmt(total) + (goalCount > 0 ? ` · ${goalCount} goal${goalCount>1?'s':''}` : '');
+  }
 }
 
 function updateRecExpCount() {
@@ -4117,6 +4301,36 @@ const SMART_CUTS_DB = {
       ],
     },
     {
+      match: ['youtube premium', 'youtube'],
+      aud: [
+        'YouTube Premium Family ($32.99) splits 6 ways = $5.50/person',
+        'Annual plan ($169.99) saves ~A$30/year vs monthly',
+        'YouTube Music alone is cheaper ($14.99) if you don\'t need ad-free video',
+      ],
+      inr: [
+        'YouTube Premium India ₹149/month is one of the cheapest globally',
+        'Family plan ₹189 splits 5 ways = ~₹38/person',
+      ],
+      generic: [
+        'Family plan + share with trusted people',
+        'Annual plan saves ~10–15% vs monthly',
+        'YouTube Music alone is cheaper if you don\'t care about ad-free video',
+      ],
+    },
+    {
+      match: ['apple one', 'apple music', 'apple tv', 'icloud+', 'apple arcade'],
+      aud: [
+        'Apple One Individual ($21.95) vs separate subs often saves $5–10/month',
+        'Apple One Family ($30.95) splits up to 6 = ~$5/person',
+        'Drop unused services — Apple Arcade and TV+ are easy to skip',
+      ],
+      generic: [
+        'Apple One bundle if you use 3+ services individually',
+        'Family Sharing splits across up to 6 people',
+        'Drop services you don\'t actively use',
+      ],
+    },
+    {
       match: ['spotify', 'apple music', 'youtube music'],
       aud: [
         'Spotify Family ($23.99) splits 6 ways = $4/person',
@@ -4292,85 +4506,42 @@ function findSmartCutsForExpense(rec) {
   const cat = rec.category;
   const currency = detectSpendCurrency();
   
-  // Try category first
+  // Look up this category's options
   const catGroup = SMART_CUTS_DB[cat];
   if (!catGroup) return null;
   
-  // Match by keyword within category
+  // Strict keyword match — must match at least one keyword
   for (const entry of catGroup) {
     for (const kw of entry.match) {
-      if (text.includes(kw)) {
+      // Word boundary match (so "spotify" doesn't match in random other text)
+      if (text === kw || text.includes(kw)) {
         let tips;
-        if (currency === 'AUD' && entry.aud) tips = entry.aud;
-        else if (currency === 'INR' && entry.inr) tips = entry.inr;
+        if (currency === 'AUD' && entry.aud && entry.aud.length > 0) tips = entry.aud;
+        else if (currency === 'INR' && entry.inr && entry.inr.length > 0) tips = entry.inr;
         else tips = entry.generic || [];
-        return tips.length > 0 ? tips : null;
+        return tips.length > 0 ? { tips, matched: kw } : null;
       }
     }
   }
   
-  // Fall back to first entry's generic tips for this category
-  for (const entry of catGroup) {
-    if (entry.generic && entry.generic.length > 0) {
-      return entry.generic;
-    }
-  }
-  
+  // NO FALLBACK — if nothing matched, return null. Don't pretend.
   return null;
 }
 
 function renderSmartCuts() {
-  const card = document.getElementById('smartCutsCard');
-  const el = document.getElementById('smartCutsContent');
-  if (!el || !card) return;
-  
-  // Find active recurring expenses that have known alternatives
-  const candidates = state.recurringExpenses
-    .filter(r => r.active)
-    .map(r => ({
-      rec: r,
-      tips: findSmartCutsForExpense(r),
-      monthly: cycleToMonthly(r.amount, r.cycle),
-    }))
-    .filter(x => x.tips && x.tips.length > 0)
-    .sort((a, b) => b.monthly - a.monthly); // tackle biggest spend first
-  
-  if (candidates.length === 0) {
-    card.style.display = 'none';
-    return;
-  }
-  card.style.display = 'block';
-  
-  // Time cost
-  const monthlyIn = getExpectedMonthlyIncomeRecurring();
-  const dailyIncome = monthlyIn > 0 ? monthlyIn / 30 : 0;
-  
-  const totalMonthly = candidates.reduce((s, c) => s + c.monthly, 0);
-  
-  el.innerHTML = `
-    <div style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:14px;padding:10px;background:rgba(201,255,61,0.04);border-radius:10px;">
-      Real-world ways to lower your regular bills. We looked at ${candidates.length} of your recurring expense${candidates.length>1?'s':''} costing <strong style="color:var(--text);">${fmt(totalMonthly)}/month</strong>${dailyIncome > 0 ? ` (about <strong style="color:var(--text);">${(totalMonthly/dailyIncome).toFixed(1)} days</strong> of your work)` : ''}.
-    </div>
-    ${candidates.slice(0, 5).map(c => {
-      const daysOfWork = dailyIncome > 0 ? (c.monthly / dailyIncome).toFixed(1) : null;
-      return `
-        <div style="padding:12px;background:var(--bg-card);border-radius:10px;margin-bottom:8px;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-            <div>
-              <div style="font-size:13px;font-weight:500;color:var(--text);">${escapeHtml(c.rec.name)}</div>
-              <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">
-                ${fmt(c.monthly)}/month${daysOfWork ? ` · ${daysOfWork} days of work` : ''}
-              </div>
-            </div>
-          </div>
-          <div style="font-size:12px;color:var(--text-dim);line-height:1.7;padding-left:8px;border-left:2px solid rgba(201,255,61,0.3);">
-            ${c.tips.map(t => '💡 ' + t).join('<br>')}
-          </div>
-        </div>
-      `;
-    }).join('')}
-    ${candidates.length > 5 ? `<div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px;">+ ${candidates.length - 5} more — focus on the top ones first</div>` : ''}
-  `;
+  // Smart Cuts is now inline on each recurring expense card.
+  // This function is a no-op kept for backwards compatibility.
+  return;
+}
+
+function toggleSaveHere(recId, event) {
+  if (event) { event.stopPropagation(); event.preventDefault(); }
+  const tips = document.getElementById('saveTips-' + recId);
+  const chev = document.getElementById('saveChev-' + recId);
+  if (!tips) return;
+  const isOpen = tips.style.display === 'block';
+  tips.style.display = isOpen ? 'none' : 'block';
+  if (chev) chev.style.transform = isOpen ? '' : 'rotate(90deg)';
 }
 
 function computeLoanStrategy() {
@@ -4536,7 +4707,9 @@ function computeSmartAffordability(amount) {
   
   // REASONING (plain English)
   const reasons = [];
-  reasons.push(`Balance: ${fmt(bal)} → <strong>${fmt(afterBal)}</strong>`);
+  const afterBalSign = afterBal < 0 ? '−' : '';
+  const afterBalStr = `<strong style="color:${afterBal < 0 ? 'var(--expense)' : 'var(--text)'};">${afterBalSign}${fmt(afterBal)}</strong>`;
+  reasons.push(`Balance: ${fmt(bal)} → ${afterBalStr}`);
   if (daysBufferAfter !== null) {
     if (daysBufferAfter < 0) reasons.push(`You'd run out before next paycheck`);
     else reasons.push(`Days you could coast after: <strong>${daysBufferAfter}</strong>`);
@@ -4588,14 +4761,19 @@ function computeSmartAffordability(amount) {
     const paydayCount = uniquePaydays.size;
     
     if (foundDay !== null && foundDay <= 60) {
-      // Realistic wait
+      // Realistic wait — use weeks (universal, not confused by multiple jobs)
       const targetDate = new Date(todayISO() + 'T00:00:00');
       targetDate.setDate(targetDate.getDate() + foundDay);
       const targetISO = targetDate.toISOString().slice(0, 10);
-      const payText = paydayCount > 0 
-        ? `after ${paydayCount} payday${paydayCount > 1 ? 's' : ''}`
-        : `in about ${Math.ceil(foundDay/7)} week${Math.ceil(foundDay/7)>1?'s':''}`;
-      strategies.push(`<strong>Wait ${foundDay} days</strong> (${payText}) — by ${formatDateLabel(targetISO)} you'd have enough to buy this AND keep a 2-week safety cushion.`);
+      const weeks = Math.round(foundDay / 7);
+      // Plain phrasing scaled to actual wait length
+      let weekText;
+      if (foundDay <= 2) weekText = foundDay === 1 ? 'tomorrow' : 'in a couple of days';
+      else if (foundDay <= 6) weekText = 'within a week';
+      else if (weeks === 1) weekText = 'about a week';
+      else if (foundDay <= 13) weekText = 'about a week and a half';
+      else weekText = `about ${weeks} weeks`;
+      strategies.push(`<strong>Wait ${foundDay} day${foundDay > 1 ? 's' : ''}</strong> (${weekText}) — by ${formatDateLabel(targetISO)} you'd have enough to buy this AND keep a 2-week safety cushion.`);
     } else if (foundDay !== null && foundDay > 60) {
       const months = Math.ceil(foundDay / 30);
       strategies.push(`<strong>Save up over ~${months} months</strong> — your daily spending is high enough that you can't accumulate this fast. Trim some variable spending or wait longer.`);
@@ -4834,7 +5012,6 @@ function renderCompass() {
   renderExpectedMonthly();
   renderSafeSave();
   renderLoanStrategy();
-  renderSmartCuts();
   renderHealthScore();
   renderForecast();
   renderRatios();
@@ -5505,6 +5682,332 @@ function renderDecisions() {
    v2.1: RECURRING EXPENSES
    ============================================================ */
 
+/* ============================================================
+   v2.4: SAVINGS & GOALS
+   ============================================================ */
+
+function getSavingsBalance() {
+  let total = 0;
+  state.savings.forEach(s => {
+    if (s.type === 'deposit') total += s.amount;
+    else total -= s.amount;
+  });
+  return total;
+}
+
+function getSavingsForGoal(goalId) {
+  let total = 0;
+  state.savings.forEach(s => {
+    if (s.goalId !== goalId) return;
+    if (s.type === 'deposit') total += s.amount;
+    else total -= s.amount;
+  });
+  return total;
+}
+
+function openSavingsModal(savId) {
+  state.editingSavingsId = savId || null;
+  state.currentSavingsType = 'deposit';
+  state.savingsAffectsBalance = true;
+  
+  document.getElementById('savingsModalTitle').textContent = savId ? 'Edit Savings' : 'Log Savings';
+  document.getElementById('savingsDeleteBtn').style.display = savId ? 'block' : 'none';
+  
+  // Populate goal dropdown
+  const goalSel = document.getElementById('inpSavingsGoal');
+  goalSel.innerHTML = '<option value="">— No specific goal —</option>' +
+    state.savingsGoals.map(g => `<option value="${g.id}">${g.emoji || '🎯'} ${escapeHtml(g.name)}</option>`).join('');
+  
+  if (savId) {
+    const s = state.savings.find(x => x.id === savId);
+    if (s) {
+      state.currentSavingsType = s.type;
+      state.savingsAffectsBalance = s.affectsBalance !== false;
+      document.getElementById('inpSavingsAmount').value = s.amount;
+      document.getElementById('inpSavingsNote').value = s.note || '';
+      document.getElementById('inpSavingsGoal').value = s.goalId || '';
+      document.getElementById('inpSavingsDate').value = s.date;
+    }
+  } else {
+    document.getElementById('inpSavingsAmount').value = '';
+    document.getElementById('inpSavingsNote').value = '';
+    document.getElementById('inpSavingsGoal').value = '';
+    document.getElementById('inpSavingsDate').value = todayISO();
+  }
+  
+  updateSavingsTypeToggle();
+  updateSavingsAffectsBalanceSwitch();
+  document.getElementById('savingsModal').classList.add('open');
+  setTimeout(() => document.getElementById('inpSavingsAmount').focus(), 350);
+}
+
+function setSavingsType(type) {
+  state.currentSavingsType = type;
+  updateSavingsTypeToggle();
+}
+
+function updateSavingsTypeToggle() {
+  document.querySelectorAll('[data-savetype]').forEach(el => {
+    el.classList.toggle('active', el.dataset.savetype === state.currentSavingsType);
+  });
+}
+
+function toggleSavingsAffectsBalance() {
+  state.savingsAffectsBalance = !state.savingsAffectsBalance;
+  updateSavingsAffectsBalanceSwitch();
+}
+
+function updateSavingsAffectsBalanceSwitch() {
+  document.getElementById('savingsAffectsBalanceSwitch').classList.toggle('on', state.savingsAffectsBalance);
+}
+
+function saveSavingsEntry() {
+  const amount = parseFloat(document.getElementById('inpSavingsAmount').value);
+  const note = document.getElementById('inpSavingsNote').value.trim();
+  const goalId = document.getElementById('inpSavingsGoal').value || null;
+  const date = document.getElementById('inpSavingsDate').value || todayISO();
+  
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', '⚠'); return; }
+  
+  const entry = {
+    id: state.editingSavingsId || uid('sav'),
+    type: state.currentSavingsType,
+    amount,
+    note,
+    goalId,
+    date,
+    affectsBalance: state.savingsAffectsBalance,
+    createdAt: state.editingSavingsId ? undefined : Date.now(),
+  };
+  
+  if (state.editingSavingsId) {
+    const idx = state.savings.findIndex(s => s.id === state.editingSavingsId);
+    if (idx >= 0) state.savings[idx] = { ...state.savings[idx], ...entry };
+    
+    // Also update the linked transaction if it exists
+    const existingTx = state.transactions.find(t => t.savingsId === state.editingSavingsId);
+    if (existingTx) {
+      // Remove old tx and recreate with new values
+      state.transactions = state.transactions.filter(t => t.savingsId !== state.editingSavingsId);
+    }
+    showToast('Updated');
+  } else {
+    state.savings.push(entry);
+    showToast(state.currentSavingsType === 'deposit' ? 'Deposit logged' : 'Withdrawal logged');
+  }
+  
+  // Create a linked transaction so it shows up in cash flow
+  if (state.savingsAffectsBalance) {
+    const isDeposit = entry.type === 'deposit';
+    state.transactions.push({
+      id: uid('tx'),
+      type: isDeposit ? 'expense' : 'income',  // deposit = out of balance, withdrawal = into balance
+      amount,
+      description: 'Savings ' + (isDeposit ? 'deposit' : 'withdrawal') + (note ? ' · ' + note : ''),
+      category: 'savings',
+      date,
+      note: '',
+      savingsId: entry.id,
+      createdAt: Date.now(),
+    });
+  }
+  
+  saveData();
+  closeModal('savingsModal');
+  renderAll();
+}
+
+function deleteSavingsEntry() {
+  if (!state.editingSavingsId) return;
+  if (!confirm('Delete this savings entry?')) return;
+  state.savings = state.savings.filter(s => s.id !== state.editingSavingsId);
+  // Also delete linked transaction
+  state.transactions = state.transactions.filter(t => t.savingsId !== state.editingSavingsId);
+  saveData();
+  closeModal('savingsModal');
+  renderAll();
+  showToast('Deleted');
+}
+
+function openGoalModal(goalId) {
+  state.editingGoalId = goalId || null;
+  document.getElementById('goalModalTitle').textContent = goalId ? 'Edit Goal' : 'New Goal';
+  document.getElementById('goalDeleteBtn').style.display = goalId ? 'block' : 'none';
+  
+  if (goalId) {
+    const g = state.savingsGoals.find(x => x.id === goalId);
+    if (g) {
+      document.getElementById('inpGoalName').value = g.name;
+      document.getElementById('inpGoalEmoji').value = g.emoji || '';
+      document.getElementById('inpGoalTarget').value = g.target;
+      document.getElementById('inpGoalDeadline').value = g.deadline || '';
+    }
+  } else {
+    document.getElementById('inpGoalName').value = '';
+    document.getElementById('inpGoalEmoji').value = '';
+    document.getElementById('inpGoalTarget').value = '';
+    document.getElementById('inpGoalDeadline').value = '';
+  }
+  
+  document.getElementById('goalModal').classList.add('open');
+}
+
+function saveGoal() {
+  const name = document.getElementById('inpGoalName').value.trim();
+  const emoji = document.getElementById('inpGoalEmoji').value.trim();
+  const target = parseFloat(document.getElementById('inpGoalTarget').value);
+  const deadline = document.getElementById('inpGoalDeadline').value || null;
+  
+  if (!name) { showToast('Enter goal name', '⚠'); return; }
+  if (!target || target <= 0) { showToast('Enter target amount', '⚠'); return; }
+  
+  if (state.editingGoalId) {
+    const idx = state.savingsGoals.findIndex(g => g.id === state.editingGoalId);
+    if (idx >= 0) state.savingsGoals[idx] = { ...state.savingsGoals[idx], name, emoji, target, deadline };
+    showToast('Goal updated');
+  } else {
+    state.savingsGoals.push({
+      id: uid('goal'),
+      name, emoji, target, deadline,
+      createdAt: Date.now(),
+    });
+    showToast('Goal added');
+  }
+  
+  saveData();
+  closeModal('goalModal');
+  renderAll();
+}
+
+function deleteGoal() {
+  if (!state.editingGoalId) return;
+  if (!confirm('Delete this goal? Savings logged to it will remain but unlinked.')) return;
+  state.savingsGoals = state.savingsGoals.filter(g => g.id !== state.editingGoalId);
+  // Unlink savings from this goal
+  state.savings.forEach(s => { if (s.goalId === state.editingGoalId) s.goalId = null; });
+  saveData();
+  closeModal('goalModal');
+  renderAll();
+  showToast('Goal deleted');
+}
+
+function renderSavingsPage() {
+  // Total card
+  const totalCard = document.getElementById('savingsTotalCard');
+  const totalBal = getSavingsBalance();
+  const monthlyIn = getExpectedMonthlyIncomeRecurring();
+  
+  // Recent deposits trend (last 30 days)
+  const d30 = new Date(); d30.setDate(d30.getDate() - 30);
+  const d30ISO = d30.toISOString().slice(0,10);
+  let recentDeposits = 0;
+  state.savings.forEach(s => {
+    if (s.date >= d30ISO && s.type === 'deposit') recentDeposits += s.amount;
+  });
+  
+  totalCard.innerHTML = `
+    <div style="background:linear-gradient(135deg,rgba(74,222,128,0.1),rgba(74,222,128,0.02));border:1px solid rgba(74,222,128,0.25);border-radius:14px;padding:16px;">
+      <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;font-weight:500;margin-bottom:4px;">Total Saved</div>
+      <div style="font-family:'Fraunces',serif;font-size:36px;font-weight:500;color:var(--accent);letter-spacing:-0.02em;line-height:1;">${fmt(totalBal)}</div>
+      ${recentDeposits > 0 ? `<div style="font-size:12px;color:var(--text-dim);margin-top:8px;">+${fmt(recentDeposits)} in last 30 days</div>` : ''}
+    </div>
+  `;
+  
+  // Goals
+  const goalsList = document.getElementById('goalsList');
+  if (state.savingsGoals.length === 0) {
+    goalsList.innerHTML = `
+      <div style="text-align:center;padding:20px;color:var(--text-dim);font-size:13px;background:var(--bg-card);border-radius:12px;border:1px dashed var(--border);">
+        No goals yet. Tap "+ New goal" to set one.
+      </div>
+    `;
+  } else {
+    goalsList.innerHTML = state.savingsGoals.map(g => {
+      const saved = getSavingsForGoal(g.id);
+      const pct = Math.min(100, (saved / g.target) * 100);
+      const remaining = Math.max(0, g.target - saved);
+      const isDone = saved >= g.target;
+      
+      let deadlineStr = '';
+      let pacingStr = '';
+      if (g.deadline) {
+        const daysUntil = Math.ceil((new Date(g.deadline + 'T00:00:00') - new Date(todayISO() + 'T00:00:00')) / 86400000);
+        if (daysUntil < 0) deadlineStr = `<span style="color:var(--expense);">Deadline passed ${Math.abs(daysUntil)}d ago</span>`;
+        else if (daysUntil === 0) deadlineStr = 'Due today';
+        else deadlineStr = `${daysUntil} days left`;
+        
+        if (!isDone && daysUntil > 0) {
+          const weeklyNeeded = remaining / (daysUntil / 7);
+          pacingStr = `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Need to save ~${fmt(weeklyNeeded)}/week to hit target</div>`;
+        }
+      }
+      
+      return `
+        <div style="padding:14px;background:var(--bg-card);border-radius:12px;margin-bottom:8px;border:1px solid var(--border);" onclick="openGoalModal('${g.id}')">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+            <div>
+              <div style="font-size:14px;font-weight:500;">${g.emoji || '🎯'} ${escapeHtml(g.name)}</div>
+              ${deadlineStr ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">${deadlineStr}</div>` : ''}
+            </div>
+            <div style="text-align:right;">
+              <div style="font-family:'Geist Mono',monospace;font-size:13px;color:${isDone ? 'var(--income)' : 'var(--text)'};">${fmt(saved)} / ${fmt(g.target)}</div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">${pct.toFixed(0)}%${isDone ? ' · 🎉 done!' : ''}</div>
+            </div>
+          </div>
+          <div style="height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">
+            <div style="height:100%;background:${isDone ? 'var(--income)' : 'var(--accent)'};width:${pct}%;transition:width .6s ease;border-radius:4px;"></div>
+          </div>
+          ${pacingStr}
+        </div>
+      `;
+    }).join('');
+  }
+  
+  // History — last 20 entries, newest first
+  const history = document.getElementById('savingsHistory');
+  const sorted = [...state.savings].sort((a,b) => b.date.localeCompare(a.date) || (b.createdAt||0) - (a.createdAt||0));
+  
+  if (sorted.length === 0) {
+    history.innerHTML = `
+      <div style="text-align:center;padding:20px;color:var(--text-dim);font-size:13px;background:var(--bg-card);border-radius:12px;border:1px dashed var(--border);">
+        No savings logged yet. Tap "+ Log" to add a deposit or withdrawal.
+      </div>
+    `;
+    return;
+  }
+  
+  history.innerHTML = sorted.slice(0, 30).map(s => {
+    const isDeposit = s.type === 'deposit';
+    const goal = s.goalId ? state.savingsGoals.find(g => g.id === s.goalId) : null;
+    return `
+      <div class="tx" onclick="openSavingsModal('${s.id}')">
+        <div class="tx-icon" style="background:${isDeposit ? 'rgba(74,222,128,0.15)' : 'rgba(239,68,68,0.15)'};">
+          ${isDeposit ? '📥' : '📤'}
+        </div>
+        <div class="tx-main">
+          <div class="tx-title">${isDeposit ? 'Deposit' : 'Withdrawal'}${goal ? ' · ' + (goal.emoji || '🎯') + ' ' + escapeHtml(goal.name) : ''}</div>
+          <div class="tx-meta">${formatDateLabel(s.date)}${s.note ? ' · ' + escapeHtml(s.note) : ''}</div>
+        </div>
+        <div class="tx-amount ${isDeposit ? 'income-text' : 'expense-text'}">${isDeposit ? '+' : '−'}${fmt(s.amount)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Register 'savings' as an expense category so the linked txs render correctly
+// (We do this by pushing into DEFAULT_CATEGORIES at runtime — see init)
+function ensureSavingsCategory() {
+  const exists = (DEFAULT_CATEGORIES.expense || []).find(c => c.id === 'savings');
+  if (!exists) {
+    DEFAULT_CATEGORIES.expense.push({ id: 'savings', name: 'Savings', emoji: '💰', color: '#c9ff3d' });
+  }
+  const existsIn = (DEFAULT_CATEGORIES.income || []).find(c => c.id === 'savings');
+  if (!existsIn) {
+    DEFAULT_CATEGORIES.income.push({ id: 'savings', name: 'Savings withdrawal', emoji: '💰', color: '#c9ff3d' });
+  }
+}
+
+
 function renderRecExps() {
   const list = document.getElementById('recExpList');
   if (state.recurringExpenses.length === 0) {
@@ -5565,13 +6068,30 @@ function renderRecExps() {
       nextStr = 'Paused';
     }
     
+    // Check if this expense has smart cuts available
+    const cuts = r.active ? findSmartCutsForExpense(r) : null;
+    const hasCuts = cuts && cuts.tips && cuts.tips.length > 0;
+    
     return `
-      <div class="rec-exp-card ${r.active ? '' : 'inactive'}" onclick="editRecExp('${r.id}')">
-        <div class="rec-exp-head">
-          <span class="rec-exp-name">${cat.emoji} ${escapeHtml(r.name)}</span>
-          <span class="rec-exp-amount">−${fmt(r.amount)}</span>
+      <div class="rec-exp-card ${r.active ? '' : 'inactive'}">
+        <div onclick="editRecExp('${r.id}')">
+          <div class="rec-exp-head">
+            <span class="rec-exp-name">${cat.emoji} ${escapeHtml(r.name)}</span>
+            <span class="rec-exp-amount">−${fmt(r.amount)}</span>
+          </div>
+          <div class="rec-exp-meta">${cycleLabel}${nextStr ? ' · ' + nextStr : ''}</div>
         </div>
-        <div class="rec-exp-meta">${cycleLabel}${nextStr ? ' · ' + nextStr : ''}</div>
+        ${hasCuts ? `
+          <div class="save-here-row" onclick="toggleSaveHere('${r.id}', event)">
+            <span class="save-here-btn">
+              💡 <span style="color:var(--accent);">Save here</span>
+              <span class="save-here-chev" id="saveChev-${r.id}">›</span>
+            </span>
+          </div>
+          <div class="save-here-tips" id="saveTips-${r.id}" style="display:none;">
+            ${cuts.tips.map(t => `<div class="save-tip">${escapeHtml(t)}</div>`).join('')}
+          </div>
+        ` : ''}
       </div>
     `;
   }).join('');
@@ -6162,6 +6682,7 @@ function showFirstLaunchWarningIfNeeded() {
 
 
 function init() {
+  ensureSavingsCategory();  // v2.4: register savings category
   loadData();
   takeAutoSnapshot();      // Snapshot AFTER load (preserves loaded state)
   checkVersionChange();    // Toast if updated
