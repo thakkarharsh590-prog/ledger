@@ -4,22 +4,29 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.2.1
+  Version:      2.2.2
   Last edited:  2026-05-15
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   4 (auto-migrates from v1, v2, v3)
   
   NAMED: Ledger Compass
   
-  v2.2.1 BUGFIXES:
-  - Cleaner brand wordmark (single weight, integrated needle icon)
-  - Avg variable spend now uses MEDIAN of daily totals + filters outliers
-    (excludes auto-logged recurring, loan payments, and one-off marked txs)
-  - Negative "leftover" displays correctly with minus sign in red
-  - "Wait N cycles" only suggests if math actually works within 4 cycles
-    Otherwise: "Save up over N months" with realistic timeline
-  - Sanity check: warns if computed variable spend > income (bad data signal)
-  - One-time transaction flag — long-press or edit toggle to exclude from averages
+  v2.2.2 PLAIN LANGUAGE PASS:
+  - Rewrote labels in everyday English (kept Budget/Loans/Income/Balance)
+  - "Avg variable spend" → "Other spending"
+  - "Expected leftover" → "Spare each month"
+  - "Safe Weekly Save" → "How much to save each week"
+  - "Buffer" → "safety days"
+  - "Surplus" → "extra"
+  - "Stretch goal" → "Push harder goal"
+  - "Tradeoffs" → "Things to think about"
+  - Math breakdown now collapsible ("see the math →")
+  - Confidence labels: "Just starting out / Reasonably accurate / Pretty accurate"
+  
+  v2.2.2 BUGFIXES:
+  - Pay cycle counter no longer over-counts (capped at one event per source per day)
+  - "17 pay cycles in 39 days" issue resolved
+  - Cleaner cycle-count display (uses actual unique pay event count)
   
   COMPLETED FEATURES (carry-over):
   - Transactions, loans, budgets, insights, custom categories
@@ -1544,11 +1551,12 @@
     background: var(--income);
     color: #0a0a0f;
   }
-  .recovery-dismiss {
-    background: var(--bg-card);
-    color: var(--text-dim);
-    border: 1px solid var(--border);
-  }
+  /* Collapsible details (see the math) */
+  details summary::-webkit-details-marker { display: none; }
+  details summary::marker { content: ''; }
+  details[open] summary { background: rgba(201,255,61,0.1) !important; }
+  details summary:hover { background: rgba(201,255,61,0.08) !important; }
+  
 </style>
 </head>
 <body>
@@ -1686,20 +1694,20 @@
   </button>
   
   <div class="compass-card">
-    <div class="compass-card-title">Expected Monthly Picture</div>
-    <div class="compass-card-sub">Based on your recurring income & expenses</div>
+    <div class="compass-card-title">Your monthly picture</div>
+    <div class="compass-card-sub">What's coming in vs. what's going out</div>
     <div id="expectedMonthly"></div>
   </div>
   
   <div class="compass-card">
-    <div class="compass-card-title">Safe Weekly Save</div>
-    <div class="compass-card-sub">A sustainable amount based on YOUR data — won't burden you</div>
+    <div class="compass-card-title">How much to save each week</div>
+    <div class="compass-card-sub">A safe amount based on your data — won't stress you out</div>
     <div id="safeSaveContent"></div>
   </div>
   
   <div class="compass-card" id="loanStrategyCard" style="display:none;">
-    <div class="compass-card-title">Loan Payoff Strategy</div>
-    <div class="compass-card-sub">Smart order based on your loans</div>
+    <div class="compass-card-title">Loan payoff plan</div>
+    <div class="compass-card-sub">The smartest order to clear your loans</div>
     <div id="loanStrategyContent"></div>
   </div>
   
@@ -1807,7 +1815,7 @@
   </div>
 
   <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.6;">
-    <div>Ledger Compass v2.2.1 · Schema v4</div>
+    <div>Ledger Compass v2.2.2 · Schema v4</div>
     <div>All data stored on this device</div>
     <div id="lastBackup" style="margin-top: 4px;"></div>
   </div>
@@ -2042,7 +2050,7 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">Can I afford it?</div>
-    <div class="modal-sub">Get an honest verdict based on your data</div>
+    <div class="modal-sub">A real check using your income, bills, and savings</div>
     
     <div id="affordInputView">
       <div class="field">
@@ -2232,7 +2240,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.2.1';
+const APP_VERSION = '2.2.2';
 const SCHEMA_VERSION = 4;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
@@ -3919,13 +3927,13 @@ function detectDataAnomalies() {
   if (monthlyIn > 0 && monthlyVar > monthlyIn * 1.5) {
     warnings.push({
       level: 'high',
-      msg: 'Variable spend looks unusually high vs income. May include one-off purchases. Tap a transaction → mark "one-time" to exclude it from averages.',
+      msg: 'Your spending looks way higher than what you earn — there may be one-off purchases throwing off the average. Tap a big expense → toggle "One-time / not typical" to exclude it.',
     });
   }
   if (monthlyFixed > 0 && monthlyIn > 0 && monthlyFixed > monthlyIn * 0.9) {
     warnings.push({
       level: 'medium',
-      msg: 'Fixed expenses are eating 90%+ of your income. Hard to save until one of those drops.',
+      msg: 'Your regular bills are eating up nearly all your income. It will be hard to save until one of these drops.',
     });
   }
   return warnings;
@@ -4016,7 +4024,7 @@ function computeLoanStrategy() {
     return {
       strategy: 'single',
       ordered: active,
-      note: `Just focus on ${active[0].name}. Pay as much as your safe-save rate allows above minimum.`,
+      note: `Just one loan — focus everything you can spare on ${active[0].name} above the minimum payment.`,
     };
   }
   
@@ -4032,12 +4040,12 @@ function computeLoanStrategy() {
     // Snowball — clear smallest first for psychological win
     strategy = 'snowball';
     ordered = sortedBySize;
-    note = 'Snowball strategy: clear the smallest debts first for momentum. Each cleared loan frees money for the next.';
+    note = 'Clear the smallest loan first for a quick win. Each cleared loan frees up money to attack the next one.';
   } else {
     // Avalanche — largest first (proxy for highest interest cost without interest data)
     strategy = 'avalanche';
     ordered = [...active].sort((a,b) => b.remaining - a.remaining);
-    note = 'Avalanche strategy: pay extra on the largest balance first. Saves the most money long-term.';
+    note = 'Focus extra payments on the largest balance first. This usually saves you the most money over time.';
   }
   
   // Estimate payoff time
@@ -4065,50 +4073,54 @@ function computeSmartAffordability(amount) {
   const weekly = getWeeklyRecurringPicture();
   const afterBal = bal - amount;
   
-  // Buffer days (using full avg daily including variable)
+  // Days of normal spending you can coast after
   const avgDaily = getAvgDailyExpense() || (monthlyFixed + monthlyVar) / 30;
   const daysBufferAfter = avgDaily > 0 ? Math.floor(afterBal / avgDaily) : null;
   const pctOfMonthlyIn = monthlyIn > 0 ? (amount / monthlyIn) * 100 : null;
   
-  // Next pay events
-  const payEvents = getUpcomingPayEvents(45);
+  // Upcoming pay events (longer horizon for save-up case)
+  const payEvents = getUpcomingPayEvents(180);
   const nextPay = payEvents[0];
   
   // Active loans
   const activeLoans = state.loans.filter(l => getLoanPaid(l) < l.total);
   const totalDebt = activeLoans.reduce((s,l) => s + (l.total - getLoanPaid(l)), 0);
   
-  // VERDICT
+  // VERDICT (plainer language)
   let zone, title;
   if (afterBal < 0) {
     zone = 'red';
-    title = `Don't — you'd go ${fmt(Math.abs(afterBal))} negative`;
+    title = `Don't — your balance would drop ${fmt(Math.abs(afterBal))} below zero`;
   } else if (daysBufferAfter !== null && daysBufferAfter < 7) {
     zone = 'red';
-    title = `Risky — only ${daysBufferAfter} days of buffer left`;
+    title = `Too risky — less than a week of normal spending would be left`;
   } else if (monthlyLeftover > 0 && amount <= monthlyLeftover) {
     zone = 'green';
-    title = `Comfortable — within your monthly leftover`;
+    title = `Yes — this fits within your spare cash this month`;
   } else if (pctOfMonthlyIn !== null && pctOfMonthlyIn > 50) {
     zone = 'yellow';
-    title = `Affordable, but a big bite (${pctOfMonthlyIn.toFixed(0)}% of monthly income)`;
+    title = `Doable, but this is ${pctOfMonthlyIn.toFixed(0)}% of one month's income`;
   } else if (daysBufferAfter !== null && daysBufferAfter < 21) {
     zone = 'yellow';
-    title = `You can afford it — but it eats into buffer`;
+    title = `Yes — but it would eat into your safety days`;
   } else {
     zone = 'green';
-    title = `Yes, you can afford it comfortably`;
+    title = `Yes — you can afford this comfortably`;
   }
   
-  // REASONING
+  // REASONING (plain English)
   const reasons = [];
   reasons.push(`Balance: ${fmt(bal)} → <strong>${fmt(afterBal)}</strong>`);
-  if (daysBufferAfter !== null) reasons.push(`Buffer after: ~${daysBufferAfter} days of spending`);
+  if (daysBufferAfter !== null) {
+    if (daysBufferAfter < 0) reasons.push(`You'd run out before next paycheck`);
+    else reasons.push(`Days you could coast after: <strong>${daysBufferAfter}</strong>`);
+  }
   if (monthlyIn > 0) {
-    reasons.push(`Monthly picture: +${fmt(monthlyIn)} in / -${fmt(monthlyFixed + monthlyVar)} out = <strong>${fmt(monthlyLeftover)} leftover</strong>`);
+    const lftSign = monthlyLeftover >= 0 ? '+' : '−';
+    reasons.push(`Monthly picture: +${fmt(monthlyIn)} earned, −${fmt(monthlyFixed + monthlyVar)} spent = <strong>${lftSign}${fmt(monthlyLeftover)} spare</strong>`);
   }
   if (weekly.weeklyIn > 0) {
-    reasons.push(`Weekly surplus: ${fmt(weekly.surplus)} after fixed costs`);
+    reasons.push(`Weekly extra after bills: ${fmt(weekly.surplus)}`);
   }
   if (nextPay) {
     const days = Math.ceil((new Date(nextPay.date + 'T00:00:00') - new Date(todayISO() + 'T00:00:00')) / 86400000);
@@ -4118,26 +4130,27 @@ function computeSmartAffordability(amount) {
   // TIMING STRATEGIES (realistic, day-by-day simulation)
   const strategies = [];
   
-  // Simulate balance day by day to find when (if ever) it can absorb the purchase
-  // Buffer target: 14 days of spending after purchase
   if (zone !== 'green' && (avgDaily > 0 || nextPay)) {
     const bufferDays = 14;
     const targetBalAfter = Math.max(0, avgDaily * bufferDays);
     let simBal = bal;
     let simDate = new Date(todayISO() + 'T00:00:00');
     let foundDay = null;
+    let payCountUntilFound = 0;
     
-    for (let day = 1; day <= 180; day++) { // simulate up to 6 months
+    for (let day = 1; day <= 180; day++) {
       simDate.setDate(simDate.getDate() + 1);
       const isoDate = simDate.toISOString().slice(0, 10);
       
-      // Daily variable spend
+      // Daily spend
       simBal -= avgDaily;
       
       // Income events on this day
-      payEvents.filter(e => e.date === isoDate).forEach(e => { simBal += e.amount; });
+      const todayEvents = payEvents.filter(e => e.date === isoDate);
+      todayEvents.forEach(e => { simBal += e.amount; });
+      payCountUntilFound += todayEvents.length;
       
-      // Check if balance can absorb purchase with buffer
+      // Can it absorb purchase + buffer?
       if (simBal - amount >= targetBalAfter) {
         foundDay = day;
         break;
@@ -4145,57 +4158,54 @@ function computeSmartAffordability(amount) {
     }
     
     if (foundDay !== null && foundDay <= 60) {
-      // Realistic — show wait strategy
+      // Realistic wait
       const targetDate = new Date(todayISO() + 'T00:00:00');
       targetDate.setDate(targetDate.getDate() + foundDay);
       const targetISO = targetDate.toISOString().slice(0, 10);
-      const cyclesUntil = payEvents.filter(e => e.date <= targetISO).length;
-      const cycleText = cyclesUntil > 0 
-        ? `${cyclesUntil} pay cycle${cyclesUntil > 1 ? 's' : ''}`
-        : 'a couple of weeks';
-      strategies.push(`<strong>Wait ${foundDay} days (${cycleText})</strong> — by ${formatDateLabel(targetISO)} your balance should comfortably absorb this with a 2-week buffer remaining.`);
+      const payText = payCountUntilFound > 0 
+        ? `after ${payCountUntilFound} paycheck${payCountUntilFound > 1 ? 's' : ''}`
+        : `in about ${Math.ceil(foundDay/7)} week${Math.ceil(foundDay/7)>1?'s':''}`;
+      strategies.push(`<strong>Wait ${foundDay} days</strong> (${payText}) — by ${formatDateLabel(targetISO)} you'd have enough to buy this AND keep a 2-week safety cushion.`);
     } else if (foundDay !== null && foundDay > 60) {
-      // 2+ months — frame as save-up
       const months = Math.ceil(foundDay / 30);
-      strategies.push(`<strong>Save up over ~${months} months</strong> — your day-to-day spending currently outpaces accumulation. You'd need to either trim variable spend or wait this long.`);
+      strategies.push(`<strong>Save up over ~${months} months</strong> — your daily spending is high enough that you can't accumulate this fast. Trim some variable spending or wait longer.`);
     } else {
-      // Math doesn't work — be honest
-      strategies.push(`<strong>This isn't realistic at current pace</strong> — your daily spending exceeds what each paycheck adds. To make this work, you'd need to reduce variable spending or increase income first.`);
+      strategies.push(`<strong>Not realistic right now</strong> — your daily spending is more than what's coming in. To make this work, you'd need to cut spending or earn more first.`);
     }
   }
   
-  // Strategy: Split the purchase (only for yellow zone, mid-range amounts)
+  // Split purchase strategy
   if (zone === 'yellow' && amount > 200 && nextPay) {
     const halfNow = Math.round(amount / 2);
-    strategies.push(`<strong>Split it</strong> — pay ${fmt(halfNow)} now and ${fmt(amount - halfNow)} after next paycheck. Keeps your buffer healthier.`);
+    strategies.push(`<strong>Split it</strong> — pay ${fmt(halfNow)} now and ${fmt(amount - halfNow)} after your next paycheck. Keeps your cushion healthier.`);
   }
   
-  // Strategy: Save up from leftover (only if positive and within 6 months)
+  // Save up from spare cash
   if (monthlyLeftover > 0 && amount > monthlyLeftover && amount <= monthlyLeftover * 6) {
     const months = Math.ceil(amount / monthlyLeftover);
-    strategies.push(`<strong>Save up over ${months} month${months > 1 ? 's' : ''}</strong> — at your current ${fmt(monthlyLeftover)}/month leftover, you'd have it without touching savings.`);
+    strategies.push(`<strong>Save up over ${months} month${months > 1 ? 's' : ''}</strong> — at your current ${fmt(monthlyLeftover)}/month spare cash, you'd have it without touching savings.`);
   }
   
-  // CONSIDERATIONS / TRADEOFFS
+  // THINGS TO THINK ABOUT (plainer language)
   const considerations = [];
   if (totalDebt > 0) {
     const debtMonths = monthlyLeftover > 0 ? (amount / monthlyLeftover) : null;
     if (debtMonths !== null && debtMonths > 0) {
       const weeks = Math.ceil(debtMonths * 4.33);
-      considerations.push(`Could delay your debt payoff by ~${weeks} week${weeks>1?'s':''} (you have ${fmt(totalDebt)} in active loans)`);
+      considerations.push(`This money could go toward your loans (${fmt(totalDebt)} still owed) — might slow loan payoff by ~${weeks} week${weeks>1?'s':''}`);
     } else {
-      considerations.push(`You have ${fmt(totalDebt)} in active loans — could this money go there instead?`);
+      considerations.push(`You still owe ${fmt(totalDebt)} on loans — would this money help more there?`);
     }
   }
   
   const safe = computeSafeWeeklySave();
   if (safe.hasEnoughData && safe.safeSave > 0) {
     const savingsWeeks = Math.ceil(amount / safe.safeSave);
-    considerations.push(`This = ${savingsWeeks} week${savingsWeeks>1?'s':''} of your safe save target (${fmt(safe.safeSave)}/wk)`);
+    considerations.push(`Equals ${savingsWeeks} week${savingsWeeks>1?'s':''} of saving at your safe rate (${fmt(safe.safeSave)}/week)`);
   }
   
   if (amount > avgDaily * 14 && avgDaily > 0) {
-    considerations.push(`Roughly ${(amount/avgDaily).toFixed(0)} days worth of typical spending`);
+    considerations.push(`About ${(amount/avgDaily).toFixed(0)} days of your usual spending`);
   }
   
   return { zone, title, reasons, strategies, considerations, monthlyLeftover, monthlyIn };
@@ -4412,7 +4422,7 @@ function renderExpectedMonthly() {
   if (monthlyIn === 0 && monthlyFixed === 0) {
     el.innerHTML = `
       <div style="color:var(--text-dim);font-size:13px;line-height:1.6;padding:8px 0;">
-        Set up <strong style="color:var(--accent);" onclick="goPage('income-sources')">Income Sources</strong> and <strong style="color:var(--accent);" onclick="goPage('recurring-expenses')">Recurring Expenses</strong> in Settings to see your expected monthly picture.
+        Set up your <strong style="color:var(--accent);" onclick="goPage('income-sources')">income sources</strong> and <strong style="color:var(--accent);" onclick="goPage('recurring-expenses')">regular bills</strong> in Settings to see your monthly picture.
       </div>
     `;
     return;
@@ -4426,26 +4436,26 @@ function renderExpectedMonthly() {
   const anomalies = detectDataAnomalies();
   const anomalyHtml = anomalies.length > 0 ? anomalies.map(a => `
     <div style="margin-top:10px;padding:10px 12px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:10px;font-size:12px;color:var(--text-dim);line-height:1.5;">
-      <strong style="color:var(--warning);">⚠ Check your data:</strong> ${a.msg}
+      <strong style="color:var(--warning);">⚠ Heads up:</strong> ${a.msg}
     </div>
   `).join('') : '';
   
   el.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div style="display:flex;justify-content:space-between;padding:6px 0;">
-        <span style="color:var(--text-dim);font-size:13px;">💼 Recurring income</span>
+        <span style="color:var(--text-dim);font-size:13px;">💼 Money coming in</span>
         <span style="font-family:'Geist Mono',monospace;color:var(--income);font-weight:500;">+${fmt(monthlyIn)}</span>
       </div>
       <div style="display:flex;justify-content:space-between;padding:6px 0;">
-        <span style="color:var(--text-dim);font-size:13px;">🧾 Fixed recurring expenses</span>
+        <span style="color:var(--text-dim);font-size:13px;">🧾 Regular bills</span>
         <span style="font-family:'Geist Mono',monospace;color:var(--expense);font-weight:500;">−${fmt(monthlyFixed)}</span>
       </div>
       <div style="display:flex;justify-content:space-between;padding:6px 0;">
-        <span style="color:var(--text-dim);font-size:13px;">🍔 Avg variable spend</span>
+        <span style="color:var(--text-dim);font-size:13px;">🍔 Other spending</span>
         <span style="font-family:'Geist Mono',monospace;color:var(--expense);font-weight:500;">−${fmt(monthlyVar)}</span>
       </div>
       <div style="display:flex;justify-content:space-between;padding:12px 0 6px;border-top:1px solid var(--border);margin-top:4px;">
-        <span style="font-weight:500;font-size:14px;">Expected leftover</span>
+        <span style="font-weight:500;font-size:14px;">Spare each month</span>
         <span style="font-family:'Geist Mono',monospace;color:${leftoverColor};font-weight:600;font-size:16px;">${leftoverSign}${leftoverStr}</span>
       </div>
     </div>
@@ -4462,7 +4472,7 @@ function renderSafeSave() {
   if (!result.hasEnoughData) {
     el.innerHTML = `
       <div style="color:var(--text-dim);font-size:13px;line-height:1.6;padding:8px 0;">
-        Add your income sources in Settings to get a personalized weekly save target.
+        Add your income in Settings → Income Sources to see what you can save each week.
       </div>
     `;
     return;
@@ -4471,35 +4481,58 @@ function renderSafeSave() {
   if (result.safeSave === 0) {
     el.innerHTML = `
       <div style="color:var(--text-dim);font-size:13px;line-height:1.6;padding:8px 0;">
-        <div style="color:var(--warning);font-weight:500;margin-bottom:8px;">⚠ Tight margins</div>
-        Your recurring expenses + variable spending eat up your income. Focus on reducing one fixed cost or cutting variable spending before targeting savings.
+        <div style="color:var(--warning);font-weight:500;margin-bottom:8px;">⚠ Things are tight</div>
+        Your bills and usual spending are eating up most of your income. Cutting one regular bill or trimming spending will help before you can really save.
       </div>
     `;
     return;
   }
   
+  // Plain-English confidence
+  const confLabel = {
+    'low': 'Just starting out — log a few more weeks for sharper numbers',
+    'medium': 'Reasonably accurate',
+    'good': 'Pretty accurate',
+  }[result.confidence] || 'Working with limited data';
   const confColor = result.confidence === 'good' ? 'var(--income)' : result.confidence === 'medium' ? 'var(--warning)' : 'var(--text-muted)';
   
+  // Plain English description sentence
+  const weeklyIn = result.breakdown.weeklyIn;
+  const description = weeklyIn > 0
+    ? `Out of your <strong>${fmt(weeklyIn)}/week</strong> income, this much is safe to set aside after your bills and usual spending.`
+    : `This is safe to save each week without straining your day-to-day.`;
+  
   el.innerHTML = `
-    <div style="text-align:center;padding:16px 0 12px;">
-      <div style="font-family:'Fraunces',serif;font-size:34px;font-weight:500;color:var(--accent);letter-spacing:-0.02em;line-height:1;">${fmt(result.safeSave)}</div>
-      <div style="color:var(--text-dim);font-size:12px;margin-top:4px;">per week · sustainable</div>
+    <div style="text-align:center;padding:14px 0 8px;">
+      <div style="font-family:'Fraunces',serif;font-size:36px;font-weight:500;color:var(--accent);letter-spacing:-0.02em;line-height:1;">${fmt(result.safeSave)}</div>
+      <div style="color:var(--text-dim);font-size:12px;margin-top:4px;">each week</div>
     </div>
-    <div style="background:rgba(255,255,255,0.02);border-radius:10px;padding:12px;font-size:12px;color:var(--text-dim);line-height:1.7;">
-      <strong style="color:var(--text);">How we got there:</strong><br>
-      Weekly income: <span style="font-family:'Geist Mono',monospace;">${fmt(result.breakdown.weeklyIn)}</span><br>
-      − Fixed expenses: <span style="font-family:'Geist Mono',monospace;">${fmt(result.breakdown.weeklyOut)}</span><br>
-      − Variable spend: <span style="font-family:'Geist Mono',monospace;">${fmt(result.breakdown.variableWeekly)}</span><br>
-      − Loan payments: <span style="font-family:'Geist Mono',monospace;">${fmt(result.breakdown.loanWeekly)}</span><br>
-      = <span style="font-family:'Geist Mono',monospace;color:var(--text);">${fmt(result.breakdown.rawAvailable)}</span> available<br>
-      × 0.7 buffer = <strong style="color:var(--accent);">${fmt(result.safeSave)}</strong>
+    <div style="color:var(--text-dim);font-size:13px;line-height:1.6;padding:8px 14px 14px;text-align:center;">
+      ${description}
     </div>
+    
+    <details style="margin-top:6px;">
+      <summary style="cursor:pointer;color:var(--accent);font-size:12px;padding:8px 12px;background:rgba(201,255,61,0.05);border-radius:8px;text-align:center;list-style:none;outline:none;">
+        See the math →
+      </summary>
+      <div style="background:rgba(255,255,255,0.02);border-radius:10px;padding:12px;font-size:12px;color:var(--text-dim);line-height:1.7;margin-top:8px;">
+        <strong style="color:var(--text);">Breakdown per week:</strong><br>
+        Income: <span style="font-family:'Geist Mono',monospace;">${fmt(result.breakdown.weeklyIn)}</span><br>
+        − Regular bills: <span style="font-family:'Geist Mono',monospace;">${fmt(result.breakdown.weeklyOut)}</span><br>
+        − Usual spending: <span style="font-family:'Geist Mono',monospace;">${fmt(result.breakdown.variableWeekly)}</span><br>
+        − Loan payments: <span style="font-family:'Geist Mono',monospace;">${fmt(result.breakdown.loanWeekly)}</span><br>
+        Leaves: <span style="font-family:'Geist Mono',monospace;color:var(--text);">${fmt(result.breakdown.rawAvailable)}</span><br>
+        <span style="font-size:11px;color:var(--text-muted);">We use 70% of that to leave room for surprises:</span><br>
+        = <strong style="color:var(--accent);">${fmt(result.safeSave)}</strong> safe to save
+      </div>
+    </details>
+    
     ${result.stretchSave > result.safeSave ? `
       <div style="margin-top:10px;padding:10px;background:rgba(201,255,61,0.05);border:1px dashed rgba(201,255,61,0.2);border-radius:10px;font-size:12px;color:var(--text-dim);">
-        💪 <strong style="color:var(--text);">Stretch goal:</strong> ${fmt(result.stretchSave)}/week if you trim variable spending
+        💪 <strong style="color:var(--text);">Push harder:</strong> ${fmt(result.stretchSave)}/week is possible if you trim some spending
       </div>
     ` : ''}
-    <div class="confidence" style="margin-top:10px;color:${confColor};">${result.confidence} confidence · ${getDataDays()} days of data</div>
+    <div class="confidence" style="margin-top:10px;color:${confColor};text-transform:none;letter-spacing:0;">${confLabel}</div>
   `;
 }
 
@@ -4516,23 +4549,23 @@ function renderLoanStrategy() {
   card.style.display = 'block';
   
   const stratLabel = {
-    avalanche: 'Avalanche',
-    snowball: 'Snowball',
-    single: 'Focused',
+    avalanche: 'Tackle the biggest first',
+    snowball: 'Quick wins first',
+    single: 'One loan to clear',
   }[result.strategy] || 'Custom';
   
   let payoffStr = '';
   if (result.payoffWeeks) {
     const months = (result.payoffWeeks / 4.33).toFixed(1);
     payoffStr = `<div style="margin-top:10px;padding:10px;background:rgba(74,222,128,0.06);border-radius:10px;font-size:12px;color:var(--text-dim);">
-      🎯 At your current pace: debt-free in ~<strong style="color:var(--income);">${result.payoffWeeks} weeks (${months} months)</strong>
+      🎯 At this pace you could be debt-free in <strong style="color:var(--income);">${result.payoffWeeks} weeks (about ${months} months)</strong>
     </div>`;
   }
   
   el.innerHTML = `
     <div style="margin-bottom:12px;padding:10px;background:rgba(201,255,61,0.05);border:1px solid rgba(201,255,61,0.15);border-radius:10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-size:13px;font-weight:500;">${stratLabel} strategy</span>
+        <span style="font-size:13px;font-weight:500;">${stratLabel}</span>
         <span style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--text-dim);">${fmt(result.totalDebt)} total</span>
       </div>
       <div style="font-size:12px;color:var(--text-dim);line-height:1.5;">${result.note}</div>
@@ -4927,17 +4960,17 @@ function runAffordabilityCheck() {
         <ul>${result.reasons.map(r => '<li>' + r + '</li>').join('')}</ul>
         ${result.strategies.length ? `
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);">
-            <div style="color:var(--text);margin-bottom:6px;font-weight:500;">💡 Smart timing strategies:</div>
+            <div style="color:var(--text);margin-bottom:6px;font-weight:500;">💡 If you want to wait or be smarter about it:</div>
             <ul>${result.strategies.map(s => '<li>' + s + '</li>').join('')}</ul>
           </div>
         ` : ''}
         ${result.considerations.length ? `
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);">
-            <div style="color:var(--text);margin-bottom:6px;font-weight:500;">⚖ Tradeoffs:</div>
+            <div style="color:var(--text);margin-bottom:6px;font-weight:500;">⚖ Things to think about:</div>
             <ul>${result.considerations.map(c => '<li>' + c + '</li>').join('')}</ul>
           </div>
         ` : ''}
-        <div style="margin-top:14px;color:var(--text-muted);font-size:11px;">Your call — this is just math.</div>
+        <div style="margin-top:14px;color:var(--text-muted);font-size:11px;">Your decision — this is just the numbers.</div>
       </div>
     </div>
   `;
