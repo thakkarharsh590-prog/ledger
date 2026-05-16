@@ -1,31 +1,26 @@
 <!DOCTYPE html>
+
 <!--
   ============================================================
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.4.0
-  Last edited:  2026-05-16
+  Version:      2.5.0
+  Last edited:  2026-05-17
   Storage:      localStorage (device-local, never sent to cloud)
-  Schema ver:   6 (auto-migrates from v1-v5)
+  Schema ver:   6 (no schema change needed for v2.5)
   
   NAMED: Ledger Compass
   
-  v2.4.0 — SAVINGS + INLINE SMART CUTS:
-  - Pay cycle text now uses WEEKS not paydays
-    (3 jobs on different days = many "paydays" was confusing,
-     so we drop that number entirely — "after 5 weeks" is clear)
-  - NEW: Savings tab with deposits/withdrawals + goals
-    * Track money set aside
-    * Reflects in cash flow forecast
-    * Optional goals (Emergency Fund, Trip, etc.) with progress
-  - Smart Cuts moved INLINE to each recurring expense
-    * "💡 Save here" button on each card
-    * Tap to expand alternatives
-    * Strict matching — no wrong suggestions
-  - Compass slimmed: removed Smart Cuts card (now inline)
-  - Smart Cuts matcher rewritten: returns null on no match,
-    no more falling through to wrong category tips
+  v2.5.0 — WEEKLY PLAN ("Set Aside" envelope system):
+  - New Compass card: This Week + Next 4 Weeks
+  - Auto-calculates how much to set aside each week
+    for upcoming bills (rent in 3 weeks → save ~33%/wk)
+  - "Free to spend" amount per week (income - set aside - usual spend)
+  - Daily allowance: "$X free today"
+  - Affordability check now factors in set-aside money
+  - Warns 3+ weeks ahead if a future week goes negative
+  - Virtual envelope shown on Home: "🔒 $X reserved for bills"
   
   COMPLETED FEATURES (carry-over):
   - Transactions, loans, budgets, insights, custom categories
@@ -65,6 +60,7 @@
   - Export JSON regularly from Settings page
   ============================================================
 -->
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -80,6 +76,7 @@
 <title>Ledger Compass</title>
 
 <!-- PWA Manifest (inline as data URI so single-file works) -->
+
 <link rel="manifest" id="manifestLink">
 <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230a0a0f'/><circle cx='90' cy='90' r='62' fill='none' stroke='%23c9ff3d' stroke-width='3' opacity='0.4'/><path d='M 90 38 L 100 90 L 90 142 L 80 90 Z' fill='%23c9ff3d'/><circle cx='90' cy='90' r='5' fill='%230a0a0f'/></svg>">
 
@@ -88,1521 +85,1644 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  
-  :root {
-    --bg: #0a0a0f;
-    --bg-elevated: #14141c;
-    --bg-card: #1a1a24;
-    --bg-card-hover: #20202c;
-    --border: rgba(255,255,255,0.06);
-    --border-strong: rgba(255,255,255,0.12);
-    --text: #f5f5f7;
-    --text-dim: #8a8a96;
-    --text-muted: #5a5a66;
-    --accent: #c9ff3d;
-    --accent-dim: #9ec92e;
-    --income: #4ade80;
-    --expense: #ff6b6b;
-    --warning: #fbbf24;
-    --shadow: 0 8px 32px rgba(0,0,0,0.4);
-    --safe-top: env(safe-area-inset-top, 0);
-    --safe-bottom: env(safe-area-inset-bottom, 0);
-  }
 
-  html, body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Geist', -apple-system, system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
-    overscroll-behavior-y: contain;
-  }
+:root {
+–bg: #0a0a0f;
+–bg-elevated: #14141c;
+–bg-card: #1a1a24;
+–bg-card-hover: #20202c;
+–border: rgba(255,255,255,0.06);
+–border-strong: rgba(255,255,255,0.12);
+–text: #f5f5f7;
+–text-dim: #8a8a96;
+–text-muted: #5a5a66;
+–accent: #c9ff3d;
+–accent-dim: #9ec92e;
+–income: #4ade80;
+–expense: #ff6b6b;
+–warning: #fbbf24;
+–shadow: 0 8px 32px rgba(0,0,0,0.4);
+–safe-top: env(safe-area-inset-top, 0);
+–safe-bottom: env(safe-area-inset-bottom, 0);
+}
 
-  body {
-    min-height: 100vh;
-    min-height: 100dvh;
-    padding-top: var(--safe-top);
-    padding-bottom: calc(80px + var(--safe-bottom));
-    background-image: 
-      radial-gradient(ellipse at top, rgba(201,255,61,0.04), transparent 60%),
-      radial-gradient(ellipse at bottom right, rgba(74,222,128,0.03), transparent 50%);
-  }
+html, body {
+background: var(–bg);
+color: var(–text);
+font-family: ‘Geist’, -apple-system, system-ui, sans-serif;
+-webkit-font-smoothing: antialiased;
+overflow-x: hidden;
+overscroll-behavior-y: contain;
+}
 
-  /* Top Bar */
-  .topbar {
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    padding: 14px 20px 12px;
-    padding-top: calc(14px + var(--safe-top));
-    background: rgba(10,10,15,0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .brand {
-    font-family: 'Fraunces', serif;
-    font-size: 18px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--text);
-  }
-  .brand-word {
-    font-style: italic;
-  }
-  .brand-needle { 
-    display: inline-flex; 
-    flex-shrink: 0;
-  }
-  .version-tag {
-    font-size: 10px;
-    color: var(--accent);
-    background: rgba(201,255,61,0.1);
-    border: 1px solid rgba(201,255,61,0.3);
-    padding: 2px 6px;
-    border-radius: 6px;
-    font-family: 'Geist Mono', monospace;
-    margin-left: 4px;
-    font-weight: 500;
-    letter-spacing: 0;
-  }
-  .topbar-actions { display: flex; gap: 8px; }
-  .icon-btn {
-    width: 38px; height: 38px;
-    border-radius: 12px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: all .15s;
-    font-size: 16px;
-  }
-  .icon-btn:active { transform: scale(0.94); background: var(--bg-card-hover); }
+body {
+min-height: 100vh;
+min-height: 100dvh;
+padding-top: var(–safe-top);
+padding-bottom: calc(80px + var(–safe-bottom));
+background-image:
+radial-gradient(ellipse at top, rgba(201,255,61,0.04), transparent 60%),
+radial-gradient(ellipse at bottom right, rgba(74,222,128,0.03), transparent 50%);
+}
 
-  /* Pages */
-  .page { display: none; padding: 16px 20px 20px; animation: fadeIn .3s ease; }
-  .page.active { display: block; }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+/* Top Bar */
+.topbar {
+position: sticky;
+top: 0;
+z-index: 50;
+padding: 14px 20px 12px;
+padding-top: calc(14px + var(–safe-top));
+background: rgba(10,10,15,0.85);
+backdrop-filter: blur(20px);
+-webkit-backdrop-filter: blur(20px);
+border-bottom: 1px solid var(–border);
+display: flex;
+align-items: center;
+justify-content: space-between;
+}
+.brand {
+font-family: ‘Fraunces’, serif;
+font-size: 18px;
+font-weight: 500;
+letter-spacing: -0.01em;
+display: flex;
+align-items: center;
+gap: 8px;
+color: var(–text);
+}
+.brand-word {
+font-style: italic;
+}
+.brand-needle {
+display: inline-flex;
+flex-shrink: 0;
+}
+.version-tag {
+font-size: 10px;
+color: var(–accent);
+background: rgba(201,255,61,0.1);
+border: 1px solid rgba(201,255,61,0.3);
+padding: 2px 6px;
+border-radius: 6px;
+font-family: ‘Geist Mono’, monospace;
+margin-left: 4px;
+font-weight: 500;
+letter-spacing: 0;
+}
+.topbar-actions { display: flex; gap: 8px; }
+.icon-btn {
+width: 38px; height: 38px;
+border-radius: 12px;
+background: var(–bg-card);
+border: 1px solid var(–border);
+color: var(–text);
+display: flex; align-items: center; justify-content: center;
+cursor: pointer;
+transition: all .15s;
+font-size: 16px;
+}
+.icon-btn:active { transform: scale(0.94); background: var(–bg-card-hover); }
 
-  /* Balance Hero */
-  .hero {
-    margin: 8px 0 24px;
-    padding: 28px 24px;
-    background: linear-gradient(135deg, #1c1c28 0%, #14141c 100%);
-    border: 1px solid var(--border);
-    border-radius: 24px;
-    position: relative;
-    overflow: hidden;
-  }
-  .hero::before {
-    content: '';
-    position: absolute;
-    top: -50%; right: -30%;
-    width: 300px; height: 300px;
-    background: radial-gradient(circle, rgba(201,255,61,0.12), transparent 70%);
-    pointer-events: none;
-  }
-  .hero-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: var(--text-dim);
-    margin-bottom: 10px;
-  }
-  .hero-amount {
-    font-family: 'Fraunces', serif;
-    font-size: 44px;
-    font-weight: 500;
-    letter-spacing: -0.03em;
-    line-height: 1;
-    margin-bottom: 6px;
-  }
-  .hero-currency {
-    font-size: 18px;
-    color: var(--text-dim);
-    font-weight: 400;
-  }
-  .hero-sub {
-    color: var(--text-dim);
-    font-size: 13px;
-    margin-top: 4px;
-  }
-  .hero-row {
-    margin-top: 22px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    position: relative;
-  }
-  .hero-stat {
-    padding: 14px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 14px;
-    border: 1px solid var(--border);
-  }
-  .hero-stat-label {
-    font-size: 11px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 6px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .hero-stat-dot { width: 6px; height: 6px; border-radius: 50%; }
-  .hero-stat-value {
-    font-family: 'Geist Mono', monospace;
-    font-size: 18px;
-    font-weight: 500;
-  }
-  .income-text { color: var(--income); }
-  .expense-text { color: var(--expense); }
+/* Pages */
+.page { display: none; padding: 16px 20px 20px; animation: fadeIn .3s ease; }
+.page.active { display: block; }
+@keyframes fadeIn {
+from { opacity: 0; transform: translateY(8px); }
+to { opacity: 1; transform: translateY(0); }
+}
 
-  /* Section Title */
-  .section-title {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin: 8px 4px 14px;
-  }
-  .section-title h2 {
-    font-family: 'Fraunces', serif;
-    font-size: 20px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-  }
-  .section-title .link {
-    font-size: 13px;
-    color: var(--accent);
-    cursor: pointer;
-  }
+/* Balance Hero */
+.hero {
+margin: 8px 0 24px;
+padding: 28px 24px;
+background: linear-gradient(135deg, #1c1c28 0%, #14141c 100%);
+border: 1px solid var(–border);
+border-radius: 24px;
+position: relative;
+overflow: hidden;
+}
+.hero::before {
+content: ‘’;
+position: absolute;
+top: -50%; right: -30%;
+width: 300px; height: 300px;
+background: radial-gradient(circle, rgba(201,255,61,0.12), transparent 70%);
+pointer-events: none;
+}
+.hero-label {
+font-size: 11px;
+text-transform: uppercase;
+letter-spacing: 0.15em;
+color: var(–text-dim);
+margin-bottom: 10px;
+}
+.hero-amount {
+font-family: ‘Fraunces’, serif;
+font-size: 44px;
+font-weight: 500;
+letter-spacing: -0.03em;
+line-height: 1;
+margin-bottom: 6px;
+}
+.hero-currency {
+font-size: 18px;
+color: var(–text-dim);
+font-weight: 400;
+}
+.hero-sub {
+color: var(–text-dim);
+font-size: 13px;
+margin-top: 4px;
+}
+.hero-row {
+margin-top: 22px;
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 16px;
+position: relative;
+}
+.hero-stat {
+padding: 14px;
+background: rgba(255,255,255,0.03);
+border-radius: 14px;
+border: 1px solid var(–border);
+}
+.hero-stat-label {
+font-size: 11px;
+color: var(–text-dim);
+text-transform: uppercase;
+letter-spacing: 0.1em;
+margin-bottom: 6px;
+display: flex;
+align-items: center;
+gap: 6px;
+}
+.hero-stat-dot { width: 6px; height: 6px; border-radius: 50%; }
+.hero-stat-value {
+font-family: ‘Geist Mono’, monospace;
+font-size: 18px;
+font-weight: 500;
+}
+.income-text { color: var(–income); }
+.expense-text { color: var(–expense); }
 
-  /* Quick Add */
-  .quickadd {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 24px;
-  }
-  .quickadd button {
-    padding: 16px;
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    background: var(--bg-card);
-    color: var(--text);
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all .15s;
-  }
-  .quickadd button:active { transform: scale(0.97); }
-  .quickadd .add-income { border-color: rgba(74,222,128,0.3); color: var(--income); }
-  .quickadd .add-expense { border-color: rgba(255,107,107,0.3); color: var(--expense); }
-  .quickadd .icon {
-    width: 22px; height: 22px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px; font-weight: 600;
-  }
-  .add-income .icon { background: rgba(74,222,128,0.15); }
-  .add-expense .icon { background: rgba(255,107,107,0.15); }
+/* Section Title */
+.section-title {
+display: flex;
+justify-content: space-between;
+align-items: baseline;
+margin: 8px 4px 14px;
+}
+.section-title h2 {
+font-family: ‘Fraunces’, serif;
+font-size: 20px;
+font-weight: 500;
+letter-spacing: -0.01em;
+}
+.section-title .link {
+font-size: 13px;
+color: var(–accent);
+cursor: pointer;
+}
 
-  /* Transactions */
-  .tx-list { display: flex; flex-direction: column; gap: 4px; }
-  .tx-group-date {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-muted);
-    padding: 14px 4px 6px;
-  }
-  .tx {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    cursor: pointer;
-    transition: all .15s;
-  }
-  .tx:active { background: var(--bg-card-hover); transform: scale(0.99); }
-  .tx-icon {
-    width: 40px; height: 40px;
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-  }
-  .tx-main { flex: 1; min-width: 0; }
-  .tx-title {
-    font-size: 14px;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .tx-meta {
-    font-size: 12px;
-    color: var(--text-dim);
-    margin-top: 2px;
-  }
-  .tx-amount {
-    font-family: 'Geist Mono', monospace;
-    font-size: 15px;
-    font-weight: 500;
-    text-align: right;
-    flex-shrink: 0;
-  }
-  .empty {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text-dim);
-  }
-  .empty-icon {
-    font-size: 40px;
-    margin-bottom: 12px;
-    opacity: 0.5;
-  }
-  .empty p { font-size: 14px; line-height: 1.5; }
+/* Quick Add */
+.quickadd {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 10px;
+margin-bottom: 24px;
+}
+.quickadd button {
+padding: 16px;
+border-radius: 16px;
+border: 1px solid var(–border);
+background: var(–bg-card);
+color: var(–text);
+font-family: inherit;
+font-size: 14px;
+font-weight: 500;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 8px;
+transition: all .15s;
+}
+.quickadd button:active { transform: scale(0.97); }
+.quickadd .add-income { border-color: rgba(74,222,128,0.3); color: var(–income); }
+.quickadd .add-expense { border-color: rgba(255,107,107,0.3); color: var(–expense); }
+.quickadd .icon {
+width: 22px; height: 22px; border-radius: 50%;
+display: flex; align-items: center; justify-content: center;
+font-size: 14px; font-weight: 600;
+}
+.add-income .icon { background: rgba(74,222,128,0.15); }
+.add-expense .icon { background: rgba(255,107,107,0.15); }
 
-  /* Stats Page */
-  .stat-card {
-    padding: 18px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    margin-bottom: 12px;
-  }
-  .stat-card-title {
-    font-size: 12px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 8px;
-  }
-  .stat-card-value {
-    font-family: 'Fraunces', serif;
-    font-size: 28px;
-    font-weight: 500;
-    letter-spacing: -0.02em;
-  }
-  .stat-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
+/* Transactions */
+.tx-list { display: flex; flex-direction: column; gap: 4px; }
+.tx-group-date {
+font-size: 11px;
+text-transform: uppercase;
+letter-spacing: 0.12em;
+color: var(–text-muted);
+padding: 14px 4px 6px;
+}
+.tx {
+display: flex;
+align-items: center;
+gap: 12px;
+padding: 14px;
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 14px;
+cursor: pointer;
+transition: all .15s;
+}
+.tx:active { background: var(–bg-card-hover); transform: scale(0.99); }
+.tx-icon {
+width: 40px; height: 40px;
+border-radius: 12px;
+display: flex; align-items: center; justify-content: center;
+font-size: 18px;
+flex-shrink: 0;
+}
+.tx-main { flex: 1; min-width: 0; }
+.tx-title {
+font-size: 14px;
+font-weight: 500;
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+}
+.tx-meta {
+font-size: 12px;
+color: var(–text-dim);
+margin-top: 2px;
+}
+.tx-amount {
+font-family: ‘Geist Mono’, monospace;
+font-size: 15px;
+font-weight: 500;
+text-align: right;
+flex-shrink: 0;
+}
+.empty {
+text-align: center;
+padding: 60px 20px;
+color: var(–text-dim);
+}
+.empty-icon {
+font-size: 40px;
+margin-bottom: 12px;
+opacity: 0.5;
+}
+.empty p { font-size: 14px; line-height: 1.5; }
 
-  /* Chart */
-  .chart-wrap {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 20px;
-  }
-  .chart-title {
-    font-family: 'Fraunces', serif;
-    font-size: 16px;
-    font-weight: 500;
-    margin-bottom: 14px;
-  }
-  .bar-chart {
-    display: flex;
-    align-items: flex-end;
-    gap: 6px;
-    height: 140px;
-    padding: 4px 0;
-  }
-  .bar-col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    height: 100%;
-    cursor: pointer;
-  }
-  .bar-bars {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 2px;
-  }
-  .bar {
-    flex: 1;
-    border-radius: 4px 4px 0 0;
-    min-height: 2px;
-    transition: all .3s ease;
-  }
-  .bar.in { background: linear-gradient(180deg, var(--income), rgba(74,222,128,0.4)); }
-  .bar.out { background: linear-gradient(180deg, var(--expense), rgba(255,107,107,0.4)); }
-  .bar-label {
-    font-size: 10px;
-    color: var(--text-dim);
-    font-family: 'Geist Mono', monospace;
-  }
+/* Stats Page */
+.stat-card {
+padding: 18px;
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 16px;
+margin-bottom: 12px;
+}
+.stat-card-title {
+font-size: 12px;
+color: var(–text-dim);
+text-transform: uppercase;
+letter-spacing: 0.1em;
+margin-bottom: 8px;
+}
+.stat-card-value {
+font-family: ‘Fraunces’, serif;
+font-size: 28px;
+font-weight: 500;
+letter-spacing: -0.02em;
+}
+.stat-grid {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 10px;
+margin-bottom: 20px;
+}
 
-  /* Category Breakdown */
-  .cat-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .cat-row:last-child { border-bottom: none; }
-  .cat-icon {
-    width: 36px; height: 36px;
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
-  }
-  .cat-info { flex: 1; }
-  .cat-name { font-size: 14px; font-weight: 500; }
-  .cat-bar-wrap {
-    width: 100%;
-    height: 4px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 2px;
-    margin-top: 6px;
-    overflow: hidden;
-  }
-  .cat-bar-fill {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 2px;
-    transition: width .4s ease;
-  }
-  .cat-amount {
-    font-family: 'Geist Mono', monospace;
-    font-size: 13px;
-    color: var(--text);
-  }
-  .cat-pct {
-    font-size: 11px;
-    color: var(--text-dim);
-    text-align: right;
-  }
+/* Chart */
+.chart-wrap {
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 16px;
+padding: 18px;
+margin-bottom: 20px;
+}
+.chart-title {
+font-family: ‘Fraunces’, serif;
+font-size: 16px;
+font-weight: 500;
+margin-bottom: 14px;
+}
+.bar-chart {
+display: flex;
+align-items: flex-end;
+gap: 6px;
+height: 140px;
+padding: 4px 0;
+}
+.bar-col {
+flex: 1;
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 6px;
+height: 100%;
+cursor: pointer;
+}
+.bar-bars {
+width: 100%;
+height: 100%;
+display: flex;
+align-items: flex-end;
+justify-content: center;
+gap: 2px;
+}
+.bar {
+flex: 1;
+border-radius: 4px 4px 0 0;
+min-height: 2px;
+transition: all .3s ease;
+}
+.bar.in { background: linear-gradient(180deg, var(–income), rgba(74,222,128,0.4)); }
+.bar.out { background: linear-gradient(180deg, var(–expense), rgba(255,107,107,0.4)); }
+.bar-label {
+font-size: 10px;
+color: var(–text-dim);
+font-family: ‘Geist Mono’, monospace;
+}
 
-  /* Budgets */
-  .budget-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 16px;
-    margin-bottom: 10px;
-    cursor: pointer;
-  }
-  .budget-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-  .budget-name {
-    font-size: 14px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .budget-amount {
-    font-family: 'Geist Mono', monospace;
-    font-size: 13px;
-  }
-  .budget-bar-wrap {
-    width: 100%;
-    height: 8px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .budget-bar-fill {
-    height: 100%;
-    border-radius: 4px;
-    transition: width .4s ease;
-  }
-  .budget-foot {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 8px;
-    font-size: 11px;
-    color: var(--text-dim);
-  }
+/* Category Breakdown */
+.cat-row {
+display: flex;
+align-items: center;
+gap: 12px;
+padding: 12px 0;
+border-bottom: 1px solid var(–border);
+}
+.cat-row:last-child { border-bottom: none; }
+.cat-icon {
+width: 36px; height: 36px;
+border-radius: 10px;
+display: flex; align-items: center; justify-content: center;
+font-size: 16px;
+}
+.cat-info { flex: 1; }
+.cat-name { font-size: 14px; font-weight: 500; }
+.cat-bar-wrap {
+width: 100%;
+height: 4px;
+background: rgba(255,255,255,0.06);
+border-radius: 2px;
+margin-top: 6px;
+overflow: hidden;
+}
+.cat-bar-fill {
+height: 100%;
+background: var(–accent);
+border-radius: 2px;
+transition: width .4s ease;
+}
+.cat-amount {
+font-family: ‘Geist Mono’, monospace;
+font-size: 13px;
+color: var(–text);
+}
+.cat-pct {
+font-size: 11px;
+color: var(–text-dim);
+text-align: right;
+}
 
-  /* Loans */
-  .loans-summary {
-    background: linear-gradient(135deg, #1c1c28, #14141c);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 20px;
-    margin-bottom: 20px;
-    position: relative;
-    overflow: hidden;
-  }
-  .loans-summary::before {
-    content: '';
-    position: absolute;
-    top: -40%; right: -20%;
-    width: 200px; height: 200px;
-    background: radial-gradient(circle, rgba(251,191,36,0.1), transparent 70%);
-  }
-  .loans-summary-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-dim);
-    margin-bottom: 8px;
-  }
-  .loans-summary-amount {
-    font-family: 'Fraunces', serif;
-    font-size: 32px;
-    font-weight: 500;
-    letter-spacing: -0.02em;
-    margin-bottom: 12px;
-  }
-  .loans-summary-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    position: relative;
-    z-index: 1;
-  }
-  .loans-summary-stat {
-    padding: 10px 12px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 10px;
-    border: 1px solid var(--border);
-  }
-  .loans-summary-stat-label {
-    font-size: 10px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-  .loans-summary-stat-val {
-    font-family: 'Geist Mono', monospace;
-    font-size: 15px;
-    font-weight: 500;
-    margin-top: 2px;
-  }
-  .loan-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 12px;
-    cursor: pointer;
-    transition: all .15s;
-  }
-  .loan-card:active { transform: scale(0.99); background: var(--bg-card-hover); }
-  .loan-card.paid-off { border-color: rgba(74,222,128,0.3); }
-  .loan-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 14px;
-    gap: 10px;
-  }
-  .loan-title {
-    font-size: 15px;
-    font-weight: 500;
-    margin-bottom: 4px;
-  }
-  .loan-lender {
-    font-size: 12px;
-    color: var(--text-dim);
-  }
-  .loan-badge {
-    font-size: 10px;
-    padding: 3px 8px;
-    border-radius: 100px;
-    background: rgba(74,222,128,0.15);
-    color: var(--income);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-  .loan-badge.active-loan {
-    background: rgba(251,191,36,0.15);
-    color: var(--warning);
-  }
-  .loan-progress-wrap {
-    width: 100%;
-    height: 10px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 5px;
-    overflow: hidden;
-    margin-bottom: 10px;
-  }
-  .loan-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--income));
-    border-radius: 5px;
-    transition: width .5s cubic-bezier(.2,.9,.3,1);
-  }
-  .loan-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
-    margin-top: 12px;
-  }
-  .loan-stat-label {
-    font-size: 10px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 4px;
-  }
-  .loan-stat-val {
-    font-family: 'Geist Mono', monospace;
-    font-size: 13px;
-    font-weight: 500;
-  }
-  .loan-stat-val.paid { color: var(--income); }
-  .loan-stat-val.remaining { color: var(--warning); }
+/* Budgets */
+.budget-card {
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 16px;
+padding: 16px;
+margin-bottom: 10px;
+cursor: pointer;
+}
+.budget-head {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 10px;
+}
+.budget-name {
+font-size: 14px;
+font-weight: 500;
+display: flex;
+align-items: center;
+gap: 8px;
+}
+.budget-amount {
+font-family: ‘Geist Mono’, monospace;
+font-size: 13px;
+}
+.budget-bar-wrap {
+width: 100%;
+height: 8px;
+background: rgba(255,255,255,0.06);
+border-radius: 4px;
+overflow: hidden;
+}
+.budget-bar-fill {
+height: 100%;
+border-radius: 4px;
+transition: width .4s ease;
+}
+.budget-foot {
+display: flex;
+justify-content: space-between;
+margin-top: 8px;
+font-size: 11px;
+color: var(–text-dim);
+}
 
-  /* Payment History */
-  .payment-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    margin-bottom: 6px;
-  }
-  .payment-date {
-    font-size: 13px;
-  }
-  .payment-meta {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: 2px;
-  }
-  .payment-amt {
-    font-family: 'Geist Mono', monospace;
-    font-size: 14px;
-    color: var(--income);
-    font-weight: 500;
-  }
-  .payment-delete {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 18px;
-    cursor: pointer;
-    padding: 4px 8px;
-    margin-left: 8px;
-  }
-  .detail-section { margin-top: 20px; }
-  .detail-section-title {
-    font-family: 'Fraunces', serif;
-    font-size: 16px;
-    font-weight: 500;
-    margin-bottom: 10px;
-    padding: 0 4px;
-  }
-  .back-btn {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    border-radius: 100px;
-    padding: 6px 14px;
-    font-size: 13px;
-    cursor: pointer;
-    font-family: inherit;
-  }
-  .back-btn:active { transform: scale(0.97); }
+/* Loans */
+.loans-summary {
+background: linear-gradient(135deg, #1c1c28, #14141c);
+border: 1px solid var(–border);
+border-radius: 20px;
+padding: 20px;
+margin-bottom: 20px;
+position: relative;
+overflow: hidden;
+}
+.loans-summary::before {
+content: ‘’;
+position: absolute;
+top: -40%; right: -20%;
+width: 200px; height: 200px;
+background: radial-gradient(circle, rgba(251,191,36,0.1), transparent 70%);
+}
+.loans-summary-label {
+font-size: 11px;
+text-transform: uppercase;
+letter-spacing: 0.12em;
+color: var(–text-dim);
+margin-bottom: 8px;
+}
+.loans-summary-amount {
+font-family: ‘Fraunces’, serif;
+font-size: 32px;
+font-weight: 500;
+letter-spacing: -0.02em;
+margin-bottom: 12px;
+}
+.loans-summary-row {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 10px;
+position: relative;
+z-index: 1;
+}
+.loans-summary-stat {
+padding: 10px 12px;
+background: rgba(255,255,255,0.03);
+border-radius: 10px;
+border: 1px solid var(–border);
+}
+.loans-summary-stat-label {
+font-size: 10px;
+color: var(–text-dim);
+text-transform: uppercase;
+letter-spacing: 0.08em;
+}
+.loans-summary-stat-val {
+font-family: ‘Geist Mono’, monospace;
+font-size: 15px;
+font-weight: 500;
+margin-top: 2px;
+}
+.loan-card {
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 16px;
+padding: 18px;
+margin-bottom: 12px;
+cursor: pointer;
+transition: all .15s;
+}
+.loan-card:active { transform: scale(0.99); background: var(–bg-card-hover); }
+.loan-card.paid-off { border-color: rgba(74,222,128,0.3); }
+.loan-head {
+display: flex;
+justify-content: space-between;
+align-items: flex-start;
+margin-bottom: 14px;
+gap: 10px;
+}
+.loan-title {
+font-size: 15px;
+font-weight: 500;
+margin-bottom: 4px;
+}
+.loan-lender {
+font-size: 12px;
+color: var(–text-dim);
+}
+.loan-badge {
+font-size: 10px;
+padding: 3px 8px;
+border-radius: 100px;
+background: rgba(74,222,128,0.15);
+color: var(–income);
+text-transform: uppercase;
+letter-spacing: 0.08em;
+font-weight: 500;
+white-space: nowrap;
+}
+.loan-badge.active-loan {
+background: rgba(251,191,36,0.15);
+color: var(–warning);
+}
+.loan-progress-wrap {
+width: 100%;
+height: 10px;
+background: rgba(255,255,255,0.06);
+border-radius: 5px;
+overflow: hidden;
+margin-bottom: 10px;
+}
+.loan-progress-fill {
+height: 100%;
+background: linear-gradient(90deg, var(–accent), var(–income));
+border-radius: 5px;
+transition: width .5s cubic-bezier(.2,.9,.3,1);
+}
+.loan-stats {
+display: grid;
+grid-template-columns: 1fr 1fr 1fr;
+gap: 12px;
+margin-top: 12px;
+}
+.loan-stat-label {
+font-size: 10px;
+color: var(–text-muted);
+text-transform: uppercase;
+letter-spacing: 0.08em;
+margin-bottom: 4px;
+}
+.loan-stat-val {
+font-family: ‘Geist Mono’, monospace;
+font-size: 13px;
+font-weight: 500;
+}
+.loan-stat-val.paid { color: var(–income); }
+.loan-stat-val.remaining { color: var(–warning); }
 
-  /* Modal */
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    z-index: 100;
-    display: none;
-    align-items: flex-end;
-  }
-  .modal-backdrop.open { display: flex; animation: fadeBg .2s; }
-  @keyframes fadeBg { from { opacity: 0; } to { opacity: 1; } }
-  .modal {
-    width: 100%;
-    background: var(--bg-elevated);
-    border-radius: 28px 28px 0 0;
-    padding: 8px 20px calc(20px + var(--safe-bottom));
-    max-height: 92vh;
-    overflow-y: auto;
-    animation: slideUp .3s cubic-bezier(.2,.9,.3,1);
-  }
-  @keyframes slideUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
-  }
-  .modal-handle {
-    width: 40px; height: 4px;
-    background: var(--border-strong);
-    border-radius: 2px;
-    margin: 8px auto 16px;
-  }
-  .modal-title {
-    font-family: 'Fraunces', serif;
-    font-size: 22px;
-    font-weight: 500;
-    letter-spacing: -0.02em;
-    margin-bottom: 4px;
-  }
-  .modal-sub {
-    color: var(--text-dim);
-    font-size: 13px;
-    margin-bottom: 20px;
-  }
+/* Payment History */
+.payment-row {
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: 12px 14px;
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 12px;
+margin-bottom: 6px;
+}
+.payment-date {
+font-size: 13px;
+}
+.payment-meta {
+font-size: 11px;
+color: var(–text-dim);
+margin-top: 2px;
+}
+.payment-amt {
+font-family: ‘Geist Mono’, monospace;
+font-size: 14px;
+color: var(–income);
+font-weight: 500;
+}
+.payment-delete {
+background: none;
+border: none;
+color: var(–text-muted);
+font-size: 18px;
+cursor: pointer;
+padding: 4px 8px;
+margin-left: 8px;
+}
+.detail-section { margin-top: 20px; }
+.detail-section-title {
+font-family: ‘Fraunces’, serif;
+font-size: 16px;
+font-weight: 500;
+margin-bottom: 10px;
+padding: 0 4px;
+}
+.back-btn {
+background: var(–bg-card);
+border: 1px solid var(–border);
+color: var(–text-dim);
+border-radius: 100px;
+padding: 6px 14px;
+font-size: 13px;
+cursor: pointer;
+font-family: inherit;
+}
+.back-btn:active { transform: scale(0.97); }
 
-  /* Form */
-  .field { margin-bottom: 14px; }
-  .field label {
-    display: block;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-dim);
-    margin-bottom: 8px;
-  }
-  .field input, .field select, .field textarea {
-    width: 100%;
-    padding: 14px 16px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    color: var(--text);
-    font-family: inherit;
-    font-size: 16px;
-    transition: border .2s;
-    -webkit-appearance: none;
-    appearance: none;
-  }
-  .field input:focus, .field select:focus, .field textarea:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  .amount-input-wrap { position: relative; }
-  .amount-input-wrap::before {
-    content: attr(data-symbol);
-    position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-dim);
-    font-size: 18px;
-    pointer-events: none;
-  }
-  .amount-input {
-    padding-left: 36px !important;
-    font-family: 'Geist Mono', monospace !important;
-    font-size: 20px !important;
-    font-weight: 500;
-  }
+/* Modal */
+.modal-backdrop {
+position: fixed;
+inset: 0;
+background: rgba(0,0,0,0.7);
+backdrop-filter: blur(10px);
+-webkit-backdrop-filter: blur(10px);
+z-index: 100;
+display: none;
+align-items: flex-end;
+}
+.modal-backdrop.open { display: flex; animation: fadeBg .2s; }
+@keyframes fadeBg { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+width: 100%;
+background: var(–bg-elevated);
+border-radius: 28px 28px 0 0;
+padding: 8px 20px calc(20px + var(–safe-bottom));
+max-height: 92vh;
+overflow-y: auto;
+animation: slideUp .3s cubic-bezier(.2,.9,.3,1);
+}
+@keyframes slideUp {
+from { transform: translateY(100%); }
+to { transform: translateY(0); }
+}
+.modal-handle {
+width: 40px; height: 4px;
+background: var(–border-strong);
+border-radius: 2px;
+margin: 8px auto 16px;
+}
+.modal-title {
+font-family: ‘Fraunces’, serif;
+font-size: 22px;
+font-weight: 500;
+letter-spacing: -0.02em;
+margin-bottom: 4px;
+}
+.modal-sub {
+color: var(–text-dim);
+font-size: 13px;
+margin-bottom: 20px;
+}
 
-  /* Category Picker */
-  .cat-picker {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-  }
-  .cat-pick {
-    aspect-ratio: 1;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    cursor: pointer;
-    padding: 6px;
-    transition: all .15s;
-  }
-  .cat-pick:active { transform: scale(0.95); }
-  .cat-pick.selected {
-    border-color: var(--accent);
-    background: rgba(201,255,61,0.08);
-  }
-  .cat-pick .emoji { font-size: 20px; }
-  .cat-pick .name { font-size: 10px; color: var(--text-dim); text-align: center; line-height: 1.1; }
-  .cat-pick.selected .name { color: var(--text); }
-  .cat-pick.add-new { 
-    border-style: dashed; 
-    border-color: var(--text-muted);
-    color: var(--text-muted);
-  }
-  .cat-pick.add-new .emoji { font-size: 24px; }
+/* Form */
+.field { margin-bottom: 14px; }
+.field label {
+display: block;
+font-size: 11px;
+text-transform: uppercase;
+letter-spacing: 0.1em;
+color: var(–text-dim);
+margin-bottom: 8px;
+}
+.field input, .field select, .field textarea {
+width: 100%;
+padding: 14px 16px;
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 12px;
+color: var(–text);
+font-family: inherit;
+font-size: 16px;
+transition: border .2s;
+-webkit-appearance: none;
+appearance: none;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+outline: none;
+border-color: var(–accent);
+}
+.amount-input-wrap { position: relative; }
+.amount-input-wrap::before {
+content: attr(data-symbol);
+position: absolute;
+left: 16px;
+top: 50%;
+transform: translateY(-50%);
+color: var(–text-dim);
+font-size: 18px;
+pointer-events: none;
+}
+.amount-input {
+padding-left: 36px !important;
+font-family: ‘Geist Mono’, monospace !important;
+font-size: 20px !important;
+font-weight: 500;
+}
 
-  /* Buttons */
-  .btn-primary {
-    width: 100%;
-    padding: 16px;
-    background: var(--accent);
-    color: #0a0a0f;
-    border: none;
-    border-radius: 14px;
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 8px;
-    transition: all .15s;
-  }
-  .btn-primary:active { transform: scale(0.98); background: var(--accent-dim); }
-  .btn-secondary {
-    width: 100%;
-    padding: 14px;
-    background: transparent;
-    color: var(--text-dim);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    font-family: inherit;
-    font-size: 14px;
-    cursor: pointer;
-    margin-top: 8px;
-  }
-  .btn-danger {
-    width: 100%;
-    padding: 14px;
-    background: rgba(255,107,107,0.1);
-    color: var(--expense);
-    border: 1px solid rgba(255,107,107,0.3);
-    border-radius: 14px;
-    font-family: inherit;
-    font-size: 14px;
-    cursor: pointer;
-    margin-top: 8px;
-  }
+/* Category Picker */
+.cat-picker {
+display: grid;
+grid-template-columns: repeat(4, 1fr);
+gap: 8px;
+}
+.cat-pick {
+aspect-ratio: 1;
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 14px;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+gap: 4px;
+cursor: pointer;
+padding: 6px;
+transition: all .15s;
+}
+.cat-pick:active { transform: scale(0.95); }
+.cat-pick.selected {
+border-color: var(–accent);
+background: rgba(201,255,61,0.08);
+}
+.cat-pick .emoji { font-size: 20px; }
+.cat-pick .name { font-size: 10px; color: var(–text-dim); text-align: center; line-height: 1.1; }
+.cat-pick.selected .name { color: var(–text); }
+.cat-pick.add-new {
+border-style: dashed;
+border-color: var(–text-muted);
+color: var(–text-muted);
+}
+.cat-pick.add-new .emoji { font-size: 24px; }
 
-  /* Toggle */
-  .toggle-row {
-    display: flex;
-    background: var(--bg-card);
-    border-radius: 14px;
-    padding: 4px;
-    margin-bottom: 16px;
-    border: 1px solid var(--border);
-  }
-  .toggle-opt {
-    flex: 1;
-    padding: 10px;
-    text-align: center;
-    border-radius: 10px;
-    font-size: 13px;
-    color: var(--text-dim);
-    cursor: pointer;
-    transition: all .2s;
-    font-weight: 500;
-  }
-  .toggle-opt.active {
-    background: var(--bg-elevated);
-    color: var(--text);
-  }
-  .toggle-opt.income.active { color: var(--income); }
-  .toggle-opt.expense.active { color: var(--expense); }
+/* Buttons */
+.btn-primary {
+width: 100%;
+padding: 16px;
+background: var(–accent);
+color: #0a0a0f;
+border: none;
+border-radius: 14px;
+font-family: inherit;
+font-size: 15px;
+font-weight: 600;
+cursor: pointer;
+margin-top: 8px;
+transition: all .15s;
+}
+.btn-primary:active { transform: scale(0.98); background: var(–accent-dim); }
+.btn-secondary {
+width: 100%;
+padding: 14px;
+background: transparent;
+color: var(–text-dim);
+border: 1px solid var(–border);
+border-radius: 14px;
+font-family: inherit;
+font-size: 14px;
+cursor: pointer;
+margin-top: 8px;
+}
+.btn-danger {
+width: 100%;
+padding: 14px;
+background: rgba(255,107,107,0.1);
+color: var(–expense);
+border: 1px solid rgba(255,107,107,0.3);
+border-radius: 14px;
+font-family: inherit;
+font-size: 14px;
+cursor: pointer;
+margin-top: 8px;
+}
 
-  /* Switch */
-  .switch-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    margin-bottom: 14px;
-    gap: 12px;
-  }
-  .switch-label { font-size: 13px; flex: 1; }
-  .switch-hint { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
-  .switch {
-    position: relative;
-    width: 44px;
-    height: 26px;
-    background: var(--bg-elevated);
-    border-radius: 100px;
-    border: 1px solid var(--border-strong);
-    cursor: pointer;
-    transition: all .2s;
-    flex-shrink: 0;
-  }
-  .switch::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 20px;
-    height: 20px;
-    background: var(--text-dim);
-    border-radius: 50%;
-    transition: all .2s cubic-bezier(.2,.9,.3,1);
-  }
-  .switch.on { background: var(--accent); border-color: var(--accent); }
-  .switch.on::after { transform: translateX(18px); background: #0a0a0f; }
+/* Toggle */
+.toggle-row {
+display: flex;
+background: var(–bg-card);
+border-radius: 14px;
+padding: 4px;
+margin-bottom: 16px;
+border: 1px solid var(–border);
+}
+.toggle-opt {
+flex: 1;
+padding: 10px;
+text-align: center;
+border-radius: 10px;
+font-size: 13px;
+color: var(–text-dim);
+cursor: pointer;
+transition: all .2s;
+font-weight: 500;
+}
+.toggle-opt.active {
+background: var(–bg-elevated);
+color: var(–text);
+}
+.toggle-opt.income.active { color: var(–income); }
+.toggle-opt.expense.active { color: var(–expense); }
 
-  /* Bottom Nav */
-  .bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 50;
-    background: rgba(20,20,28,0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid var(--border);
-    padding: 10px 8px;
-    padding-bottom: calc(10px + var(--safe-bottom));
-    display: flex;
-    justify-content: space-around;
-  }
-  .nav-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
-    padding: 6px 2px;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 10px;
-    font-weight: 500;
-    transition: color .15s;
-    background: none;
-    border: none;
-    font-family: inherit;
-  }
-  .nav-item.active { color: var(--accent); }
-  .nav-icon { font-size: 18px; }
+/* Switch */
+.switch-row {
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: 12px 14px;
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 12px;
+margin-bottom: 14px;
+gap: 12px;
+}
+.switch-label { font-size: 13px; flex: 1; }
+.switch-hint { font-size: 11px; color: var(–text-dim); margin-top: 3px; }
+.switch {
+position: relative;
+width: 44px;
+height: 26px;
+background: var(–bg-elevated);
+border-radius: 100px;
+border: 1px solid var(–border-strong);
+cursor: pointer;
+transition: all .2s;
+flex-shrink: 0;
+}
+.switch::after {
+content: ‘’;
+position: absolute;
+top: 2px;
+left: 2px;
+width: 20px;
+height: 20px;
+background: var(–text-dim);
+border-radius: 50%;
+transition: all .2s cubic-bezier(.2,.9,.3,1);
+}
+.switch.on { background: var(–accent); border-color: var(–accent); }
+.switch.on::after { transform: translateX(18px); background: #0a0a0f; }
 
-  /* Filter Pills */
-  .filter-pills {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    -webkit-overflow-scrolling: touch;
-  }
-  .filter-pills::-webkit-scrollbar { display: none; }
-  .pill {
-    padding: 8px 14px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 100px;
-    font-size: 12px;
-    color: var(--text-dim);
-    white-space: nowrap;
-    cursor: pointer;
-  }
-  .pill.active {
-    background: var(--accent);
-    color: #0a0a0f;
-    border-color: var(--accent);
-    font-weight: 500;
-  }
+/* Bottom Nav */
+.bottom-nav {
+position: fixed;
+bottom: 0;
+left: 0;
+right: 0;
+z-index: 50;
+background: rgba(20,20,28,0.85);
+backdrop-filter: blur(20px);
+-webkit-backdrop-filter: blur(20px);
+border-top: 1px solid var(–border);
+padding: 10px 8px;
+padding-bottom: calc(10px + var(–safe-bottom));
+display: flex;
+justify-content: space-around;
+}
+.nav-item {
+flex: 1;
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 3px;
+padding: 6px 2px;
+color: var(–text-muted);
+cursor: pointer;
+font-size: 10px;
+font-weight: 500;
+transition: color .15s;
+background: none;
+border: none;
+font-family: inherit;
+}
+.nav-item.active { color: var(–accent); }
+.nav-icon { font-size: 18px; }
 
-  /* Toast */
-  .toast {
-    position: fixed;
-    top: calc(80px + var(--safe-top));
-    left: 50%;
-    transform: translateX(-50%) translateY(-100px);
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-strong);
-    color: var(--text);
-    padding: 12px 20px;
-    border-radius: 12px;
-    font-size: 13px;
-    z-index: 200;
-    opacity: 0;
-    transition: all .3s cubic-bezier(.2,.9,.3,1);
-    box-shadow: var(--shadow);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .toast.show {
-    transform: translateX(-50%) translateY(0);
-    opacity: 1;
-  }
+/* Filter Pills */
+.filter-pills {
+display: flex;
+gap: 8px;
+margin-bottom: 16px;
+overflow-x: auto;
+padding-bottom: 4px;
+-webkit-overflow-scrolling: touch;
+}
+.filter-pills::-webkit-scrollbar { display: none; }
+.pill {
+padding: 8px 14px;
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 100px;
+font-size: 12px;
+color: var(–text-dim);
+white-space: nowrap;
+cursor: pointer;
+}
+.pill.active {
+background: var(–accent);
+color: #0a0a0f;
+border-color: var(–accent);
+font-weight: 500;
+}
 
-  /* Settings */
-  .setting-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    margin-bottom: 8px;
-    cursor: pointer;
-  }
-  .setting-label { font-size: 14px; }
-  .setting-value { color: var(--text-dim); font-size: 13px; }
+/* Toast */
+.toast {
+position: fixed;
+top: calc(80px + var(–safe-top));
+left: 50%;
+transform: translateX(-50%) translateY(-100px);
+background: var(–bg-elevated);
+border: 1px solid var(–border-strong);
+color: var(–text);
+padding: 12px 20px;
+border-radius: 12px;
+font-size: 13px;
+z-index: 200;
+opacity: 0;
+transition: all .3s cubic-bezier(.2,.9,.3,1);
+box-shadow: var(–shadow);
+display: flex;
+align-items: center;
+gap: 8px;
+}
+.toast.show {
+transform: translateX(-50%) translateY(0);
+opacity: 1;
+}
 
-  /* Install banner */
-  .install-banner {
-    margin: 12px 0 20px;
-    padding: 14px 16px;
-    background: linear-gradient(135deg, rgba(201,255,61,0.08), rgba(74,222,128,0.04));
-    border: 1px solid rgba(201,255,61,0.2);
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-  }
-  .install-banner-icon { font-size: 22px; }
-  .install-banner-text { flex: 1; }
-  .install-banner-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
-  .install-banner-sub { font-size: 11px; color: var(--text-dim); }
-  /* ============ v2 COMPASS STYLES ============ */
-  
-  /* Verdict zones */
-  .verdict-card {
-    padding: 22px;
-    border-radius: 20px;
-    margin-bottom: 16px;
-    position: relative;
-    overflow: hidden;
-  }
-  .verdict-card.green {
-    background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04));
-    border: 1px solid rgba(74,222,128,0.3);
-  }
-  .verdict-card.yellow {
-    background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.04));
-    border: 1px solid rgba(251,191,36,0.3);
-  }
-  .verdict-card.red {
-    background: linear-gradient(135deg, rgba(255,107,107,0.12), rgba(255,107,107,0.04));
-    border: 1px solid rgba(255,107,107,0.3);
-  }
-  .verdict-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    margin-bottom: 6px;
-    font-weight: 600;
-  }
-  .verdict-card.green .verdict-label { color: var(--income); }
-  .verdict-card.yellow .verdict-label { color: var(--warning); }
-  .verdict-card.red .verdict-label { color: var(--expense); }
-  .verdict-title {
-    font-family: 'Fraunces', serif;
-    font-size: 22px;
-    font-weight: 500;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
-    margin-bottom: 12px;
-  }
-  .verdict-reasoning {
-    font-size: 13px;
-    color: var(--text-dim);
-    line-height: 1.6;
-  }
-  .verdict-reasoning ul {
-    list-style: none;
-    margin-top: 8px;
-  }
-  .verdict-reasoning li {
-    padding: 4px 0;
-    padding-left: 16px;
-    position: relative;
-  }
-  .verdict-reasoning li::before {
-    content: '·';
-    position: absolute;
-    left: 4px;
-    color: var(--text-muted);
-    font-size: 18px;
-    line-height: 1;
-  }
-  
-  .compass-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 12px;
-  }
-  .compass-card-title {
-    font-family: 'Fraunces', serif;
-    font-size: 16px;
-    font-weight: 500;
-    margin-bottom: 4px;
-  }
-  .compass-card-sub {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-bottom: 14px;
-  }
-  
-  /* Health Score */
-  .score-ring-wrap {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    padding: 4px 0;
-  }
-  .score-ring {
-    width: 90px; height: 90px;
-    flex-shrink: 0;
-  }
-  .score-text {
-    flex: 1;
-  }
-  .score-value {
-    font-family: 'Fraunces', serif;
-    font-size: 32px;
-    font-weight: 500;
-    letter-spacing: -0.02em;
-    line-height: 1;
-  }
-  .score-grade {
-    font-size: 12px;
-    color: var(--text-dim);
-    margin-top: 4px;
-  }
-  
-  /* 50/30/20 bars */
-  .ratio-row {
-    margin-bottom: 14px;
-  }
-  .ratio-row:last-child { margin-bottom: 0; }
-  .ratio-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-    font-size: 13px;
-  }
-  .ratio-name {
-    font-weight: 500;
-  }
-  .ratio-vals {
-    font-family: 'Geist Mono', monospace;
-    font-size: 12px;
-    color: var(--text-dim);
-  }
-  .ratio-bar-wrap {
-    width: 100%;
-    height: 8px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 4px;
-    position: relative;
-    overflow: hidden;
-  }
-  .ratio-bar-target {
-    position: absolute;
-    top: -2px;
-    bottom: -2px;
-    width: 2px;
-    background: var(--text-muted);
-    z-index: 2;
-  }
-  .ratio-bar-fill {
-    height: 100%;
-    border-radius: 4px;
-    transition: width .5s cubic-bezier(.2,.9,.3,1);
-  }
-  .ratio-bar-fill.needs { background: #60a5fa; }
-  .ratio-bar-fill.wants { background: #f472b6; }
-  .ratio-bar-fill.savings { background: var(--income); }
-  
-  /* Forecast chart */
-  .forecast-chart {
-    height: 160px;
-    position: relative;
-    margin: 12px 0;
-  }
-  .forecast-svg {
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-  }
-  .forecast-legend {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10px;
-    color: var(--text-muted);
-    font-family: 'Geist Mono', monospace;
-    margin-top: 6px;
-  }
-  .forecast-event {
-    position: absolute;
-    font-size: 14px;
-    transform: translate(-50%, -120%);
-    pointer-events: none;
-  }
-  
-  /* Income source cards */
-  .income-src-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 14px 16px;
-    margin-bottom: 8px;
-    cursor: pointer;
-  }
-  .income-src-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px;
-  }
-  .income-src-name {
-    font-size: 14px;
-    font-weight: 500;
-  }
-  .income-src-amount {
-    font-family: 'Geist Mono', monospace;
-    font-size: 14px;
-    color: var(--income);
-    font-weight: 500;
-  }
-  .income-src-meta {
-    font-size: 11px;
-    color: var(--text-dim);
-  }
-  
-  /* Insights list */
-  .insight-item {
-    display: flex;
-    gap: 12px;
-    padding: 12px;
-    background: rgba(255,255,255,0.02);
-    border-radius: 12px;
-    margin-bottom: 8px;
-  }
-  .insight-icon {
-    font-size: 18px;
-    flex-shrink: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-card);
-    border-radius: 8px;
-  }
-  .insight-body {
-    flex: 1;
-    font-size: 13px;
-    line-height: 1.5;
-  }
-  .insight-body strong {
-    font-weight: 500;
-    color: var(--text);
-  }
-  
-  /* Decision journal */
-  .decision-item {
-    padding: 14px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    margin-bottom: 8px;
-  }
-  .decision-head {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 6px;
-  }
-  .decision-what {
-    font-size: 13px;
-    font-weight: 500;
-  }
-  .decision-verdict-dot {
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 100px;
-  }
-  .decision-verdict-dot.green { background: rgba(74,222,128,0.15); color: var(--income); }
-  .decision-verdict-dot.yellow { background: rgba(251,191,36,0.15); color: var(--warning); }
-  .decision-verdict-dot.red { background: rgba(255,107,107,0.15); color: var(--expense); }
-  .decision-meta {
-    font-size: 11px;
-    color: var(--text-dim);
-  }
-  .decision-outcome {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border);
-    font-size: 11px;
-    color: var(--text-dim);
-  }
-  
-  /* Confidence indicator */
-  .confidence {
-    font-size: 10px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 3px 8px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 100px;
-    display: inline-block;
-    margin-top: 8px;
-  }
-  
-  /* Affordability inline button */
-  .compass-cta {
-    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
-    color: #0a0a0f;
-    border: none;
-    border-radius: 16px;
-    padding: 18px;
-    width: 100%;
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-  .compass-cta:active { transform: scale(0.98); }
-  
-  /* Pay cycle picker */
-  .cycle-picker {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    margin-bottom: 14px;
-  }
-  .cycle-opt {
-    padding: 12px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    text-align: center;
-    cursor: pointer;
-    font-size: 13px;
-  }
-  .cycle-opt.selected {
-    border-color: var(--accent);
-    background: rgba(201,255,61,0.08);
-  }
-  .cycle-opt .opt-name { font-weight: 500; }
-  .cycle-opt .opt-sub { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
-  
-  /* ============ v2.1 STYLES ============ */
-  
-  /* Auto-log banner */
-  .auto-log-banner {
-    margin: 12px 0 16px;
-    padding: 14px 16px;
-    background: linear-gradient(135deg, rgba(201,255,61,0.1), rgba(74,222,128,0.05));
-    border: 1px solid rgba(201,255,61,0.25);
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-  }
-  .auto-log-icon { font-size: 22px; }
-  .auto-log-text { flex: 1; }
-  .auto-log-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
-  .auto-log-sub { font-size: 11px; color: var(--text-dim); }
-  .auto-log-close {
-    background: none; border: none; color: var(--text-dim);
-    font-size: 18px; cursor: pointer; padding: 4px 8px;
-  }
-  
-  /* Backup warning banner */
-  .backup-warn {
-    margin: 12px 0 16px;
-    padding: 14px 16px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-  }
-  .backup-warn.yellow {
-    background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(251,191,36,0.04));
-    border: 1px solid rgba(251,191,36,0.3);
-  }
-  .backup-warn.red {
-    background: linear-gradient(135deg, rgba(255,107,107,0.1), rgba(255,107,107,0.04));
-    border: 1px solid rgba(255,107,107,0.3);
-  }
-  .backup-warn-icon { font-size: 22px; }
-  .backup-warn-text { flex: 1; }
-  .backup-warn-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
-  .backup-warn.yellow .backup-warn-title { color: var(--warning); }
-  .backup-warn.red .backup-warn-title { color: var(--expense); }
-  .backup-warn-sub { font-size: 11px; color: var(--text-dim); }
-  
-  /* Auto-logged badge on transactions */
-  .tx-auto-badge {
-    display: inline-block;
-    font-size: 9px;
-    padding: 1px 6px;
-    border-radius: 100px;
-    background: rgba(201,255,61,0.15);
-    color: var(--accent);
-    margin-left: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 500;
-    vertical-align: middle;
-  }
-  
-  /* Recurring expense card */
-  .rec-exp-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 14px 16px;
-    margin-bottom: 8px;
-    cursor: pointer;
-  }
-  .rec-exp-card.inactive { opacity: 0.5; }
-  .rec-exp-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px;
-  }
-  .rec-exp-name {
-    font-size: 14px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .rec-exp-amount {
-    font-family: 'Geist Mono', monospace;
-    font-size: 14px;
-    color: var(--expense);
-    font-weight: 500;
-  }
-  .rec-exp-meta {
-    font-size: 11px;
-    color: var(--text-dim);
-  }
-  
-  /* Recovery banner (one-time on fresh launch with backups present) */
-  .recovery-card {
-    margin: 12px 0 16px;
-    padding: 18px;
-    background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04));
-    border: 1px solid rgba(74,222,128,0.3);
-    border-radius: 16px;
-  }
-  .recovery-title {
-    font-family: 'Fraunces', serif;
-    font-size: 18px;
-    color: var(--income);
-    margin-bottom: 6px;
-  }
-  .recovery-text {
-    font-size: 13px;
-    color: var(--text-dim);
-    line-height: 1.5;
-    margin-bottom: 14px;
-  }
-  .recovery-btns {
-    display: flex;
-    gap: 8px;
-  }
-  .recovery-btns button {
-    flex: 1;
-    padding: 12px;
-    border-radius: 12px;
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 500;
-    border: none;
-    cursor: pointer;
-  }
-  .recovery-restore {
-    background: var(--income);
-    color: #0a0a0f;
-  }
-  /* Inline Smart Cuts on recurring expense cards */
-  .save-here-row {
-    margin-top: 8px;
-    padding: 8px 10px;
-    background: rgba(201,255,61,0.05);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background .15s ease;
-  }
-  .save-here-row:active { background: rgba(201,255,61,0.1); }
-  .save-here-btn {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 12px;
-    font-weight: 500;
-  }
-  .save-here-chev {
-    color: var(--accent);
-    font-size: 16px;
-    transition: transform .2s ease;
-    line-height: 1;
-  }
-  .save-here-tips {
-    margin-top: 6px;
-    padding: 10px 12px;
-    background: rgba(201,255,61,0.04);
-    border-left: 2px solid rgba(201,255,61,0.4);
-    border-radius: 0 8px 8px 0;
-    font-size: 12px;
-    color: var(--text-dim);
-    line-height: 1.7;
-  }
-  .save-tip {
-    padding: 4px 0;
-  }
-  .save-tip:not(:last-child) {
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    padding-bottom: 6px;
-    margin-bottom: 4px;
-  }
-  
-  /* Collapsible details (see the math) */
-  details summary::-webkit-details-marker { display: none; }
-  details summary::marker { content: ''; }
-  details[open] summary { background: rgba(201,255,61,0.1) !important; }
-  details summary:hover { background: rgba(201,255,61,0.08) !important; }
-  
+/* Settings */
+.setting-row {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 16px;
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 14px;
+margin-bottom: 8px;
+cursor: pointer;
+}
+.setting-label { font-size: 14px; }
+.setting-value { color: var(–text-dim); font-size: 13px; }
+
+/* Install banner */
+.install-banner {
+margin: 12px 0 20px;
+padding: 14px 16px;
+background: linear-gradient(135deg, rgba(201,255,61,0.08), rgba(74,222,128,0.04));
+border: 1px solid rgba(201,255,61,0.2);
+border-radius: 14px;
+display: flex;
+align-items: center;
+gap: 12px;
+cursor: pointer;
+}
+.install-banner-icon { font-size: 22px; }
+.install-banner-text { flex: 1; }
+.install-banner-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+.install-banner-sub { font-size: 11px; color: var(–text-dim); }
+/* ============ v2 COMPASS STYLES ============ */
+
+/* Verdict zones */
+.verdict-card {
+padding: 22px;
+border-radius: 20px;
+margin-bottom: 16px;
+position: relative;
+overflow: hidden;
+}
+.verdict-card.green {
+background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04));
+border: 1px solid rgba(74,222,128,0.3);
+}
+.verdict-card.yellow {
+background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.04));
+border: 1px solid rgba(251,191,36,0.3);
+}
+.verdict-card.red {
+background: linear-gradient(135deg, rgba(255,107,107,0.12), rgba(255,107,107,0.04));
+border: 1px solid rgba(255,107,107,0.3);
+}
+.verdict-label {
+font-size: 11px;
+text-transform: uppercase;
+letter-spacing: 0.15em;
+margin-bottom: 6px;
+font-weight: 600;
+}
+.verdict-card.green .verdict-label { color: var(–income); }
+.verdict-card.yellow .verdict-label { color: var(–warning); }
+.verdict-card.red .verdict-label { color: var(–expense); }
+.verdict-title {
+font-family: ‘Fraunces’, serif;
+font-size: 22px;
+font-weight: 500;
+letter-spacing: -0.02em;
+line-height: 1.2;
+margin-bottom: 12px;
+}
+.verdict-reasoning {
+font-size: 13px;
+color: var(–text-dim);
+line-height: 1.6;
+}
+.verdict-reasoning ul {
+list-style: none;
+margin-top: 8px;
+}
+.verdict-reasoning li {
+padding: 4px 0;
+padding-left: 16px;
+position: relative;
+}
+.verdict-reasoning li::before {
+content: ‘·’;
+position: absolute;
+left: 4px;
+color: var(–text-muted);
+font-size: 18px;
+line-height: 1;
+}
+
+.compass-card {
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 16px;
+padding: 18px;
+margin-bottom: 12px;
+}
+.compass-card-title {
+font-family: ‘Fraunces’, serif;
+font-size: 16px;
+font-weight: 500;
+margin-bottom: 4px;
+}
+.compass-card-sub {
+font-size: 11px;
+color: var(–text-dim);
+margin-bottom: 14px;
+}
+
+/* Health Score */
+.score-ring-wrap {
+display: flex;
+align-items: center;
+gap: 18px;
+padding: 4px 0;
+}
+.score-ring {
+width: 90px; height: 90px;
+flex-shrink: 0;
+}
+.score-text {
+flex: 1;
+}
+.score-value {
+font-family: ‘Fraunces’, serif;
+font-size: 32px;
+font-weight: 500;
+letter-spacing: -0.02em;
+line-height: 1;
+}
+.score-grade {
+font-size: 12px;
+color: var(–text-dim);
+margin-top: 4px;
+}
+
+/* 50/30/20 bars */
+.ratio-row {
+margin-bottom: 14px;
+}
+.ratio-row:last-child { margin-bottom: 0; }
+.ratio-head {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 6px;
+font-size: 13px;
+}
+.ratio-name {
+font-weight: 500;
+}
+.ratio-vals {
+font-family: ‘Geist Mono’, monospace;
+font-size: 12px;
+color: var(–text-dim);
+}
+.ratio-bar-wrap {
+width: 100%;
+height: 8px;
+background: rgba(255,255,255,0.05);
+border-radius: 4px;
+position: relative;
+overflow: hidden;
+}
+.ratio-bar-target {
+position: absolute;
+top: -2px;
+bottom: -2px;
+width: 2px;
+background: var(–text-muted);
+z-index: 2;
+}
+.ratio-bar-fill {
+height: 100%;
+border-radius: 4px;
+transition: width .5s cubic-bezier(.2,.9,.3,1);
+}
+.ratio-bar-fill.needs { background: #60a5fa; }
+.ratio-bar-fill.wants { background: #f472b6; }
+.ratio-bar-fill.savings { background: var(–income); }
+
+/* Forecast chart */
+.forecast-chart {
+height: 160px;
+position: relative;
+margin: 12px 0;
+}
+.forecast-svg {
+width: 100%;
+height: 100%;
+overflow: visible;
+}
+.forecast-legend {
+display: flex;
+justify-content: space-between;
+font-size: 10px;
+color: var(–text-muted);
+font-family: ‘Geist Mono’, monospace;
+margin-top: 6px;
+}
+.forecast-event {
+position: absolute;
+font-size: 14px;
+transform: translate(-50%, -120%);
+pointer-events: none;
+}
+
+/* Income source cards */
+.income-src-card {
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 14px;
+padding: 14px 16px;
+margin-bottom: 8px;
+cursor: pointer;
+}
+.income-src-head {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 4px;
+}
+.income-src-name {
+font-size: 14px;
+font-weight: 500;
+}
+.income-src-amount {
+font-family: ‘Geist Mono’, monospace;
+font-size: 14px;
+color: var(–income);
+font-weight: 500;
+}
+.income-src-meta {
+font-size: 11px;
+color: var(–text-dim);
+}
+
+/* Insights list */
+.insight-item {
+display: flex;
+gap: 12px;
+padding: 12px;
+background: rgba(255,255,255,0.02);
+border-radius: 12px;
+margin-bottom: 8px;
+}
+.insight-icon {
+font-size: 18px;
+flex-shrink: 0;
+width: 32px;
+height: 32px;
+display: flex;
+align-items: center;
+justify-content: center;
+background: var(–bg-card);
+border-radius: 8px;
+}
+.insight-body {
+flex: 1;
+font-size: 13px;
+line-height: 1.5;
+}
+.insight-body strong {
+font-weight: 500;
+color: var(–text);
+}
+
+/* Decision journal */
+.decision-item {
+padding: 14px;
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 12px;
+margin-bottom: 8px;
+}
+.decision-head {
+display: flex;
+justify-content: space-between;
+margin-bottom: 6px;
+}
+.decision-what {
+font-size: 13px;
+font-weight: 500;
+}
+.decision-verdict-dot {
+font-size: 11px;
+padding: 2px 8px;
+border-radius: 100px;
+}
+.decision-verdict-dot.green { background: rgba(74,222,128,0.15); color: var(–income); }
+.decision-verdict-dot.yellow { background: rgba(251,191,36,0.15); color: var(–warning); }
+.decision-verdict-dot.red { background: rgba(255,107,107,0.15); color: var(–expense); }
+.decision-meta {
+font-size: 11px;
+color: var(–text-dim);
+}
+.decision-outcome {
+margin-top: 8px;
+padding-top: 8px;
+border-top: 1px solid var(–border);
+font-size: 11px;
+color: var(–text-dim);
+}
+
+/* Confidence indicator */
+.confidence {
+font-size: 10px;
+color: var(–text-muted);
+text-transform: uppercase;
+letter-spacing: 0.08em;
+padding: 3px 8px;
+background: rgba(255,255,255,0.03);
+border-radius: 100px;
+display: inline-block;
+margin-top: 8px;
+}
+
+/* Affordability inline button */
+.compass-cta {
+background: linear-gradient(135deg, var(–accent), var(–accent-dim));
+color: #0a0a0f;
+border: none;
+border-radius: 16px;
+padding: 18px;
+width: 100%;
+font-family: inherit;
+font-size: 15px;
+font-weight: 600;
+cursor: pointer;
+margin-bottom: 20px;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 8px;
+}
+.compass-cta:active { transform: scale(0.98); }
+
+/* Pay cycle picker */
+.cycle-picker {
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 8px;
+margin-bottom: 14px;
+}
+.cycle-opt {
+padding: 12px;
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 12px;
+text-align: center;
+cursor: pointer;
+font-size: 13px;
+}
+.cycle-opt.selected {
+border-color: var(–accent);
+background: rgba(201,255,61,0.08);
+}
+.cycle-opt .opt-name { font-weight: 500; }
+.cycle-opt .opt-sub { font-size: 10px; color: var(–text-dim); margin-top: 2px; }
+
+/* ============ v2.1 STYLES ============ */
+
+/* Auto-log banner */
+.auto-log-banner {
+margin: 12px 0 16px;
+padding: 14px 16px;
+background: linear-gradient(135deg, rgba(201,255,61,0.1), rgba(74,222,128,0.05));
+border: 1px solid rgba(201,255,61,0.25);
+border-radius: 14px;
+display: flex;
+align-items: center;
+gap: 12px;
+cursor: pointer;
+}
+.auto-log-icon { font-size: 22px; }
+.auto-log-text { flex: 1; }
+.auto-log-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+.auto-log-sub { font-size: 11px; color: var(–text-dim); }
+.auto-log-close {
+background: none; border: none; color: var(–text-dim);
+font-size: 18px; cursor: pointer; padding: 4px 8px;
+}
+
+/* Backup warning banner */
+.backup-warn {
+margin: 12px 0 16px;
+padding: 14px 16px;
+border-radius: 14px;
+display: flex;
+align-items: center;
+gap: 12px;
+cursor: pointer;
+}
+.backup-warn.yellow {
+background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(251,191,36,0.04));
+border: 1px solid rgba(251,191,36,0.3);
+}
+.backup-warn.red {
+background: linear-gradient(135deg, rgba(255,107,107,0.1), rgba(255,107,107,0.04));
+border: 1px solid rgba(255,107,107,0.3);
+}
+.backup-warn-icon { font-size: 22px; }
+.backup-warn-text { flex: 1; }
+.backup-warn-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+.backup-warn.yellow .backup-warn-title { color: var(–warning); }
+.backup-warn.red .backup-warn-title { color: var(–expense); }
+.backup-warn-sub { font-size: 11px; color: var(–text-dim); }
+
+/* Auto-logged badge on transactions */
+.tx-auto-badge {
+display: inline-block;
+font-size: 9px;
+padding: 1px 6px;
+border-radius: 100px;
+background: rgba(201,255,61,0.15);
+color: var(–accent);
+margin-left: 6px;
+text-transform: uppercase;
+letter-spacing: 0.05em;
+font-weight: 500;
+vertical-align: middle;
+}
+
+/* Recurring expense card */
+.rec-exp-card {
+background: var(–bg-card);
+border: 1px solid var(–border);
+border-radius: 14px;
+padding: 14px 16px;
+margin-bottom: 8px;
+cursor: pointer;
+}
+.rec-exp-card.inactive { opacity: 0.5; }
+.rec-exp-head {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 4px;
+}
+.rec-exp-name {
+font-size: 14px;
+font-weight: 500;
+display: flex;
+align-items: center;
+gap: 8px;
+}
+.rec-exp-amount {
+font-family: ‘Geist Mono’, monospace;
+font-size: 14px;
+color: var(–expense);
+font-weight: 500;
+}
+.rec-exp-meta {
+font-size: 11px;
+color: var(–text-dim);
+}
+
+/* Recovery banner (one-time on fresh launch with backups present) */
+.recovery-card {
+margin: 12px 0 16px;
+padding: 18px;
+background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04));
+border: 1px solid rgba(74,222,128,0.3);
+border-radius: 16px;
+}
+.recovery-title {
+font-family: ‘Fraunces’, serif;
+font-size: 18px;
+color: var(–income);
+margin-bottom: 6px;
+}
+.recovery-text {
+font-size: 13px;
+color: var(–text-dim);
+line-height: 1.5;
+margin-bottom: 14px;
+}
+.recovery-btns {
+display: flex;
+gap: 8px;
+}
+.recovery-btns button {
+flex: 1;
+padding: 12px;
+border-radius: 12px;
+font-family: inherit;
+font-size: 13px;
+font-weight: 500;
+border: none;
+cursor: pointer;
+}
+.recovery-restore {
+background: var(–income);
+color: #0a0a0f;
+}
+/* Weekly Plan card */
+.weekly-plan-toggle {
+display: flex;
+gap: 6px;
+background: rgba(255,255,255,0.03);
+padding: 4px;
+border-radius: 10px;
+margin-bottom: 14px;
+}
+.wp-tab {
+flex: 1;
+padding: 8px 12px;
+background: transparent;
+border: none;
+color: var(–text-dim);
+font-size: 12px;
+font-weight: 500;
+border-radius: 7px;
+cursor: pointer;
+font-family: inherit;
+transition: all .15s ease;
+}
+.wp-tab.active {
+background: var(–bg-card);
+color: var(–text);
+box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.wp-today-card {
+text-align: center;
+padding: 18px 12px;
+background: linear-gradient(135deg, rgba(201,255,61,0.08), rgba(201,255,61,0.02));
+border: 1px solid rgba(201,255,61,0.2);
+border-radius: 14px;
+margin-bottom: 14px;
+}
+.wp-today-label {
+font-size: 11px;
+color: var(–text-dim);
+text-transform: uppercase;
+letter-spacing: 0.06em;
+font-weight: 500;
+margin-bottom: 4px;
+}
+.wp-today-amount {
+font-family: ‘Fraunces’, serif;
+font-size: 38px;
+font-weight: 500;
+letter-spacing: -0.02em;
+line-height: 1;
+color: var(–accent);
+}
+.wp-today-sub {
+font-size: 12px;
+color: var(–text-dim);
+margin-top: 6px;
+}
+.wp-row {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 10px 0;
+font-size: 13px;
+border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.wp-row:last-child { border-bottom: none; }
+.wp-row-label { color: var(–text-dim); flex: 1; }
+.wp-row-value { font-family: ‘Geist Mono’, monospace; font-weight: 500; }
+
+.wp-week-card {
+padding: 12px;
+background: var(–bg-card);
+border-radius: 10px;
+margin-bottom: 8px;
+border: 1px solid var(–border);
+}
+.wp-week-card.now {
+border-color: rgba(201,255,61,0.3);
+background: linear-gradient(135deg, rgba(201,255,61,0.04), var(–bg-card));
+}
+.wp-week-card.warn {
+border-color: rgba(251,191,36,0.3);
+}
+.wp-week-card.danger {
+border-color: rgba(239,68,68,0.3);
+}
+.wp-week-head {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 8px;
+}
+.wp-week-name {
+font-size: 13px;
+font-weight: 500;
+}
+.wp-week-free {
+font-family: ‘Geist Mono’, monospace;
+font-size: 14px;
+font-weight: 600;
+}
+.wp-week-details {
+font-size: 11px;
+color: var(–text-dim);
+line-height: 1.7;
+}
+
+/* Reserved badge on home */
+.reserved-badge {
+display: inline-flex;
+align-items: center;
+gap: 6px;
+padding: 6px 10px;
+background: rgba(168, 85, 247, 0.1);
+border: 1px solid rgba(168, 85, 247, 0.25);
+border-radius: 10px;
+font-size: 11px;
+color: var(–text-dim);
+margin-top: 8px;
+cursor: pointer;
+transition: background .15s ease;
+}
+.reserved-badge:active { background: rgba(168, 85, 247, 0.15); }
+
+/* Inline Smart Cuts on recurring expense cards */
+.save-here-row {
+margin-top: 8px;
+padding: 8px 10px;
+background: rgba(201,255,61,0.05);
+border-radius: 8px;
+cursor: pointer;
+transition: background .15s ease;
+}
+.save-here-row:active { background: rgba(201,255,61,0.1); }
+.save-here-btn {
+display: flex;
+justify-content: space-between;
+align-items: center;
+font-size: 12px;
+font-weight: 500;
+}
+.save-here-chev {
+color: var(–accent);
+font-size: 16px;
+transition: transform .2s ease;
+line-height: 1;
+}
+.save-here-tips {
+margin-top: 6px;
+padding: 10px 12px;
+background: rgba(201,255,61,0.04);
+border-left: 2px solid rgba(201,255,61,0.4);
+border-radius: 0 8px 8px 0;
+font-size: 12px;
+color: var(–text-dim);
+line-height: 1.7;
+}
+.save-tip {
+padding: 4px 0;
+}
+.save-tip:not(:last-child) {
+border-bottom: 1px solid rgba(255,255,255,0.04);
+padding-bottom: 6px;
+margin-bottom: 4px;
+}
+
+/* Collapsible details (see the math) */
+details summary::-webkit-details-marker { display: none; }
+details summary::marker { content: ‘’; }
+details[open] summary { background: rgba(201,255,61,0.1) !important; }
+details summary:hover { background: rgba(201,255,61,0.08) !important; }
+
 </style>
 </head>
 <body>
@@ -1615,7 +1735,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">Ledger Compass</span>
-    <span class="version-tag" id="versionTag">v2.4.0</span>
+    <span class="version-tag" id="versionTag">v2.5.0</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" onclick="openSearchModal()">🔍</button>
@@ -1624,15 +1744,17 @@
 </div>
 
 <!-- HOME PAGE -->
+
 <div class="page active" id="page-home">
   <div id="autoLogBanner"></div>
   <div id="backupWarnBanner"></div>
   <div id="installBanner"></div>
-  
+
   <div class="hero">
     <div class="hero-label">Current Balance</div>
     <div class="hero-amount"><span class="hero-currency" id="currencySymbol">A$</span><span id="balance">0.00</span></div>
     <div class="hero-sub" id="balanceSub">All time</div>
+    <div class="reserved-badge" id="reservedBadge" style="display:none;" onclick="goPage('compass')"></div>
     <div class="hero-row">
       <div class="hero-stat">
         <div class="hero-stat-label">
@@ -1668,6 +1790,7 @@
 </div>
 
 <!-- TRANSACTIONS PAGE -->
+
 <div class="page" id="page-transactions">
   <div class="section-title"><h2>All Transactions</h2></div>
   <div class="filter-pills" id="filterPills">
@@ -1681,6 +1804,7 @@
 </div>
 
 <!-- STATS PAGE -->
+
 <div class="page" id="page-stats">
   <div class="section-title"><h2>Insights</h2></div>
   <div class="stat-grid">
@@ -1701,7 +1825,7 @@
     <div class="chart-title">Spending by Category</div>
     <div id="categoryBreakdown"></div>
   </div>
-  
+
   <div class="section-title" style="margin-top:24px;">
     <h2>Budgets</h2>
     <span class="link" onclick="openBudgetModal()">+ New</span>
@@ -1710,6 +1834,7 @@
 </div>
 
 <!-- LOANS PAGE -->
+
 <div class="page" id="page-loans">
   <div class="section-title">
     <h2>Loans</h2>
@@ -1720,6 +1845,7 @@
 </div>
 
 <!-- LOAN DETAIL PAGE -->
+
 <div class="page" id="page-loan-detail">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <button class="back-btn" onclick="goPage('loans')">← Back</button>
@@ -1729,34 +1855,45 @@
 </div>
 
 <!-- COMPASS PAGE -->
+
 <div class="page" id="page-compass">
   <div class="section-title">
     <h2>Compass</h2>
     <span class="link" onclick="goPage('decisions')">History →</span>
   </div>
-  
+
   <button class="compass-cta" onclick="openAffordabilityModal()">
     <span style="font-size:18px;">⚖</span> Can I afford this?
   </button>
-  
+
+  <div class="compass-card" id="weeklyPlanCard">
+    <div class="compass-card-title">Weekly plan</div>
+    <div class="compass-card-sub">Smart set-aside for upcoming bills</div>
+    <div class="weekly-plan-toggle">
+      <button class="wp-tab active" data-mode="daily" onclick="setWeeklyPlanMode('daily')">Today</button>
+      <button class="wp-tab" data-mode="weekly" onclick="setWeeklyPlanMode('weekly')">Next 4 weeks</button>
+    </div>
+    <div id="weeklyPlanContent"></div>
+  </div>
+
   <div class="compass-card">
     <div class="compass-card-title">Your monthly picture</div>
     <div class="compass-card-sub">What's coming in vs. what's going out</div>
     <div id="expectedMonthly"></div>
   </div>
-  
+
   <div class="compass-card">
     <div class="compass-card-title">How much to save each week</div>
     <div class="compass-card-sub">A safe amount based on your data — won't stress you out</div>
     <div id="safeSaveContent"></div>
   </div>
-  
+
   <div class="compass-card" id="loanStrategyCard" style="display:none;">
     <div class="compass-card-title">Loan payoff plan</div>
     <div class="compass-card-sub">The smartest order to clear your loans</div>
     <div id="loanStrategyContent"></div>
   </div>
-  
+
   <div class="compass-card">
     <div class="compass-card-title">Budget Health</div>
     <div class="compass-card-sub">How your money is performing this month</div>
@@ -1774,7 +1911,7 @@
       </div>
     </div>
   </div>
-  
+
   <div class="compass-card">
     <div class="compass-card-title">Cash Flow Forecast</div>
     <div class="compass-card-sub">Predicted balance over next 30 days</div>
@@ -1782,13 +1919,13 @@
     <div class="forecast-legend" id="forecastLegend"></div>
     <div id="forecastConfidence"></div>
   </div>
-  
+
   <div class="compass-card">
     <div class="compass-card-title">50/30/20 Mirror</div>
     <div class="compass-card-sub">Your spending vs. the classic benchmark</div>
     <div id="ratioBars"></div>
   </div>
-  
+
   <div class="compass-card">
     <div class="compass-card-title">Smart Insights</div>
     <div class="compass-card-sub">Patterns from your data</div>
@@ -1797,6 +1934,7 @@
 </div>
 
 <!-- DECISION HISTORY PAGE -->
+
 <div class="page" id="page-decisions">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <button class="back-btn" onclick="goPage('compass')">← Back</button>
@@ -1806,9 +1944,10 @@
 </div>
 
 <!-- SETTINGS PAGE -->
+
 <div class="page" id="page-settings">
   <div class="section-title"><h2>Settings</h2></div>
-  
+
   <div class="setting-row" onclick="openCurrencyModal()">
     <span class="setting-label">Currency</span>
     <span class="setting-value" id="currencyLabel">AUD (A$)</span>
@@ -1857,7 +1996,7 @@
 
   <div class="setting-row" onclick="refreshApp()" style="border-color: rgba(201,255,61,0.2);">
     <span class="setting-label" style="color: var(--accent);">↻ Refresh App (Force Update)</span>
-    <span class="setting-value" id="versionDisplay">v2.4.0</span>
+    <span class="setting-value" id="versionDisplay">v2.5.0</span>
   </div>
 
   <div class="setting-row" style="border-color: rgba(255,107,107,0.2);" onclick="confirmClearAll()">
@@ -1866,13 +2005,14 @@
   </div>
 
   <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.6;">
-    <div>Ledger Compass v2.4.0 · Schema v6</div>
+    <div>Ledger Compass v2.5.0 · Schema v6</div>
     <div>All data stored on this device</div>
     <div id="lastBackup" style="margin-top: 4px;"></div>
   </div>
 </div>
 
 <!-- INCOME SOURCES PAGE -->
+
 <div class="page" id="page-income-sources">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <button class="back-btn" onclick="goPage('settings')">← Back</button>
@@ -1886,6 +2026,7 @@
 </div>
 
 <!-- RECURRING EXPENSES PAGE -->
+
 <div class="page" id="page-recurring-expenses">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <button class="back-btn" onclick="goPage('settings')">← Back</button>
@@ -1899,21 +2040,22 @@
 </div>
 
 <!-- SAVINGS PAGE -->
+
 <div class="page" id="page-savings">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <button class="back-btn" onclick="goPage('settings')">← Back</button>
     <span class="link" onclick="openSavingsModal()">+ Log</span>
   </div>
   <div class="section-title"><h2>Savings & Goals</h2></div>
-  
+
   <div id="savingsTotalCard"></div>
-  
+
   <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px;">
     <h3 style="font-family:'Fraunces',serif;font-size:18px;font-weight:500;letter-spacing:-0.01em;">Goals</h3>
     <span class="link" onclick="openGoalModal()">+ New goal</span>
   </div>
   <div id="goalsList"></div>
-  
+
   <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px;">
     <h3 style="font-family:'Fraunces',serif;font-size:18px;font-weight:500;letter-spacing:-0.01em;">History</h3>
   </div>
@@ -1921,144 +2063,157 @@
 </div>
 
 <!-- SAVINGS LOG MODAL -->
+
 <div class="modal-backdrop" id="savingsModal" onclick="closeModalOnBg(event, 'savingsModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="savingsModalTitle">Log Savings</div>
     <div class="modal-sub">Move money to/from savings</div>
-    
-    <div class="toggle-row">
-      <div class="toggle-opt income" data-savetype="deposit" onclick="setSavingsType('deposit')">📥 Deposit</div>
-      <div class="toggle-opt expense" data-savetype="withdraw" onclick="setSavingsType('withdraw')">📤 Withdraw</div>
-    </div>
-    
-    <div class="field">
-      <label>Amount</label>
-      <div class="amount-input-wrap">
-        <input type="number" inputmode="decimal" id="inpSavingsAmount" class="amount-input" placeholder="0.00" step="0.01">
-      </div>
-    </div>
-    
-    <div class="field">
-      <label>Note (optional)</label>
-      <input type="text" id="inpSavingsNote" placeholder="e.g. Monthly transfer, Trip fund">
-    </div>
-    
-    <div class="field">
-      <label>Goal (optional)</label>
-      <select id="inpSavingsGoal" style="width:100%;padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:inherit;font-size:14px;">
-        <option value="">— No specific goal —</option>
-      </select>
-    </div>
-    
-    <div class="field">
-      <label>Date</label>
-      <input type="date" id="inpSavingsDate">
-    </div>
-    
-    <div class="switch-row">
-      <div>
-        <div class="switch-label">Affect main balance</div>
-        <div class="switch-hint">Treats as an expense/income on your balance</div>
-      </div>
-      <div class="switch on" id="savingsAffectsBalanceSwitch" onclick="toggleSavingsAffectsBalance()"></div>
-    </div>
-    
-    <button class="btn-primary" onclick="saveSavingsEntry()">Save</button>
-    <button class="btn-danger" id="savingsDeleteBtn" style="display:none" onclick="deleteSavingsEntry()">Delete</button>
-    <button class="btn-secondary" onclick="closeModal('savingsModal')">Cancel</button>
+
+```
+<div class="toggle-row">
+  <div class="toggle-opt income" data-savetype="deposit" onclick="setSavingsType('deposit')">📥 Deposit</div>
+  <div class="toggle-opt expense" data-savetype="withdraw" onclick="setSavingsType('withdraw')">📤 Withdraw</div>
+</div>
+
+<div class="field">
+  <label>Amount</label>
+  <div class="amount-input-wrap">
+    <input type="number" inputmode="decimal" id="inpSavingsAmount" class="amount-input" placeholder="0.00" step="0.01">
+  </div>
+</div>
+
+<div class="field">
+  <label>Note (optional)</label>
+  <input type="text" id="inpSavingsNote" placeholder="e.g. Monthly transfer, Trip fund">
+</div>
+
+<div class="field">
+  <label>Goal (optional)</label>
+  <select id="inpSavingsGoal" style="width:100%;padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:inherit;font-size:14px;">
+    <option value="">— No specific goal —</option>
+  </select>
+</div>
+
+<div class="field">
+  <label>Date</label>
+  <input type="date" id="inpSavingsDate">
+</div>
+
+<div class="switch-row">
+  <div>
+    <div class="switch-label">Affect main balance</div>
+    <div class="switch-hint">Treats as an expense/income on your balance</div>
+  </div>
+  <div class="switch on" id="savingsAffectsBalanceSwitch" onclick="toggleSavingsAffectsBalance()"></div>
+</div>
+
+<button class="btn-primary" onclick="saveSavingsEntry()">Save</button>
+<button class="btn-danger" id="savingsDeleteBtn" style="display:none" onclick="deleteSavingsEntry()">Delete</button>
+<button class="btn-secondary" onclick="closeModal('savingsModal')">Cancel</button>
+```
+
   </div>
 </div>
 
 <!-- GOAL MODAL -->
+
 <div class="modal-backdrop" id="goalModal" onclick="closeModalOnBg(event, 'goalModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="goalModalTitle">New Goal</div>
     <div class="modal-sub">Set something to save toward</div>
-    
-    <div class="field">
-      <label>Goal Name</label>
-      <input type="text" id="inpGoalName" placeholder="e.g. Emergency fund, Trip to Japan">
-    </div>
-    
-    <div class="field">
-      <label>Emoji (optional)</label>
-      <input type="text" id="inpGoalEmoji" placeholder="🎯" maxlength="2">
-    </div>
-    
-    <div class="field">
-      <label>Target Amount</label>
-      <div class="amount-input-wrap">
-        <input type="number" inputmode="decimal" id="inpGoalTarget" class="amount-input" placeholder="0.00" step="0.01">
-      </div>
-    </div>
-    
-    <div class="field">
-      <label>Deadline (optional)</label>
-      <input type="date" id="inpGoalDeadline">
-    </div>
-    
-    <button class="btn-primary" onclick="saveGoal()">Save Goal</button>
-    <button class="btn-danger" id="goalDeleteBtn" style="display:none" onclick="deleteGoal()">Delete</button>
-    <button class="btn-secondary" onclick="closeModal('goalModal')">Cancel</button>
+
+```
+<div class="field">
+  <label>Goal Name</label>
+  <input type="text" id="inpGoalName" placeholder="e.g. Emergency fund, Trip to Japan">
+</div>
+
+<div class="field">
+  <label>Emoji (optional)</label>
+  <input type="text" id="inpGoalEmoji" placeholder="🎯" maxlength="2">
+</div>
+
+<div class="field">
+  <label>Target Amount</label>
+  <div class="amount-input-wrap">
+    <input type="number" inputmode="decimal" id="inpGoalTarget" class="amount-input" placeholder="0.00" step="0.01">
+  </div>
+</div>
+
+<div class="field">
+  <label>Deadline (optional)</label>
+  <input type="date" id="inpGoalDeadline">
+</div>
+
+<button class="btn-primary" onclick="saveGoal()">Save Goal</button>
+<button class="btn-danger" id="goalDeleteBtn" style="display:none" onclick="deleteGoal()">Delete</button>
+<button class="btn-secondary" onclick="closeModal('goalModal')">Cancel</button>
+```
+
   </div>
 </div>
 
 <!-- ADD/EDIT TX MODAL -->
+
 <div class="modal-backdrop" id="addModal" onclick="closeModalOnBg(event, 'addModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="addModalTitle">Add Transaction</div>
     <div class="modal-sub" id="addModalSub">Track your money</div>
 
-    <div class="toggle-row">
-      <div class="toggle-opt income" data-type="income" onclick="setType('income')">Income</div>
-      <div class="toggle-opt expense" data-type="expense" onclick="setType('expense')">Expense</div>
-    </div>
+```
+<div class="toggle-row">
+  <div class="toggle-opt income" data-type="income" onclick="setType('income')">Income</div>
+  <div class="toggle-opt expense" data-type="expense" onclick="setType('expense')">Expense</div>
+</div>
 
-    <div class="field">
-      <label>Amount</label>
-      <div class="amount-input-wrap" id="addAmountWrap">
-        <input type="number" inputmode="decimal" id="inpAmount" class="amount-input" placeholder="0.00" step="0.01">
-      </div>
-    </div>
+<div class="field">
+  <label>Amount</label>
+  <div class="amount-input-wrap" id="addAmountWrap">
+    <input type="number" inputmode="decimal" id="inpAmount" class="amount-input" placeholder="0.00" step="0.01">
+  </div>
+</div>
 
-    <div class="field">
-      <label>Description</label>
-      <input type="text" id="inpDesc" placeholder="e.g. Coffee at café" oninput="onDescInput()">
-    </div>
+<div class="field">
+  <label>Description</label>
+  <input type="text" id="inpDesc" placeholder="e.g. Coffee at café" oninput="onDescInput()">
+</div>
 
-    <div class="field">
-      <label>Category</label>
-      <div class="cat-picker" id="catPicker"></div>
-    </div>
+<div class="field">
+  <label>Category</label>
+  <div class="cat-picker" id="catPicker"></div>
+</div>
 
-    <div class="field">
-      <label>Date</label>
-      <input type="date" id="inpDate">
-    </div>
+<div class="field">
+  <label>Date</label>
+  <input type="date" id="inpDate">
+</div>
 
-    <div class="field">
-      <label>Note (optional)</label>
-      <input type="text" id="inpNote" placeholder="Add a note">
-    </div>
+<div class="field">
+  <label>Note (optional)</label>
+  <input type="text" id="inpNote" placeholder="Add a note">
+</div>
 
-    <div class="switch-row" id="oneTimeRow" style="display:none;">
-      <div>
-        <div class="switch-label">One-time / not typical</div>
-        <div class="switch-hint">Exclude from spending averages</div>
-      </div>
-      <div class="switch" id="oneTimeSwitch" onclick="toggleOneTime()"></div>
-    </div>
+<div class="switch-row" id="oneTimeRow" style="display:none;">
+  <div>
+    <div class="switch-label">One-time / not typical</div>
+    <div class="switch-hint">Exclude from spending averages</div>
+  </div>
+  <div class="switch" id="oneTimeSwitch" onclick="toggleOneTime()"></div>
+</div>
 
-    <button class="btn-primary" onclick="saveTransaction()">Save</button>
-    <button class="btn-danger" id="deleteBtn" style="display:none" onclick="deleteCurrentTransaction()">Delete</button>
-    <button class="btn-secondary" onclick="closeModal('addModal')">Cancel</button>
+<button class="btn-primary" onclick="saveTransaction()">Save</button>
+<button class="btn-danger" id="deleteBtn" style="display:none" onclick="deleteCurrentTransaction()">Delete</button>
+<button class="btn-secondary" onclick="closeModal('addModal')">Cancel</button>
+```
+
   </div>
 </div>
 
 <!-- BUDGET MODAL -->
+
 <div class="modal-backdrop" id="budgetModal" onclick="closeModalOnBg(event, 'budgetModal')">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -2080,6 +2235,7 @@
 </div>
 
 <!-- CURRENCY MODAL -->
+
 <div class="modal-backdrop" id="currencyModal" onclick="closeModalOnBg(event, 'currencyModal')">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -2091,6 +2247,7 @@
 </div>
 
 <!-- SEARCH MODAL -->
+
 <div class="modal-backdrop" id="searchModal" onclick="closeModalOnBg(event, 'searchModal')">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -2105,72 +2262,77 @@
 </div>
 
 <!-- LOAN MODAL -->
+
 <div class="modal-backdrop" id="loanModal" onclick="closeModalOnBg(event, 'loanModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="loanModalTitle">Add Loan</div>
     <div class="modal-sub">Track a debt you owe</div>
 
-    <div class="field">
-      <label>Loan Name</label>
-      <input type="text" id="inpLoanName" placeholder="e.g. Car Loan, Student Loan">
-    </div>
+```
+<div class="field">
+  <label>Loan Name</label>
+  <input type="text" id="inpLoanName" placeholder="e.g. Car Loan, Student Loan">
+</div>
 
-    <div class="field">
-      <label>Lender</label>
-      <input type="text" id="inpLoanLender" placeholder="e.g. NAB, HECS, Friend">
-    </div>
+<div class="field">
+  <label>Lender</label>
+  <input type="text" id="inpLoanLender" placeholder="e.g. NAB, HECS, Friend">
+</div>
 
-    <div class="field">
-      <label>Total Amount Borrowed</label>
-      <div class="amount-input-wrap" id="loanTotalWrap">
-        <input type="number" inputmode="decimal" id="inpLoanTotal" class="amount-input" placeholder="0.00" step="0.01">
-      </div>
-    </div>
+<div class="field">
+  <label>Total Amount Borrowed</label>
+  <div class="amount-input-wrap" id="loanTotalWrap">
+    <input type="number" inputmode="decimal" id="inpLoanTotal" class="amount-input" placeholder="0.00" step="0.01">
+  </div>
+</div>
 
-    <div class="field">
-      <label>Interest Rate (% per year) <span style="color:var(--accent);">*required</span></label>
-      <input type="number" inputmode="decimal" id="inpLoanRate" placeholder="e.g. 7.5" step="0.1" min="0" max="50" onchange="onRateChange()">
-      <div id="rateHint" style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">
-        Typical: HECS 7.5% · Credit card 18-22% · Car 6-9% · Mortgage 5-7% · Family loan 0%
-      </div>
-      <div id="rateReviewWarning" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:11px;color:var(--warning);line-height:1.5;">
-        ⚠ Please confirm this rate — we estimated it. Set the real one for accurate interest calculations.
-      </div>
-    </div>
+<div class="field">
+  <label>Interest Rate (% per year) <span style="color:var(--accent);">*required</span></label>
+  <input type="number" inputmode="decimal" id="inpLoanRate" placeholder="e.g. 7.5" step="0.1" min="0" max="50" onchange="onRateChange()">
+  <div id="rateHint" style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">
+    Typical: HECS 7.5% · Credit card 18-22% · Car 6-9% · Mortgage 5-7% · Family loan 0%
+  </div>
+  <div id="rateReviewWarning" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:11px;color:var(--warning);line-height:1.5;">
+    ⚠ Please confirm this rate — we estimated it. Set the real one for accurate interest calculations.
+  </div>
+</div>
 
-    <div class="field">
-      <label>Already Paid (optional)</label>
-      <div class="amount-input-wrap" id="loanPaidWrap">
-        <input type="number" inputmode="decimal" id="inpLoanPaid" class="amount-input" placeholder="0.00" step="0.01">
-      </div>
-    </div>
+<div class="field">
+  <label>Already Paid (optional)</label>
+  <div class="amount-input-wrap" id="loanPaidWrap">
+    <input type="number" inputmode="decimal" id="inpLoanPaid" class="amount-input" placeholder="0.00" step="0.01">
+  </div>
+</div>
 
-    <div class="field">
-      <label>Start Date</label>
-      <input type="date" id="inpLoanDate">
-    </div>
+<div class="field">
+  <label>Start Date</label>
+  <input type="date" id="inpLoanDate">
+</div>
 
-    <div class="switch-row">
-      <div>
-        <div class="switch-label">Count payments as expenses</div>
-        <div class="switch-hint">Deduct from balance when paid</div>
-      </div>
-      <div class="switch" id="loanDeductSwitch" onclick="toggleLoanDeduct()"></div>
-    </div>
+<div class="switch-row">
+  <div>
+    <div class="switch-label">Count payments as expenses</div>
+    <div class="switch-hint">Deduct from balance when paid</div>
+  </div>
+  <div class="switch" id="loanDeductSwitch" onclick="toggleLoanDeduct()"></div>
+</div>
 
-    <div class="field">
-      <label>Note (optional)</label>
-      <input type="text" id="inpLoanNote" placeholder="Interest rate, terms">
-    </div>
+<div class="field">
+  <label>Note (optional)</label>
+  <input type="text" id="inpLoanNote" placeholder="Interest rate, terms">
+</div>
 
-    <button class="btn-primary" onclick="saveLoan()">Save Loan</button>
-    <button class="btn-danger" id="deleteLoanBtn" style="display:none" onclick="deleteCurrentLoan()">Delete Loan</button>
-    <button class="btn-secondary" onclick="closeModal('loanModal')">Cancel</button>
+<button class="btn-primary" onclick="saveLoan()">Save Loan</button>
+<button class="btn-danger" id="deleteLoanBtn" style="display:none" onclick="deleteCurrentLoan()">Delete Loan</button>
+<button class="btn-secondary" onclick="closeModal('loanModal')">Cancel</button>
+```
+
   </div>
 </div>
 
 <!-- PAYMENT MODAL -->
+
 <div class="modal-backdrop" id="paymentModal" onclick="closeModalOnBg(event, 'paymentModal')">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -2196,6 +2358,7 @@
 </div>
 
 <!-- CUSTOM CATEGORY MODAL -->
+
 <div class="modal-backdrop" id="catModal" onclick="closeModalOnBg(event, 'catModal')">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -2215,177 +2378,191 @@
 </div>
 
 <!-- AFFORDABILITY MODAL -->
+
 <div class="modal-backdrop" id="affordModal" onclick="closeModalOnBg(event, 'affordModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">Can I afford it?</div>
     <div class="modal-sub">A real check using your income, bills, and savings</div>
-    
-    <div id="affordInputView">
-      <div class="field">
-        <label>Amount</label>
-        <div class="amount-input-wrap" id="affordAmtWrap">
-          <input type="number" inputmode="decimal" id="inpAffordAmount" class="amount-input" placeholder="0.00" step="0.01">
-        </div>
-      </div>
-      
-      <div class="field">
-        <label>What for? (optional)</label>
-        <input type="text" id="inpAffordWhat" placeholder="e.g. New iPad, weekend trip">
-      </div>
-      
-      <button class="btn-primary" onclick="runAffordabilityCheck()">Run Check</button>
-      <button class="btn-secondary" onclick="closeModal('affordModal')">Cancel</button>
+
+```
+<div id="affordInputView">
+  <div class="field">
+    <label>Amount</label>
+    <div class="amount-input-wrap" id="affordAmtWrap">
+      <input type="number" inputmode="decimal" id="inpAffordAmount" class="amount-input" placeholder="0.00" step="0.01">
     </div>
-    
-    <div id="affordResultView" style="display:none;">
-      <div id="affordVerdict"></div>
-      <button class="btn-primary" onclick="saveDecision('yes')" style="margin-top:12px;">I'm buying it</button>
-      <button class="btn-secondary" onclick="saveDecision('no')">I'll wait / skip</button>
-      <button class="btn-secondary" onclick="closeModal('affordModal')">Close</button>
-    </div>
+  </div>
+  
+  <div class="field">
+    <label>What for? (optional)</label>
+    <input type="text" id="inpAffordWhat" placeholder="e.g. New iPad, weekend trip">
+  </div>
+  
+  <button class="btn-primary" onclick="runAffordabilityCheck()">Run Check</button>
+  <button class="btn-secondary" onclick="closeModal('affordModal')">Cancel</button>
+</div>
+
+<div id="affordResultView" style="display:none;">
+  <div id="affordVerdict"></div>
+  <button class="btn-primary" onclick="saveDecision('yes')" style="margin-top:12px;">I'm buying it</button>
+  <button class="btn-secondary" onclick="saveDecision('no')">I'll wait / skip</button>
+  <button class="btn-secondary" onclick="closeModal('affordModal')">Close</button>
+</div>
+```
+
   </div>
 </div>
 
 <!-- INCOME SOURCE MODAL -->
+
 <div class="modal-backdrop" id="incomeSrcModal" onclick="closeModalOnBg(event, 'incomeSrcModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="incSrcModalTitle">Add Income Source</div>
     <div class="modal-sub">Set up a paycheck</div>
-    
-    <div class="field">
-      <label>Source Name</label>
-      <input type="text" id="inpIncSrcName" placeholder="e.g. Grant Guru, Freelance Client">
+
+```
+<div class="field">
+  <label>Source Name</label>
+  <input type="text" id="inpIncSrcName" placeholder="e.g. Grant Guru, Freelance Client">
+</div>
+
+<div class="field">
+  <label>Amount per pay</label>
+  <div class="amount-input-wrap" id="incSrcAmtWrap">
+    <input type="number" inputmode="decimal" id="inpIncSrcAmount" class="amount-input" placeholder="0.00" step="0.01">
+  </div>
+</div>
+
+<div class="field">
+  <label>Pay Cycle</label>
+  <div class="cycle-picker" id="cyclePicker">
+    <div class="cycle-opt" data-cycle="weekly" onclick="selectCycle('weekly')">
+      <div class="opt-name">Weekly</div>
+      <div class="opt-sub">Every 7 days</div>
     </div>
-    
-    <div class="field">
-      <label>Amount per pay</label>
-      <div class="amount-input-wrap" id="incSrcAmtWrap">
-        <input type="number" inputmode="decimal" id="inpIncSrcAmount" class="amount-input" placeholder="0.00" step="0.01">
-      </div>
+    <div class="cycle-opt selected" data-cycle="fortnightly" onclick="selectCycle('fortnightly')">
+      <div class="opt-name">Fortnightly</div>
+      <div class="opt-sub">Every 14 days</div>
     </div>
-    
-    <div class="field">
-      <label>Pay Cycle</label>
-      <div class="cycle-picker" id="cyclePicker">
-        <div class="cycle-opt" data-cycle="weekly" onclick="selectCycle('weekly')">
-          <div class="opt-name">Weekly</div>
-          <div class="opt-sub">Every 7 days</div>
-        </div>
-        <div class="cycle-opt selected" data-cycle="fortnightly" onclick="selectCycle('fortnightly')">
-          <div class="opt-name">Fortnightly</div>
-          <div class="opt-sub">Every 14 days</div>
-        </div>
-        <div class="cycle-opt" data-cycle="monthly" onclick="selectCycle('monthly')">
-          <div class="opt-name">Monthly</div>
-          <div class="opt-sub">Same date each month</div>
-        </div>
-        <div class="cycle-opt" data-cycle="irregular" onclick="selectCycle('irregular')">
-          <div class="opt-name">Irregular</div>
-          <div class="opt-sub">Variable / ad-hoc</div>
-        </div>
-      </div>
+    <div class="cycle-opt" data-cycle="monthly" onclick="selectCycle('monthly')">
+      <div class="opt-name">Monthly</div>
+      <div class="opt-sub">Same date each month</div>
     </div>
-    
-    <div class="field" id="nextPayField">
-      <label>Next pay date</label>
-      <input type="date" id="inpIncSrcNextPay">
+    <div class="cycle-opt" data-cycle="irregular" onclick="selectCycle('irregular')">
+      <div class="opt-name">Irregular</div>
+      <div class="opt-sub">Variable / ad-hoc</div>
     </div>
-    
-    <div class="switch-row">
-      <div>
-        <div class="switch-label">Auto-log on pay date</div>
-        <div class="switch-hint">Creates the income entry automatically</div>
-      </div>
-      <div class="switch" id="incSrcAutoLogSwitch" onclick="toggleIncSrcAutoLog()"></div>
-    </div>
-    
-    <div class="field">
-      <label>Note (optional)</label>
-      <input type="text" id="inpIncSrcNote" placeholder="e.g. After tax, gross">
-    </div>
-    
-    <button class="btn-primary" onclick="saveIncomeSource()">Save</button>
-    <button class="btn-danger" id="deleteIncSrcBtn" style="display:none" onclick="deleteCurrentIncomeSource()">Delete</button>
-    <button class="btn-secondary" onclick="closeModal('incomeSrcModal')">Cancel</button>
+  </div>
+</div>
+
+<div class="field" id="nextPayField">
+  <label>Next pay date</label>
+  <input type="date" id="inpIncSrcNextPay">
+</div>
+
+<div class="switch-row">
+  <div>
+    <div class="switch-label">Auto-log on pay date</div>
+    <div class="switch-hint">Creates the income entry automatically</div>
+  </div>
+  <div class="switch" id="incSrcAutoLogSwitch" onclick="toggleIncSrcAutoLog()"></div>
+</div>
+
+<div class="field">
+  <label>Note (optional)</label>
+  <input type="text" id="inpIncSrcNote" placeholder="e.g. After tax, gross">
+</div>
+
+<button class="btn-primary" onclick="saveIncomeSource()">Save</button>
+<button class="btn-danger" id="deleteIncSrcBtn" style="display:none" onclick="deleteCurrentIncomeSource()">Delete</button>
+<button class="btn-secondary" onclick="closeModal('incomeSrcModal')">Cancel</button>
+```
+
   </div>
 </div>
 
 <!-- RECURRING EXPENSE MODAL -->
+
 <div class="modal-backdrop" id="recExpModal" onclick="closeModalOnBg(event, 'recExpModal')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="recExpModalTitle">Add Recurring Expense</div>
     <div class="modal-sub">Auto-logs on the due date</div>
 
-    <div class="field">
-      <label>Name</label>
-      <input type="text" id="inpRecExpName" placeholder="e.g. Rent, Netflix, Gym">
-    </div>
+```
+<div class="field">
+  <label>Name</label>
+  <input type="text" id="inpRecExpName" placeholder="e.g. Rent, Netflix, Gym">
+</div>
 
-    <div class="field">
-      <label>Amount</label>
-      <div class="amount-input-wrap" id="recExpAmtWrap">
-        <input type="number" inputmode="decimal" id="inpRecExpAmount" class="amount-input" placeholder="0.00" step="0.01">
-      </div>
-    </div>
+<div class="field">
+  <label>Amount</label>
+  <div class="amount-input-wrap" id="recExpAmtWrap">
+    <input type="number" inputmode="decimal" id="inpRecExpAmount" class="amount-input" placeholder="0.00" step="0.01">
+  </div>
+</div>
 
-    <div class="field">
-      <label>Category</label>
-      <div class="cat-picker" id="recExpCatPicker"></div>
-    </div>
+<div class="field">
+  <label>Category</label>
+  <div class="cat-picker" id="recExpCatPicker"></div>
+</div>
 
-    <div class="field">
-      <label>Frequency</label>
-      <div class="cycle-picker" id="recCyclePicker">
-        <div class="cycle-opt" data-cycle="weekly" onclick="selectRecCycle('weekly')">
-          <div class="opt-name">Weekly</div>
-          <div class="opt-sub">Every 7 days</div>
-        </div>
-        <div class="cycle-opt" data-cycle="fortnightly" onclick="selectRecCycle('fortnightly')">
-          <div class="opt-name">Fortnightly</div>
-          <div class="opt-sub">Every 14 days</div>
-        </div>
-        <div class="cycle-opt selected" data-cycle="monthly" onclick="selectRecCycle('monthly')">
-          <div class="opt-name">Monthly</div>
-          <div class="opt-sub">Same date each month</div>
-        </div>
-        <div class="cycle-opt" data-cycle="yearly" onclick="selectRecCycle('yearly')">
-          <div class="opt-name">Yearly</div>
-          <div class="opt-sub">Same date each year</div>
-        </div>
-      </div>
+<div class="field">
+  <label>Frequency</label>
+  <div class="cycle-picker" id="recCyclePicker">
+    <div class="cycle-opt" data-cycle="weekly" onclick="selectRecCycle('weekly')">
+      <div class="opt-name">Weekly</div>
+      <div class="opt-sub">Every 7 days</div>
     </div>
-
-    <div class="field">
-      <label>Next due date</label>
-      <input type="date" id="inpRecExpNextDue">
+    <div class="cycle-opt" data-cycle="fortnightly" onclick="selectRecCycle('fortnightly')">
+      <div class="opt-name">Fortnightly</div>
+      <div class="opt-sub">Every 14 days</div>
     </div>
-
-    <div class="switch-row">
-      <div>
-        <div class="switch-label">Active</div>
-        <div class="switch-hint">Turn off to pause auto-logging</div>
-      </div>
-      <div class="switch on" id="recExpActiveSwitch" onclick="toggleRecExpActive()"></div>
+    <div class="cycle-opt selected" data-cycle="monthly" onclick="selectRecCycle('monthly')">
+      <div class="opt-name">Monthly</div>
+      <div class="opt-sub">Same date each month</div>
     </div>
-
-    <div class="field">
-      <label>Note (optional)</label>
-      <input type="text" id="inpRecExpNote" placeholder="">
+    <div class="cycle-opt" data-cycle="yearly" onclick="selectRecCycle('yearly')">
+      <div class="opt-name">Yearly</div>
+      <div class="opt-sub">Same date each year</div>
     </div>
+  </div>
+</div>
 
-    <button class="btn-primary" onclick="saveRecExp()">Save</button>
-    <button class="btn-danger" id="deleteRecExpBtn" style="display:none" onclick="deleteCurrentRecExp()">Delete</button>
-    <button class="btn-secondary" onclick="closeModal('recExpModal')">Cancel</button>
+<div class="field">
+  <label>Next due date</label>
+  <input type="date" id="inpRecExpNextDue">
+</div>
+
+<div class="switch-row">
+  <div>
+    <div class="switch-label">Active</div>
+    <div class="switch-hint">Turn off to pause auto-logging</div>
+  </div>
+  <div class="switch on" id="recExpActiveSwitch" onclick="toggleRecExpActive()"></div>
+</div>
+
+<div class="field">
+  <label>Note (optional)</label>
+  <input type="text" id="inpRecExpNote" placeholder="">
+</div>
+
+<button class="btn-primary" onclick="saveRecExp()">Save</button>
+<button class="btn-danger" id="deleteRecExpBtn" style="display:none" onclick="deleteCurrentRecExp()">Delete</button>
+<button class="btn-secondary" onclick="closeModal('recExpModal')">Cancel</button>
+```
+
   </div>
 </div>
 
 <!-- TOAST -->
+
 <div class="toast" id="toast"><span id="toastIcon">✓</span><span id="toastMsg">Saved</span></div>
 
 <!-- BOTTOM NAV -->
+
 <div class="bottom-nav">
   <button class="nav-item active" data-page="home" onclick="goPage('home')">
     <span class="nav-icon">⌂</span> Home
@@ -2409,7 +2586,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.4.0';
+const APP_VERSION = '2.5.0';
 const SCHEMA_VERSION = 6;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
@@ -2477,6 +2654,7 @@ let state = {
   loanDeductOn: false,
   filter: 'all',
   catPickerMode: 'tx',
+  weeklyPlanMode: 'daily', // v2.5: 'daily' or 'weekly'
   editingIncSrcId: null,
   selectedCycle: 'fortnightly',
   pendingAffordCheck: null,
@@ -2769,6 +2947,19 @@ function renderHome() {
   document.getElementById('balance').textContent = bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   document.getElementById('totalIncome').textContent = fmt(income);
   document.getElementById('totalExpense').textContent = fmt(expense);
+  
+  // v2.5: Reserved badge (virtual envelope)
+  const reserved = getCurrentReservedAmount();
+  const reservedEl = document.getElementById('reservedBadge');
+  if (reservedEl) {
+    if (reserved > 5) {
+      const free = bal - reserved;
+      reservedEl.innerHTML = `<span>🔒 <strong style="color:#a855f7;">${fmt(reserved)}</strong> reserved for bills · <strong>${fmt(Math.max(0, free))}</strong> free to use</span>`;
+      reservedEl.style.display = 'inline-flex';
+    } else {
+      reservedEl.style.display = 'none';
+    }
+  }
 
   const recent = [...state.transactions]
     .sort((a,b) => b.date.localeCompare(a.date) || (b.createdAt||0) - (a.createdAt||0))
@@ -4544,6 +4735,179 @@ function toggleSaveHere(recId, event) {
   if (chev) chev.style.transform = isOpen ? '' : 'rotate(90deg)';
 }
 
+/* ============================================================
+   v2.5: WEEKLY PLAN — Set-Aside Envelope System
+   ============================================================ */
+
+// Get the Monday of a given date (used as week start)
+function getWeekStart(date) {
+  const d = new Date(date);
+  d.setHours(0,0,0,0);
+  const day = d.getDay(); // 0=Sun, 1=Mon...
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function isoOf(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+// Compute upcoming bills due in next N days
+function getUpcomingBills(daysAhead = 56) {
+  const bills = [];
+  const today = new Date(todayISO() + 'T00:00:00');
+  const horizon = addDays(today, daysAhead);
+  
+  state.recurringExpenses.forEach(rec => {
+    if (!rec.active || !rec.nextDue) return;
+    let next = new Date(computeNextDueDate(rec) + 'T00:00:00');
+    while (next <= horizon) {
+      if (next >= today) {
+        bills.push({
+          id: rec.id,
+          name: rec.name,
+          category: rec.category,
+          amount: rec.amount,
+          date: isoOf(next),
+          daysUntil: Math.ceil((next - today) / 86400000),
+        });
+      }
+      // Advance by cycle
+      const n = new Date(next);
+      if (rec.cycle === 'weekly') n.setDate(n.getDate() + 7);
+      else if (rec.cycle === 'fortnightly') n.setDate(n.getDate() + 14);
+      else if (rec.cycle === 'monthly') n.setMonth(n.getMonth() + 1);
+      else if (rec.cycle === 'yearly') n.setFullYear(n.getFullYear() + 1);
+      else break;
+      if (n <= next) break; // safety
+      next = n;
+    }
+  });
+  
+  return bills.sort((a,b) => a.date.localeCompare(b.date));
+}
+
+// The main planner: returns a 4-week forecast
+// Each week shows: income earned, money to set aside, free to spend
+function computeWeeklyPlan() {
+  const today = new Date(todayISO() + 'T00:00:00');
+  const thisWeekStart = getWeekStart(today);
+  
+  // Get upcoming income events for next 60 days
+  const incomeEvents = getUpcomingPayEvents(60);
+  // Get upcoming bills for next 60 days
+  const bills = getUpcomingBills(60);
+  
+  // Compute average variable spend per week (median-based)
+  const avgDaily = getAvgDailyExpense();
+  const variableWeekly = avgDaily * 7;
+  
+  // Build 4 weeks of plan
+  const weeks = [];
+  for (let w = 0; w < 4; w++) {
+    const weekStart = addDays(thisWeekStart, w * 7);
+    const weekEnd = addDays(weekStart, 6);
+    
+    // Income arriving this week
+    const weekIncome = incomeEvents
+      .filter(e => e.date >= isoOf(weekStart) && e.date <= isoOf(weekEnd))
+      .reduce((s,e) => s + e.amount, 0);
+    
+    // Bills due this week (pay immediately, no spread)
+    const weekBillsDue = bills
+      .filter(b => b.date >= isoOf(weekStart) && b.date <= isoOf(weekEnd));
+    const weekBillsDueAmount = weekBillsDue.reduce((s,b) => s + b.amount, 0);
+    
+    // Bills due in FUTURE weeks — need to set aside a portion now
+    // For each future bill, spread its cost evenly from this week up to the week before due
+    let setAsideThisWeek = 0;
+    const setAsideBreakdown = [];
+    bills.forEach(b => {
+      const billDate = new Date(b.date + 'T00:00:00');
+      if (billDate <= weekEnd) return; // already accounted as due this week (handled above)
+      // Bill is in a future week
+      const billWeekStart = getWeekStart(billDate);
+      const weeksUntil = Math.max(1, Math.ceil((billWeekStart - weekStart) / (7 * 86400000)));
+      // Spread evenly: each week from now to (week before due) saves bill/weeksUntil
+      const portion = b.amount / weeksUntil;
+      setAsideThisWeek += portion;
+      setAsideBreakdown.push({
+        name: b.name,
+        date: b.date,
+        amount: b.amount,
+        daysUntil: b.daysUntil,
+        weeklyPortion: portion,
+        weeksUntil,
+      });
+    });
+    
+    // Free to spend this week = income - bills due this week - set aside for future - variable spend
+    const freeToSpend = weekIncome - weekBillsDueAmount - setAsideThisWeek - variableWeekly;
+    
+    weeks.push({
+      weekIndex: w,
+      weekStart: isoOf(weekStart),
+      weekEnd: isoOf(weekEnd),
+      income: weekIncome,
+      billsDue: weekBillsDue,
+      billsDueAmount: weekBillsDueAmount,
+      setAside: setAsideThisWeek,
+      setAsideBreakdown,
+      variableSpend: variableWeekly,
+      freeToSpend,
+      isNow: w === 0,
+    });
+  }
+  
+  return weeks;
+}
+
+// Today's free spend allowance: this week's free / 7 days
+function computeDailyFreeAllowance() {
+  const weeks = computeWeeklyPlan();
+  if (weeks.length === 0) return null;
+  
+  const thisWeek = weeks[0];
+  const today = new Date(todayISO() + 'T00:00:00');
+  const weekEnd = new Date(thisWeek.weekEnd + 'T00:00:00');
+  const daysLeftInWeek = Math.max(1, Math.ceil((weekEnd - today) / 86400000) + 1);
+  
+  return {
+    todayAllowance: thisWeek.freeToSpend / daysLeftInWeek,
+    weeklyFree: thisWeek.freeToSpend,
+    daysLeftInWeek,
+  };
+}
+
+// Total currently "reserved" — sum of this week's set-aside for upcoming bills
+function getCurrentReservedAmount() {
+  const weeks = computeWeeklyPlan();
+  if (weeks.length === 0) return 0;
+  // Sum across all 4 weeks of set-aside, but specifically the bills not yet due
+  let reserved = 0;
+  const today = new Date(todayISO() + 'T00:00:00');
+  const bills = getUpcomingBills(60);
+  bills.forEach(b => {
+    const billDate = new Date(b.date + 'T00:00:00');
+    if (billDate <= today) return;
+    // How much SHOULD already be reserved? Based on what fraction of time has passed.
+    // We assume saving started 4 weeks before the bill (or from today if less)
+    const totalSaveDays = Math.min(28, b.daysUntil + 7);
+    const startDate = addDays(billDate, -totalSaveDays);
+    const daysSinceStart = Math.max(0, Math.ceil((today - startDate) / 86400000));
+    const fractionSaved = Math.min(1, daysSinceStart / totalSaveDays);
+    reserved += b.amount * fractionSaved;
+  });
+  return reserved;
+}
+
 function computeLoanStrategy() {
   const active = state.loans
     .filter(l => getLoanPaid(l) < l.total)
@@ -4670,6 +5034,15 @@ function computeSmartAffordability(amount) {
   const weekly = getWeeklyRecurringPicture();
   const afterBal = bal - amount;
   
+  // v2.5: How much of your balance is "reserved" for upcoming bills?
+  const reserved = getCurrentReservedAmount();
+  const availableBal = bal - reserved;  // truly free money
+  const afterAvailable = availableBal - amount;
+  
+  // v2.5: This week's free-to-spend (from weekly plan)
+  const daily = computeDailyFreeAllowance();
+  const weeklyFree = daily ? daily.weeklyFree : null;
+  
   // Days of normal spending you can coast after
   const avgDaily = getAvgDailyExpense() || (monthlyFixed + monthlyVar) / 30;
   const daysBufferAfter = avgDaily > 0 ? Math.floor(afterBal / avgDaily) : null;
@@ -4683,20 +5056,30 @@ function computeSmartAffordability(amount) {
   const activeLoans = state.loans.filter(l => getLoanPaid(l) < l.total);
   const totalDebt = activeLoans.reduce((s,l) => s + (l.total - getLoanPaid(l)), 0);
   
-  // VERDICT (plainer language)
+  // VERDICT (plainer language, now reserved-aware)
   let zone, title;
   if (afterBal < 0) {
     zone = 'red';
     title = `Don't — your balance would drop ${fmt(Math.abs(afterBal))} below zero`;
+  } else if (reserved > 0 && afterAvailable < 0) {
+    // Buying it would eat into money reserved for upcoming bills
+    zone = 'red';
+    title = `Don't — this would eat into ${fmt(reserved)} reserved for upcoming bills`;
   } else if (daysBufferAfter !== null && daysBufferAfter < 7) {
     zone = 'red';
     title = `Too risky — less than a week of normal spending would be left`;
+  } else if (weeklyFree !== null && weeklyFree > 0 && amount <= weeklyFree) {
+    zone = 'green';
+    title = `Yes — fits within this week's free spending (${fmt(weeklyFree)})`;
   } else if (monthlyLeftover > 0 && amount <= monthlyLeftover) {
     zone = 'green';
     title = `Yes — this fits within your spare cash this month`;
   } else if (pctOfMonthlyIn !== null && pctOfMonthlyIn > 50) {
     zone = 'yellow';
     title = `Doable, but this is ${pctOfMonthlyIn.toFixed(0)}% of one month's income`;
+  } else if (reserved > 0 && afterAvailable < avgDaily * 7) {
+    zone = 'yellow';
+    title = `Risky — would leave little after your reserved bill money`;
   } else if (daysBufferAfter !== null && daysBufferAfter < 21) {
     zone = 'yellow';
     title = `Yes — but it would eat into your safety days`;
@@ -4710,6 +5093,14 @@ function computeSmartAffordability(amount) {
   const afterBalSign = afterBal < 0 ? '−' : '';
   const afterBalStr = `<strong style="color:${afterBal < 0 ? 'var(--expense)' : 'var(--text)'};">${afterBalSign}${fmt(afterBal)}</strong>`;
   reasons.push(`Balance: ${fmt(bal)} → ${afterBalStr}`);
+  if (reserved > 0) {
+    const truelyFree = bal - reserved;
+    reasons.push(`🔒 ${fmt(reserved)} reserved for upcoming bills · <strong style="color:${truelyFree < amount ? 'var(--expense)' : 'var(--text)'};">${fmt(truelyFree)} actually free</strong>`);
+  }
+  if (weeklyFree !== null) {
+    const wfSign = weeklyFree < 0 ? '−' : '+';
+    reasons.push(`This week's free spending: <strong style="color:${weeklyFree < 0 ? 'var(--expense)' : 'var(--income)'};">${wfSign}${fmt(weeklyFree)}</strong>`);
+  }
   if (daysBufferAfter !== null) {
     if (daysBufferAfter < 0) reasons.push(`You'd run out before next paycheck`);
     else reasons.push(`Days you could coast after: <strong>${daysBufferAfter}</strong>`);
@@ -5008,7 +5399,155 @@ function forecastBalance(daysAhead = 30) {
    v2: COMPASS RENDER
    ============================================================ */
 
+function setWeeklyPlanMode(mode) {
+  state.weeklyPlanMode = mode;
+  document.querySelectorAll('.wp-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.mode === mode);
+  });
+  renderWeeklyPlan();
+}
+
+function renderWeeklyPlan() {
+  const el = document.getElementById('weeklyPlanContent');
+  if (!el) return;
+  
+  const hasIncome = state.incomeSources.some(s => s.cycle !== 'irregular');
+  const hasBills = state.recurringExpenses.some(r => r.active);
+  
+  if (!hasIncome) {
+    el.innerHTML = `
+      <div style="color:var(--text-dim);font-size:13px;line-height:1.6;padding:10px 0;">
+        Set up your income sources in Settings to see your weekly plan.
+      </div>
+    `;
+    return;
+  }
+  
+  const weeks = computeWeeklyPlan();
+  
+  if (state.weeklyPlanMode === 'daily') {
+    // Today view
+    const daily = computeDailyFreeAllowance();
+    const thisWeek = weeks[0];
+    const reserved = getCurrentReservedAmount();
+    
+    const upcomingBills = getUpcomingBills(28).slice(0, 5);
+    const dayName = new Date(todayISO() + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long' });
+    
+    const allowance = daily ? daily.todayAllowance : 0;
+    const allowanceColor = allowance < 0 ? 'var(--expense)' : allowance < 20 ? 'var(--warning)' : 'var(--accent)';
+    const allowanceSign = allowance < 0 ? '−' : '';
+    
+    el.innerHTML = `
+      <div class="wp-today-card">
+        <div class="wp-today-label">Free to spend today</div>
+        <div class="wp-today-amount" style="color:${allowanceColor};">${allowanceSign}${fmt(allowance)}</div>
+        <div class="wp-today-sub">${dayName} · ${daily ? daily.daysLeftInWeek + ' days left this week' : ''}</div>
+      </div>
+      
+      <div class="wp-row">
+        <span class="wp-row-label">📅 This week's free spending</span>
+        <span class="wp-row-value" style="color:${thisWeek.freeToSpend < 0 ? 'var(--expense)' : 'var(--text)'};">${thisWeek.freeToSpend < 0 ? '−' : ''}${fmt(thisWeek.freeToSpend)}</span>
+      </div>
+      <div class="wp-row">
+        <span class="wp-row-label">💰 Income this week</span>
+        <span class="wp-row-value" style="color:var(--income);">+${fmt(thisWeek.income)}</span>
+      </div>
+      ${thisWeek.billsDueAmount > 0 ? `
+        <div class="wp-row">
+          <span class="wp-row-label">🧾 Bills due this week</span>
+          <span class="wp-row-value" style="color:var(--expense);">−${fmt(thisWeek.billsDueAmount)}</span>
+        </div>
+      ` : ''}
+      ${thisWeek.setAside > 0 ? `
+        <div class="wp-row">
+          <span class="wp-row-label">🔒 Set aside for future bills</span>
+          <span class="wp-row-value" style="color:#a855f7;">−${fmt(thisWeek.setAside)}</span>
+        </div>
+      ` : ''}
+      <div class="wp-row">
+        <span class="wp-row-label">🍔 Usual spending (avg)</span>
+        <span class="wp-row-value" style="color:var(--expense);">−${fmt(thisWeek.variableSpend)}</span>
+      </div>
+      
+      ${thisWeek.setAsideBreakdown.length > 0 ? `
+        <details style="margin-top:14px;">
+          <summary style="cursor:pointer;color:var(--accent);font-size:12px;padding:8px 12px;background:rgba(201,255,61,0.05);border-radius:8px;text-align:center;list-style:none;outline:none;">
+            See what's being set aside →
+          </summary>
+          <div style="margin-top:8px;padding:12px;background:rgba(168, 85, 247, 0.04);border-radius:10px;border-left:2px solid rgba(168, 85, 247, 0.3);">
+            ${thisWeek.setAsideBreakdown.slice(0, 6).map(b => `
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;">
+                <span style="color:var(--text-dim);">
+                  ${escapeHtml(b.name)}
+                  <span style="color:var(--text-muted);">· in ${b.daysUntil}d</span>
+                </span>
+                <span style="font-family:'Geist Mono',monospace;color:var(--text);">${fmt(b.weeklyPortion)}/wk</span>
+              </div>
+            `).join('')}
+          </div>
+        </details>
+      ` : ''}
+      
+      ${upcomingBills.length > 0 ? `
+        <div style="margin-top:14px;font-size:11px;color:var(--text-dim);">
+          <div style="margin-bottom:6px;font-weight:500;color:var(--text);">Upcoming bills:</div>
+          ${upcomingBills.map(b => `
+            <div style="display:flex;justify-content:space-between;padding:3px 0;">
+              <span>${escapeHtml(b.name)} <span style="color:var(--text-muted);">· ${b.daysUntil === 0 ? 'today' : b.daysUntil === 1 ? 'tomorrow' : 'in ' + b.daysUntil + ' days'}</span></span>
+              <span style="font-family:'Geist Mono',monospace;">${fmt(b.amount)}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    `;
+  } else {
+    // Weekly view — 4 weeks at a glance
+    el.innerHTML = weeks.map(week => {
+      const isNow = week.isNow;
+      const isShort = week.freeToSpend < 0;
+      const isTight = !isShort && week.freeToSpend < week.variableSpend * 0.3;
+      const cardClass = isShort ? 'danger' : isTight ? 'warn' : isNow ? 'now' : '';
+      const freeColor = isShort ? 'var(--expense)' : isTight ? 'var(--warning)' : 'var(--income)';
+      const freeSign = week.freeToSpend < 0 ? '−' : '+';
+      
+      // Build week label
+      const startDate = new Date(week.weekStart + 'T00:00:00');
+      const endDate = new Date(week.weekEnd + 'T00:00:00');
+      const startLabel = startDate.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
+      const endLabel = endDate.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
+      const weekLabel = isNow ? 'This week' : week.weekIndex === 1 ? 'Next week' : `Week of ${startLabel}`;
+      
+      const billsLine = week.billsDue.length > 0
+        ? week.billsDue.map(b => `${b.name} ${fmt(b.amount)}`).join(' · ')
+        : 'No bills due';
+      
+      return `
+        <div class="wp-week-card ${cardClass}">
+          <div class="wp-week-head">
+            <div>
+              <div class="wp-week-name">${weekLabel}</div>
+              <div style="font-size:10px;color:var(--text-muted);">${startLabel} – ${endLabel}</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="wp-week-free" style="color:${freeColor};">${freeSign}${fmt(week.freeToSpend)}</div>
+              <div style="font-size:10px;color:var(--text-muted);">free to spend</div>
+            </div>
+          </div>
+          <div class="wp-week-details">
+            +${fmt(week.income)} earned
+            ${week.billsDueAmount > 0 ? `· −${fmt(week.billsDueAmount)} bills (${billsLine})` : ''}
+            ${week.setAside > 0 ? `· −${fmt(week.setAside)} reserved` : ''}
+            ${isShort ? `<div style="color:var(--expense);margin-top:6px;font-weight:500;">⚠ Short this week — pre-staged set-aside should cover it</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
 function renderCompass() {
+  renderWeeklyPlan();
   renderExpectedMonthly();
   renderSafeSave();
   renderLoanStrategy();
@@ -6706,5 +7245,6 @@ function init() {
 
 init();
 </script>
+
 </body>
 </html>
