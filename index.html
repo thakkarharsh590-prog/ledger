@@ -4,23 +4,21 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.5.2
+  Version:      2.5.3
   Last edited:  2026-05-17
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   6 (no schema change)
   
   NAMED: Ledger Compass
   
-  v2.5.2 — SMART RECOVERY FRAMING (empowering, not punishing):
-  - Per-week card = clear plan + tiny "why" line
-    "Pay A$X bills, save A$Y, spend A$Z" + "Why: rent in 6 days"
-  - No-pay weeks now check CURRENT BALANCE
-    "You have A$800 in balance. Use A$611 for bills, save A$147 toward 
-    future bills. Next pay arrives Sunday — back to building then."
-  - Savings always gets a suggestion (skip/pause/minimal/full)
-  - Recovery framing for tight weeks — shows when you'll be back on track
-  - "Plan for this week" sentence is the hero, not a verdict
-  - Removed "Tight" alarm-style messaging, replaced with action-plans
+  v2.5.3 — DEDUP BILLS + SMARTER "WHY?":
+  - getUpcomingBills now returns ONLY the next occurrence per recurring bill
+    (was returning all future repeats — caused duplicate Fees/Rent entries
+     and inflated set-aside totals 2-3x reality)
+  - "Why?" line now combines: "Rent due this week + saving for Fees in 24d"
+    Instead of always picking the biggest item
+  - Set-aside totals should drop significantly to reality
+  - Affordability check + reserved calculation also benefit from dedup
   
   COMPLETED FEATURES (carry-over):
   - Transactions, loans, budgets, insights, custom categories
@@ -1783,7 +1781,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">Ledger Compass</span>
-    <span class="version-tag" id="versionTag">v2.5.2</span>
+    <span class="version-tag" id="versionTag">v2.5.3</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" onclick="openSearchModal()">🔍</button>
@@ -2036,7 +2034,7 @@
 
   <div class="setting-row" onclick="refreshApp()" style="border-color: rgba(201,255,61,0.2);">
     <span class="setting-label" style="color: var(--accent);">↻ Refresh App (Force Update)</span>
-    <span class="setting-value" id="versionDisplay">v2.5.2</span>
+    <span class="setting-value" id="versionDisplay">v2.5.3</span>
   </div>
 
   <div class="setting-row" style="border-color: rgba(255,107,107,0.2);" onclick="confirmClearAll()">
@@ -2045,7 +2043,7 @@
   </div>
 
   <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.6;">
-    <div>Ledger Compass v2.5.2 · Schema v6</div>
+    <div>Ledger Compass v2.5.3 · Schema v6</div>
     <div>All data stored on this device</div>
     <div id="lastBackup" style="margin-top: 4px;"></div>
   </div>
@@ -2588,7 +2586,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.5.2';
+const APP_VERSION = '2.5.3';
 const SCHEMA_VERSION = 6;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
@@ -4762,6 +4760,9 @@ function isoOf(date) {
 }
 
 // Compute upcoming bills due in next N days
+// v2.5.3: ONLY returns the NEXT occurrence of each recurring bill.
+// (Was returning all future repeats — caused duplicate Rent/Fees entries
+// and inflated set-aside totals 2-3x reality.)
 function getUpcomingBills(daysAhead = 56) {
   const bills = [];
   const today = new Date(todayISO() + 'T00:00:00');
@@ -4769,28 +4770,19 @@ function getUpcomingBills(daysAhead = 56) {
   
   state.recurringExpenses.forEach(rec => {
     if (!rec.active || !rec.nextDue) return;
-    let next = new Date(computeNextDueDate(rec) + 'T00:00:00');
-    while (next <= horizon) {
-      if (next >= today) {
-        bills.push({
-          id: rec.id,
-          name: rec.name,
-          category: rec.category,
-          amount: rec.amount,
-          date: isoOf(next),
-          daysUntil: Math.ceil((next - today) / 86400000),
-        });
-      }
-      // Advance by cycle
-      const n = new Date(next);
-      if (rec.cycle === 'weekly') n.setDate(n.getDate() + 7);
-      else if (rec.cycle === 'fortnightly') n.setDate(n.getDate() + 14);
-      else if (rec.cycle === 'monthly') n.setMonth(n.getMonth() + 1);
-      else if (rec.cycle === 'yearly') n.setFullYear(n.getFullYear() + 1);
-      else break;
-      if (n <= next) break; // safety
-      next = n;
-    }
+    // Only push the FIRST upcoming occurrence — never future repeats
+    const nextDueISO = computeNextDueDate(rec);
+    if (!nextDueISO) return;
+    const next = new Date(nextDueISO + 'T00:00:00');
+    if (next < today || next > horizon) return;
+    bills.push({
+      id: rec.id,
+      name: rec.name,
+      category: rec.category,
+      amount: rec.amount,
+      date: nextDueISO,
+      daysUntil: Math.ceil((next - today) / 86400000),
+    });
   });
   
   return bills.sort((a,b) => a.date.localeCompare(b.date));
@@ -5590,15 +5582,28 @@ function renderWeeklyPlanToday(weeks, el) {
   }
   
   // === "WHY?" line — transparent reason for the numbers ===
+  // v2.5.3: Combine bills due this week + biggest set-aside item for full story
   whyLine = '';
+  const whyParts = [];
+  
+  // Part 1: Biggest bill due this week
+  if (billsDueThisWeek > 0 && thisWeek.billsDue.length > 0) {
+    const biggestDue = [...thisWeek.billsDue].sort((a,b) => b.amount - a.amount)[0];
+    whyParts.push(`${escapeHtml(biggestDue.name)} (${fmt(biggestDue.amount)}) due this week`);
+  }
+  
+  // Part 2: Biggest set-aside item
   if (thisWeek.setAsideBreakdown.length > 0) {
-    const biggest = thisWeek.setAsideBreakdown.sort((a,b) => b.weeklyPortion - a.weeklyPortion)[0];
-    whyLine = `Why? ${escapeHtml(biggest.name)} (${fmt(biggest.amount)}) is due in ${biggest.daysUntil} day${biggest.daysUntil!==1?'s':''}, so we spread it across ${biggest.weeksUntil} week${biggest.weeksUntil>1?'s':''}.`;
-  } else if (billsDueThisWeek > 0 && thisWeek.billsDue.length > 0) {
-    const biggest = thisWeek.billsDue.sort((a,b) => b.amount - a.amount)[0];
-    whyLine = `Why? ${escapeHtml(biggest.name)} (${fmt(biggest.amount)}) is due this week.`;
+    const biggestSetAside = [...thisWeek.setAsideBreakdown].sort((a,b) => b.weeklyPortion - a.weeklyPortion)[0];
+    whyParts.push(`saving for ${escapeHtml(biggestSetAside.name)} (${fmt(biggestSetAside.amount)}) due in ${biggestSetAside.daysUntil}d`);
+  }
+  
+  if (whyParts.length > 0) {
+    whyLine = `Why? ${whyParts.join(' + ')}.`;
   } else if (income === 0) {
     whyLine = `Why? No income logged this week. Using your current balance as working capital.`;
+  } else if (income > 0 && billsDueThisWeek === 0 && setAside === 0) {
+    whyLine = `Why? No bills due, no future bills to save for — easy week.`;
   }
   
   // Upcoming bills (next 14 days)
@@ -5776,13 +5781,18 @@ function renderWeeklyPlanWeekly(weeks, el) {
         cardClass = 'warn';
       }
       
-      // Why line
+      // Why line — v2.5.3: combine bills due + biggest set-aside
+      const whyParts2 = [];
+      if (week.billsDue && week.billsDue.length > 0) {
+        const biggestDue = [...week.billsDue].sort((a,b) => b.amount - a.amount)[0];
+        whyParts2.push(`${escapeHtml(biggestDue.name)} (${fmt(biggestDue.amount)}) due this week`);
+      }
       if (week.setAsideBreakdown && week.setAsideBreakdown.length > 0) {
-        const biggest = [...week.setAsideBreakdown].sort((a,b) => b.weeklyPortion - a.weeklyPortion)[0];
-        whyText = `Why? Saving up for ${escapeHtml(biggest.name)} (${fmt(biggest.amount)}, due in ${biggest.daysUntil}d).`;
-      } else if (week.billsDue && week.billsDue.length > 0) {
-        const biggest = [...week.billsDue].sort((a,b) => b.amount - a.amount)[0];
-        whyText = `Why? ${escapeHtml(biggest.name)} (${fmt(biggest.amount)}) is due this week.`;
+        const biggestSet = [...week.setAsideBreakdown].sort((a,b) => b.weeklyPortion - a.weeklyPortion)[0];
+        whyParts2.push(`saving for ${escapeHtml(biggestSet.name)} (${fmt(biggestSet.amount)}) due in ${biggestSet.daysUntil}d`);
+      }
+      if (whyParts2.length > 0) {
+        whyText = `Why? ${whyParts2.join(' + ')}.`;
       } else {
         whyText = `Why? No bills, no future bills to save for — easy week.`;
       }
