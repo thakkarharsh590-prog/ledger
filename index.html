@@ -4,22 +4,27 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.5.0
+  Version:      2.5.1
   Last edited:  2026-05-17
   Storage:      localStorage (device-local, never sent to cloud)
-  Schema ver:   6 (no schema change needed for v2.5)
+  Schema ver:   6 (no schema change)
   
   NAMED: Ledger Compass
   
-  v2.5.0 — WEEKLY PLAN ("Set Aside" envelope system):
-  - New Compass card: This Week + Next 4 Weeks
-  - Auto-calculates how much to set aside each week
-    for upcoming bills (rent in 3 weeks → save ~33%/wk)
-  - "Free to spend" amount per week (income - set aside - usual spend)
-  - Daily allowance: "$X free today"
-  - Affordability check now factors in set-aside money
-  - Warns 3+ weeks ahead if a future week goes negative
-  - Virtual envelope shown on Home: "🔒 $X reserved for bills"
+  v2.5.1 — WEEKLY PLAN UX REWRITE + REAL BUG FIXES:
+  - Simple sentence framing: "Save A$X this week. You have A$Y free."
+  - Math fix: set-aside no longer double-counts across weeks
+    (was treating each week independently → massive over-reservation)
+    Now uses depleting-reservoir model — once a week saves, future
+    weeks don't try to save the same amount again
+  - No-income weeks: forward-looking advice instead of scary numbers
+    "No pay this week. Next pay Mon brings A$701 — set aside A$X then."
+  - Cache buster: auto-reloads stale HTML on app open
+  - Visible version banner flashes for 2 seconds on every launch
+    so you always know what's running
+  - Removed "Free to spend today" giant red number — too alarming
+  - Simplified weekly card to "save / free" two-number summary
+  - Same fixes for Today and Next 4 Weeks views
   
   COMPLETED FEATURES (carry-over):
   - Transactions, loans, budgets, insights, custom categories
@@ -1549,6 +1554,27 @@
     background: var(--income);
     color: #0a0a0f;
   }
+  /* v2.5.1: version banner that flashes on launch */
+  .version-banner {
+    position: fixed;
+    top: env(safe-area-inset-top, 12px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    background: rgba(201,255,61,0.95);
+    color: #0a0a0f;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Geist Mono', monospace;
+    letter-spacing: 0;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity .3s ease, transform .3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    pointer-events: none;
+  }
+  
   /* Weekly Plan card */
   .weekly-plan-toggle {
     display: flex;
@@ -1623,6 +1649,33 @@
     border-radius: 10px;
     margin-bottom: 8px;
     border: 1px solid var(--border);
+  }
+  
+  /* v2.5.1: simpler summary grid */
+  .wp-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .wp-summary-cell {
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .wp-summary-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .wp-summary-value {
+    font-family: 'Geist Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
   }
   .wp-week-card.now {
     border-color: rgba(201,255,61,0.3);
@@ -1724,6 +1777,8 @@
 </head>
 <body>
 
+<div id="versionBanner" class="version-banner" style="display:none;"></div>
+
 <div class="topbar">
   <div class="brand">
     <svg viewBox="0 0 24 24" width="20" height="20" class="brand-needle">
@@ -1732,7 +1787,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">Ledger Compass</span>
-    <span class="version-tag" id="versionTag">v2.5.0</span>
+    <span class="version-tag" id="versionTag">v2.5.1</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" onclick="openSearchModal()">🔍</button>
@@ -1985,7 +2040,7 @@
 
   <div class="setting-row" onclick="refreshApp()" style="border-color: rgba(201,255,61,0.2);">
     <span class="setting-label" style="color: var(--accent);">↻ Refresh App (Force Update)</span>
-    <span class="setting-value" id="versionDisplay">v2.5.0</span>
+    <span class="setting-value" id="versionDisplay">v2.5.1</span>
   </div>
 
   <div class="setting-row" style="border-color: rgba(255,107,107,0.2);" onclick="confirmClearAll()">
@@ -1994,7 +2049,7 @@
   </div>
 
   <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.6;">
-    <div>Ledger Compass v2.5.0 · Schema v6</div>
+    <div>Ledger Compass v2.5.1 · Schema v6</div>
     <div>All data stored on this device</div>
     <div id="lastBackup" style="margin-top: 4px;"></div>
   </div>
@@ -2537,7 +2592,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.5.0';
+const APP_VERSION = '2.5.1';
 const SCHEMA_VERSION = 6;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
@@ -4746,7 +4801,8 @@ function getUpcomingBills(daysAhead = 56) {
 }
 
 // The main planner: returns a 4-week forecast
-// Each week shows: income earned, money to set aside, free to spend
+// FIXED in v2.5.1: depleting reservoir — each week only saves what's still needed
+// for bills that haven't yet been fully reserved by earlier weeks.
 function computeWeeklyPlan() {
   const today = new Date(todayISO() + 'T00:00:00');
   const thisWeekStart = getWeekStart(today);
@@ -4760,7 +4816,11 @@ function computeWeeklyPlan() {
   const avgDaily = getAvgDailyExpense();
   const variableWeekly = avgDaily * 7;
   
-  // Build 4 weeks of plan
+  // Build 4 weeks of plan with DEPLETING set-aside
+  // Track how much has been "saved up" for each bill so far
+  const billSavedSoFar = {};
+  bills.forEach(b => { billSavedSoFar[b.id + b.date] = 0; });
+  
   const weeks = [];
   for (let w = 0; w < 4; w++) {
     const weekStart = addDays(thisWeekStart, w * 7);
@@ -4771,36 +4831,48 @@ function computeWeeklyPlan() {
       .filter(e => e.date >= isoOf(weekStart) && e.date <= isoOf(weekEnd))
       .reduce((s,e) => s + e.amount, 0);
     
-    // Bills due this week (pay immediately, no spread)
+    // Bills due THIS week (must be paid this week regardless)
     const weekBillsDue = bills
       .filter(b => b.date >= isoOf(weekStart) && b.date <= isoOf(weekEnd));
     const weekBillsDueAmount = weekBillsDue.reduce((s,b) => s + b.amount, 0);
     
-    // Bills due in FUTURE weeks — need to set aside a portion now
-    // For each future bill, spread its cost evenly from this week up to the week before due
+    // Set-aside for FUTURE bills — only the portion not yet saved
     let setAsideThisWeek = 0;
     const setAsideBreakdown = [];
     bills.forEach(b => {
       const billDate = new Date(b.date + 'T00:00:00');
-      if (billDate <= weekEnd) return; // already accounted as due this week (handled above)
-      // Bill is in a future week
+      if (billDate <= weekEnd) return; // due this/past week → handled above
+      
+      const key = b.id + b.date;
+      const alreadySaved = billSavedSoFar[key];
+      const stillNeeded = b.amount - alreadySaved;
+      if (stillNeeded <= 0) return;
+      
+      // Weeks remaining from this week until bill week
       const billWeekStart = getWeekStart(billDate);
-      const weeksUntil = Math.max(1, Math.ceil((billWeekStart - weekStart) / (7 * 86400000)));
-      // Spread evenly: each week from now to (week before due) saves bill/weeksUntil
-      const portion = b.amount / weeksUntil;
+      const weeksRemaining = Math.max(1, Math.ceil((billWeekStart - weekStart) / (7 * 86400000)));
+      
+      // Spread STILL-NEEDED amount evenly over remaining weeks
+      const portion = stillNeeded / weeksRemaining;
       setAsideThisWeek += portion;
+      billSavedSoFar[key] = alreadySaved + portion;
+      
       setAsideBreakdown.push({
         name: b.name,
         date: b.date,
         amount: b.amount,
         daysUntil: b.daysUntil,
         weeklyPortion: portion,
-        weeksUntil,
+        weeksUntil: weeksRemaining,
       });
     });
     
-    // Free to spend this week = income - bills due this week - set aside for future - variable spend
+    // Free to spend this week = income - bills due - set-aside - variable spend
     const freeToSpend = weekIncome - weekBillsDueAmount - setAsideThisWeek - variableWeekly;
+    
+    // No-income state: don't punish the user; show what next pay should do
+    const noIncomeThisWeek = weekIncome === 0;
+    const nextIncomeEvent = incomeEvents.find(e => e.date > isoOf(weekEnd));
     
     weeks.push({
       weekIndex: w,
@@ -4814,6 +4886,8 @@ function computeWeeklyPlan() {
       variableSpend: variableWeekly,
       freeToSpend,
       isNow: w === 0,
+      noIncomeThisWeek,
+      nextIncomeEvent: nextIncomeEvent || null,
     });
   }
   
@@ -5363,7 +5437,6 @@ function renderWeeklyPlan() {
   if (!el) return;
   
   const hasIncome = state.incomeSources.some(s => s.cycle !== 'irregular');
-  const hasBills = state.recurringExpenses.some(r => r.active);
   
   if (!hasIncome) {
     el.innerHTML = `
@@ -5377,124 +5450,223 @@ function renderWeeklyPlan() {
   const weeks = computeWeeklyPlan();
   
   if (state.weeklyPlanMode === 'daily') {
-    // Today view
-    const daily = computeDailyFreeAllowance();
-    const thisWeek = weeks[0];
-    const reserved = getCurrentReservedAmount();
+    renderWeeklyPlanToday(weeks, el);
+  } else {
+    renderWeeklyPlanWeekly(weeks, el);
+  }
+}
+
+// Helper: friendly date label
+function shortDate(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function renderWeeklyPlanToday(weeks, el) {
+  const thisWeek = weeks[0];
+  const setAside = Math.max(0, Math.round(thisWeek.setAside));
+  const billsDueThisWeek = Math.round(thisWeek.billsDueAmount);
+  const income = Math.round(thisWeek.income);
+  
+  // Build the SIMPLE SENTENCE
+  // Three scenarios: has income, no income but next pay known, no income no upcoming pay
+  let headline, sub, headlineColor;
+  
+  if (income > 0) {
+    // Has income this week
+    const totalNeeded = billsDueThisWeek + setAside;
+    const freeAmount = Math.max(0, income - totalNeeded);
     
-    const upcomingBills = getUpcomingBills(28).slice(0, 5);
-    const dayName = new Date(todayISO() + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long' });
-    
-    const allowance = daily ? daily.todayAllowance : 0;
-    const allowanceColor = allowance < 0 ? 'var(--expense)' : allowance < 20 ? 'var(--warning)' : 'var(--accent)';
-    const allowanceSign = allowance < 0 ? '−' : '';
-    
-    el.innerHTML = `
-      <div class="wp-today-card">
-        <div class="wp-today-label">Free to spend today</div>
-        <div class="wp-today-amount" style="color:${allowanceColor};">${allowanceSign}${fmt(allowance)}</div>
-        <div class="wp-today-sub">${dayName} · ${daily ? daily.daysLeftInWeek + ' days left this week' : ''}</div>
-      </div>
+    if (totalNeeded >= income) {
+      // Tight
+      const shortBy = totalNeeded - income;
+      headline = `Tight week — bills need ${fmt(totalNeeded)}, but you've only got ${fmt(income)} coming in.`;
+      sub = shortBy < 100 
+        ? `Short by ${fmt(shortBy)}. Use savings or trim spending this week.`
+        : `Short by ${fmt(shortBy)} — may need to pull from savings or push a bill.`;
+      headlineColor = 'var(--warning)';
+    } else if (setAside > 0 && billsDueThisWeek > 0) {
+      headline = `Pay ${fmt(billsDueThisWeek)} in bills + set aside ${fmt(setAside)}. You'll have ${fmt(freeAmount)} free.`;
+      sub = `From this week's ${fmt(income)} income.`;
+      headlineColor = 'var(--accent)';
+    } else if (setAside > 0) {
+      headline = `Set aside ${fmt(setAside)} for upcoming bills. You'll have ${fmt(freeAmount)} free.`;
+      sub = `From this week's ${fmt(income)} income.`;
+      headlineColor = 'var(--accent)';
+    } else if (billsDueThisWeek > 0) {
+      headline = `Pay ${fmt(billsDueThisWeek)} in bills this week. You'll have ${fmt(freeAmount)} free.`;
+      sub = `From this week's ${fmt(income)} income.`;
+      headlineColor = 'var(--accent)';
+    } else {
+      headline = `Easy week — ${fmt(income)} in, no bills or future bills to save for.`;
+      sub = `All of this week's income is yours to use.`;
+      headlineColor = 'var(--income)';
+    }
+  } else {
+    // No income this week — forward-looking
+    if (thisWeek.nextIncomeEvent) {
+      const nextEvent = thisWeek.nextIncomeEvent;
+      const nextDate = new Date(nextEvent.date + 'T00:00:00');
+      const daysUntilPay = Math.ceil((nextDate - new Date(todayISO() + 'T00:00:00')) / 86400000);
+      const dayName = nextDate.toLocaleDateString('en-AU', { weekday: 'long' });
       
-      <div class="wp-row">
-        <span class="wp-row-label">📅 This week's free spending</span>
-        <span class="wp-row-value" style="color:${thisWeek.freeToSpend < 0 ? 'var(--expense)' : 'var(--text)'};">${thisWeek.freeToSpend < 0 ? '−' : ''}${fmt(thisWeek.freeToSpend)}</span>
-      </div>
-      <div class="wp-row">
-        <span class="wp-row-label">💰 Income this week</span>
-        <span class="wp-row-value" style="color:var(--income);">+${fmt(thisWeek.income)}</span>
-      </div>
-      ${thisWeek.billsDueAmount > 0 ? `
-        <div class="wp-row">
-          <span class="wp-row-label">🧾 Bills due this week</span>
-          <span class="wp-row-value" style="color:var(--expense);">−${fmt(thisWeek.billsDueAmount)}</span>
-        </div>
-      ` : ''}
-      ${thisWeek.setAside > 0 ? `
-        <div class="wp-row">
-          <span class="wp-row-label">🔒 Set aside for future bills</span>
-          <span class="wp-row-value" style="color:#a855f7;">−${fmt(thisWeek.setAside)}</span>
-        </div>
-      ` : ''}
-      <div class="wp-row">
-        <span class="wp-row-label">🍔 Usual spending (avg)</span>
-        <span class="wp-row-value" style="color:var(--expense);">−${fmt(thisWeek.variableSpend)}</span>
-      </div>
+      // Find week 1 (next week) — what should be set aside from that income?
+      const nextWeek = weeks.find(w => w.income > 0);
+      const nextWeekSetAside = nextWeek ? Math.max(0, Math.round(nextWeek.setAside)) : 0;
+      const nextWeekFree = nextWeek 
+        ? Math.max(0, Math.round(nextWeek.income - nextWeek.billsDueAmount - nextWeek.setAside)) 
+        : 0;
       
-      ${thisWeek.setAsideBreakdown.length > 0 ? `
-        <details style="margin-top:14px;">
-          <summary style="cursor:pointer;color:var(--accent);font-size:12px;padding:8px 12px;background:rgba(201,255,61,0.05);border-radius:8px;text-align:center;list-style:none;outline:none;">
-            See what's being set aside →
-          </summary>
-          <div style="margin-top:8px;padding:12px;background:rgba(168, 85, 247, 0.04);border-radius:10px;border-left:2px solid rgba(168, 85, 247, 0.3);">
-            ${thisWeek.setAsideBreakdown.slice(0, 6).map(b => `
-              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;">
-                <span style="color:var(--text-dim);">
-                  ${escapeHtml(b.name)}
-                  <span style="color:var(--text-muted);">· in ${b.daysUntil}d</span>
-                </span>
-                <span style="font-family:'Geist Mono',monospace;color:var(--text);">${fmt(b.weeklyPortion)}/wk</span>
-              </div>
-            `).join('')}
+      headline = `No pay this week. Wait until ${dayName}.`;
+      if (nextWeekSetAside > 0) {
+        sub = `When ${fmt(nextEvent.amount)} arrives in ${daysUntilPay} day${daysUntilPay!==1?'s':''}, set aside ${fmt(nextWeekSetAside)} for upcoming bills (${fmt(nextWeekFree)} will be free).`;
+      } else {
+        sub = `${fmt(nextEvent.amount)} arriving in ${daysUntilPay} day${daysUntilPay!==1?'s':''} from ${nextEvent.name}.`;
+      }
+      headlineColor = 'var(--text-dim)';
+    } else {
+      headline = `No income coming this week or next.`;
+      sub = `Tight period — be cautious with spending.`;
+      headlineColor = 'var(--warning)';
+    }
+  }
+  
+  // Upcoming bills (next 14 days)
+  const upcomingBills = getUpcomingBills(14).slice(0, 5);
+  
+  el.innerHTML = `
+    <div style="text-align:center;padding:18px 14px 14px;background:linear-gradient(135deg,rgba(201,255,61,0.06),rgba(201,255,61,0.02));border:1px solid rgba(201,255,61,0.15);border-radius:14px;margin-bottom:14px;">
+      <div style="font-family:'Fraunces',serif;font-size:18px;line-height:1.35;font-weight:400;color:${headlineColor};letter-spacing:-0.01em;">
+        ${headline}
+      </div>
+      <div style="font-size:12px;color:var(--text-dim);margin-top:8px;line-height:1.5;">
+        ${sub}
+      </div>
+    </div>
+    
+    ${income > 0 ? `
+      <div class="wp-summary-grid">
+        <div class="wp-summary-cell">
+          <div class="wp-summary-label">💰 Coming in</div>
+          <div class="wp-summary-value" style="color:var(--income);">+${fmt(income)}</div>
+        </div>
+        ${billsDueThisWeek > 0 ? `
+          <div class="wp-summary-cell">
+            <div class="wp-summary-label">🧾 Bills this week</div>
+            <div class="wp-summary-value" style="color:var(--expense);">−${fmt(billsDueThisWeek)}</div>
           </div>
-        </details>
-      ` : ''}
-      
-      ${upcomingBills.length > 0 ? `
-        <div style="margin-top:14px;font-size:11px;color:var(--text-dim);">
-          <div style="margin-bottom:6px;font-weight:500;color:var(--text);">Upcoming bills:</div>
-          ${upcomingBills.map(b => `
-            <div style="display:flex;justify-content:space-between;padding:3px 0;">
-              <span>${escapeHtml(b.name)} <span style="color:var(--text-muted);">· ${b.daysUntil === 0 ? 'today' : b.daysUntil === 1 ? 'tomorrow' : 'in ' + b.daysUntil + ' days'}</span></span>
-              <span style="font-family:'Geist Mono',monospace;">${fmt(b.amount)}</span>
+        ` : ''}
+        ${setAside > 0 ? `
+          <div class="wp-summary-cell">
+            <div class="wp-summary-label">🔒 Set aside</div>
+            <div class="wp-summary-value" style="color:#a855f7;">−${fmt(setAside)}</div>
+          </div>
+        ` : ''}
+      </div>
+    ` : ''}
+    
+    ${thisWeek.setAsideBreakdown.length > 0 && income > 0 ? `
+      <details style="margin-top:14px;">
+        <summary style="cursor:pointer;color:var(--accent);font-size:12px;padding:8px 12px;background:rgba(201,255,61,0.05);border-radius:8px;text-align:center;list-style:none;outline:none;">
+          What's the set-aside money for? →
+        </summary>
+        <div style="margin-top:8px;padding:12px;background:rgba(168, 85, 247, 0.04);border-radius:10px;border-left:2px solid rgba(168, 85, 247, 0.3);">
+          ${thisWeek.setAsideBreakdown.slice(0, 6).map(b => `
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;">
+              <span style="color:var(--text-dim);">
+                ${escapeHtml(b.name)}
+                <span style="color:var(--text-muted);"> · in ${b.daysUntil}d (total ${fmt(b.amount)})</span>
+              </span>
+              <span style="font-family:'Geist Mono',monospace;color:var(--text);">${fmt(b.weeklyPortion)}/wk</span>
             </div>
           `).join('')}
         </div>
-      ` : ''}
-    `;
-  } else {
-    // Weekly view — 4 weeks at a glance
-    el.innerHTML = weeks.map(week => {
-      const isNow = week.isNow;
-      const isShort = week.freeToSpend < 0;
-      const isTight = !isShort && week.freeToSpend < week.variableSpend * 0.3;
-      const cardClass = isShort ? 'danger' : isTight ? 'warn' : isNow ? 'now' : '';
-      const freeColor = isShort ? 'var(--expense)' : isTight ? 'var(--warning)' : 'var(--income)';
-      const freeSign = week.freeToSpend < 0 ? '−' : '+';
-      
-      // Build week label
-      const startDate = new Date(week.weekStart + 'T00:00:00');
-      const endDate = new Date(week.weekEnd + 'T00:00:00');
-      const startLabel = startDate.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
-      const endLabel = endDate.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
-      const weekLabel = isNow ? 'This week' : week.weekIndex === 1 ? 'Next week' : `Week of ${startLabel}`;
-      
-      const billsLine = week.billsDue.length > 0
-        ? week.billsDue.map(b => `${b.name} ${fmt(b.amount)}`).join(' · ')
-        : 'No bills due';
-      
-      return `
-        <div class="wp-week-card ${cardClass}">
-          <div class="wp-week-head">
-            <div>
-              <div class="wp-week-name">${weekLabel}</div>
-              <div style="font-size:10px;color:var(--text-muted);">${startLabel} – ${endLabel}</div>
-            </div>
-            <div style="text-align:right;">
-              <div class="wp-week-free" style="color:${freeColor};">${freeSign}${fmt(week.freeToSpend)}</div>
-              <div style="font-size:10px;color:var(--text-muted);">free to spend</div>
-            </div>
+      </details>
+    ` : ''}
+    
+    ${upcomingBills.length > 0 ? `
+      <div style="margin-top:14px;font-size:11px;color:var(--text-dim);">
+        <div style="margin-bottom:6px;font-weight:500;color:var(--text);">Bills coming up:</div>
+        ${upcomingBills.map(b => `
+          <div style="display:flex;justify-content:space-between;padding:3px 0;">
+            <span>${escapeHtml(b.name)} <span style="color:var(--text-muted);">· ${b.daysUntil === 0 ? 'today' : b.daysUntil === 1 ? 'tomorrow' : 'in ' + b.daysUntil + ' days'}</span></span>
+            <span style="font-family:'Geist Mono',monospace;">${fmt(b.amount)}</span>
           </div>
-          <div class="wp-week-details">
-            +${fmt(week.income)} earned
-            ${week.billsDueAmount > 0 ? `· −${fmt(week.billsDueAmount)} bills (${billsLine})` : ''}
-            ${week.setAside > 0 ? `· −${fmt(week.setAside)} reserved` : ''}
-            ${isShort ? `<div style="color:var(--expense);margin-top:6px;font-weight:500;">⚠ Short this week — pre-staged set-aside should cover it</div>` : ''}
+        `).join('')}
+      </div>
+    ` : ''}
+  `;
+}
+
+function renderWeeklyPlanWeekly(weeks, el) {
+  el.innerHTML = weeks.map(week => {
+    const income = Math.round(week.income);
+    const billsDue = Math.round(week.billsDueAmount);
+    const setAside = Math.max(0, Math.round(week.setAside));
+    const isNow = week.isNow;
+    
+    const startDate = new Date(week.weekStart + 'T00:00:00');
+    const endDate = new Date(week.weekEnd + 'T00:00:00');
+    const startLabel = startDate.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
+    const endLabel = endDate.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
+    const weekLabel = isNow ? 'This week' : week.weekIndex === 1 ? 'Next week' : `Week of ${startLabel}`;
+    
+    // Build short summary sentence per week
+    let summary, summaryColor, cardClass;
+    
+    if (income === 0) {
+      summary = `No pay landing. Wait for next pay week.`;
+      summaryColor = 'var(--text-dim)';
+      cardClass = '';
+    } else {
+      const totalNeeded = billsDue + setAside;
+      const free = Math.max(0, income - totalNeeded);
+      
+      if (totalNeeded >= income) {
+        const shortBy = totalNeeded - income;
+        summary = `Tight — short ${fmt(shortBy)}. Use savings or trim spend.`;
+        summaryColor = 'var(--warning)';
+        cardClass = 'warn';
+      } else if (setAside > 0 && billsDue > 0) {
+        summary = `Pay ${fmt(billsDue)} bills + save ${fmt(setAside)}. <strong style="color:var(--income);">${fmt(free)} free.</strong>`;
+        summaryColor = 'var(--text)';
+        cardClass = isNow ? 'now' : '';
+      } else if (setAside > 0) {
+        summary = `Save ${fmt(setAside)} for upcoming bills. <strong style="color:var(--income);">${fmt(free)} free.</strong>`;
+        summaryColor = 'var(--text)';
+        cardClass = isNow ? 'now' : '';
+      } else if (billsDue > 0) {
+        summary = `Pay ${fmt(billsDue)} bills. <strong style="color:var(--income);">${fmt(free)} free.</strong>`;
+        summaryColor = 'var(--text)';
+        cardClass = isNow ? 'now' : '';
+      } else {
+        summary = `Easy week — <strong style="color:var(--income);">${fmt(income)} all free.</strong>`;
+        summaryColor = 'var(--text)';
+        cardClass = isNow ? 'now' : '';
+      }
+    }
+    
+    const detailLine = income > 0
+      ? `+${fmt(income)} earned${billsDue > 0 ? ' · −' + fmt(billsDue) + ' bills' : ''}${setAside > 0 ? ' · −' + fmt(setAside) + ' set aside' : ''}`
+      : `No income this week`;
+    
+    return `
+      <div class="wp-week-card ${cardClass}">
+        <div class="wp-week-head">
+          <div>
+            <div class="wp-week-name">${weekLabel}</div>
+            <div style="font-size:10px;color:var(--text-muted);">${startLabel} – ${endLabel}</div>
           </div>
         </div>
-      `;
-    }).join('');
-  }
+        <div style="font-size:13px;color:${summaryColor};line-height:1.5;margin-top:4px;">
+          ${summary}
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:6px;font-family:'Geist Mono',monospace;">
+          ${detailLine}
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderCompass() {
@@ -7129,6 +7301,49 @@ function refreshApp() {
 }
 
 /* ============================================================
+   v2.5.1: AUTO CACHE-BUSTER + VERSION BANNER
+   ============================================================ */
+
+// Auto-bust the cache if we're loading without a version query parameter
+// This catches the case where the PWA opens a stale cached page
+function autoCacheBust() {
+  const params = new URLSearchParams(window.location.search);
+  const hasVerParam = params.has('v') || params.has('update');
+  if (hasVerParam) return; // already busted this session
+  
+  // Check when we last did a fresh load
+  const lastBust = parseInt(localStorage.getItem('ledger_last_bust') || '0');
+  const hoursSinceLastBust = (Date.now() - lastBust) / 3600000;
+  
+  // Re-bust if it's been more than 1 hour OR if we don't have any bust yet
+  if (hoursSinceLastBust > 1 || lastBust === 0) {
+    localStorage.setItem('ledger_last_bust', String(Date.now()));
+    const newUrl = window.location.origin + window.location.pathname + '?v=' + APP_VERSION + '&t=' + Date.now();
+    // Use replace to not pollute history
+    window.location.replace(newUrl);
+  }
+}
+
+// Flash the version banner for 2 seconds on launch
+function flashVersionBanner() {
+  const el = document.getElementById('versionBanner');
+  if (!el) return;
+  el.textContent = `Ledger Compass v${APP_VERSION} loaded`;
+  el.style.display = 'block';
+  // Trigger fade-in
+  requestAnimationFrame(() => {
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+  });
+  // Fade out after 2 seconds
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-10px)';
+    setTimeout(() => { el.style.display = 'none'; }, 300);
+  }, 2000);
+}
+
+/* ============================================================
    v2.1: VERSION CHANGE DETECTION
    ============================================================ */
 
@@ -7172,6 +7387,10 @@ function showFirstLaunchWarningIfNeeded() {
 
 
 function init() {
+  // v2.5.1: First, check if we need to cache-bust the URL
+  // This runs BEFORE everything else to ensure we have the latest HTML
+  autoCacheBust();  // may redirect — if it does, the rest doesn't matter
+  
   ensureSavingsCategory();  // v2.4: register savings category
   loadData();
   takeAutoSnapshot();      // Snapshot AFTER load (preserves loaded state)
@@ -7182,6 +7401,7 @@ function init() {
   showInstallBannerIfNeeded();
   checkRecoveryMode();     // Offer restore if storage is empty but backups exist
   showFirstLaunchWarningIfNeeded();
+  flashVersionBanner();    // v2.5.1: 2-second flash showing current version
   
   // Re-render every minute so "Today/Yesterday" stays accurate
   setInterval(() => { 
@@ -7192,6 +7412,19 @@ function init() {
   setInterval(() => {
     runAutoLog();
   }, 3600000);
+  
+  // v2.5.1: Detect when PWA wakes from background and check for stale cache
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    const lastBust = parseInt(localStorage.getItem('ledger_last_bust') || '0');
+    const hoursSinceLastBust = (Date.now() - lastBust) / 3600000;
+    // If the app has been backgrounded for >2 hours, force a fresh load
+    if (hoursSinceLastBust > 2) {
+      localStorage.setItem('ledger_last_bust', String(Date.now()));
+      const newUrl = window.location.origin + window.location.pathname + '?v=' + APP_VERSION + '&t=' + Date.now();
+      window.location.replace(newUrl);
+    }
+  });
 }
 
 init();
