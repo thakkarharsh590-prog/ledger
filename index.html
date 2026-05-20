@@ -4,22 +4,20 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.5.4
+  Version:      2.5.5
   Last edited:  2026-05-17
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   6 (no schema change)
   
   NAMED: Ledger Compass
   
-  v2.5.4 — ADAPTIVE SMART SET-ASIDE:
-  - BIG CHANGE: each week saves only what's actually possible
-    (income - bills due) — NEVER asks user to use balance unless
-    truly impossible across next 4 weeks
-  - Shortfall from heavy weeks auto-rolls to lighter weeks
-  - Encouraging tone on heavy weeks: "Bills first, savings catch up
-    next week 💪"
-  - Balance-tap only as last resort (when 4-week horizon insufficient)
-  - Breakdown shows "this week" vs "across next N weeks" for clarity
+  v2.5.5 — CRITICAL MATH BUG FIXES:
+  - BUG 1 FIXED: Set-aside was using "ideal" amount even when income
+    couldn't cover bills. Now: if income < bills, set-aside = $0.
+  - BUG 2 FIXED: "This week's income" only counted FUTURE pay events,
+    missing already-arrived pay from earlier in the same week.
+    Now uses pay events received Mon-now PLUS future ones through Sun.
+  - Result: Numbers now actually add up (income = bills + set-aside + free)
   
   COMPLETED FEATURES (carry-over):
   - Transactions, loans, budgets, insights, custom categories
@@ -1782,7 +1780,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">Ledger Compass</span>
-    <span class="version-tag" id="versionTag">v2.5.4</span>
+    <span class="version-tag" id="versionTag">v2.5.5</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" onclick="openSearchModal()">🔍</button>
@@ -2035,7 +2033,7 @@
 
   <div class="setting-row" onclick="refreshApp()" style="border-color: rgba(201,255,61,0.2);">
     <span class="setting-label" style="color: var(--accent);">↻ Refresh App (Force Update)</span>
-    <span class="setting-value" id="versionDisplay">v2.5.4</span>
+    <span class="setting-value" id="versionDisplay">v2.5.5</span>
   </div>
 
   <div class="setting-row" style="border-color: rgba(255,107,107,0.2);" onclick="confirmClearAll()">
@@ -2044,7 +2042,7 @@
   </div>
 
   <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.6;">
-    <div>Ledger Compass v2.5.4 · Schema v6</div>
+    <div>Ledger Compass v2.5.5 · Schema v6</div>
     <div>All data stored on this device</div>
     <div id="lastBackup" style="margin-top: 4px;"></div>
   </div>
@@ -2587,7 +2585,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.5.4';
+const APP_VERSION = '2.5.5';
 const SCHEMA_VERSION = 6;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
@@ -4794,12 +4792,19 @@ function getUpcomingBills(daysAhead = 56) {
 // from this week's income after bills. Shortfalls auto-roll to lighter
 // future weeks. The depleting reservoir means we never ask user to
 // over-save in a heavy week.
+// v2.5.5 FIX: this-week income now includes already-arrived pay this week
 function computeWeeklyPlan() {
   const today = new Date(todayISO() + 'T00:00:00');
   const thisWeekStart = getWeekStart(today);
   
-  // Get upcoming income events for next 60 days
-  const incomeEvents = getUpcomingPayEvents(60);
+  // v2.5.5 FIX: Look back to start of THIS week, forward 60 days.
+  // This captures pay events that already arrived earlier this week
+  // (e.g., Woolies paid Monday, app opened Thursday — Mon pay still counts).
+  // We use projected (recurring) events because the user may not have
+  // manually logged the pay yet.
+  const daysSinceWeekStart = Math.ceil((today - thisWeekStart) / 86400000);
+  const incomeEvents = getUpcomingPayEvents(60, daysSinceWeekStart);
+  
   // Get upcoming bills for next 60 days
   const bills = getUpcomingBills(60);
   
@@ -4856,16 +4861,19 @@ function computeWeeklyPlan() {
       });
     });
     
-    // v2.5.4: SCALE DOWN if we can't afford the ideal
-    // Each bill saves proportionally less, urgent ones still get priority
+    // v2.5.5 BUG FIX: when income is 0 OR less than bills, set-aside MUST be 0.
+    // Previously this branch was using ideal portions anyway. Now strict.
     let actualSetAside = 0;
     const setAsideBreakdown = [];
     const isHeavyWeek = totalIdealSetAside > incomeAvailableForSetAside && weekIncome > 0;
     
     idealBreakdown.forEach(item => {
       let actualPortion;
-      if (totalIdealSetAside <= incomeAvailableForSetAside || incomeAvailableForSetAside === 0) {
-        // Can afford ideal (or no income — both same path here)
+      if (incomeAvailableForSetAside === 0) {
+        // No money left after bills — can't save anything this week
+        actualPortion = 0;
+      } else if (totalIdealSetAside <= incomeAvailableForSetAside) {
+        // Can afford ideal
         actualPortion = Math.min(item.idealPortion, item.stillNeeded);
       } else {
         // Heavy week — scale down proportionally to what's available
@@ -5358,21 +5366,47 @@ function onDescInput() {
   }, 250);
 }
 
-function getUpcomingPayEvents(daysAhead = 30) {
+function getUpcomingPayEvents(daysAhead = 30, daysBack = 0) {
   const events = [];
   const today = new Date(todayISO() + 'T00:00:00');
   const horizon = new Date(today); horizon.setDate(horizon.getDate() + daysAhead);
+  // v2.5.5: also look back N days to capture pay events earlier this week
+  const lookback = new Date(today); lookback.setDate(lookback.getDate() - daysBack);
   
   state.incomeSources.forEach(src => {
     if (src.cycle === 'irregular' || !src.nextPay) return;
     
+    // v2.5.5: Start iteration from earlier so past-this-week events are captured
+    // For recurring sources, walk backward from nextPay to find any that already happened
     let next = new Date(computeNextPayDate(src) + 'T00:00:00');
+    
+    // Walk backward to lookback boundary
+    if (daysBack > 0) {
+      const cycleDays = src.cycle === 'weekly' ? 7
+        : src.cycle === 'fortnightly' ? 14
+        : src.cycle === 'monthly' ? 30  // approximate
+        : 0;
+      if (cycleDays > 0) {
+        while (next > lookback) {
+          const prev = new Date(next);
+          if (src.cycle === 'weekly') prev.setDate(prev.getDate() - 7);
+          else if (src.cycle === 'fortnightly') prev.setDate(prev.getDate() - 14);
+          else if (src.cycle === 'monthly') prev.setMonth(prev.getMonth() - 1);
+          else break;
+          if (prev < lookback) break;
+          next = prev;
+        }
+      }
+    }
+    
     while (next <= horizon) {
-      events.push({
-        date: next.toISOString().slice(0,10),
-        amount: src.amount,
-        name: src.name,
-      });
+      if (next >= lookback) {
+        events.push({
+          date: next.toISOString().slice(0,10),
+          amount: src.amount,
+          name: src.name,
+        });
+      }
       if (src.cycle === 'weekly') next.setDate(next.getDate() + 7);
       else if (src.cycle === 'fortnightly') next.setDate(next.getDate() + 14);
       else if (src.cycle === 'monthly') next.setMonth(next.getMonth() + 1);
