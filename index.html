@@ -4,20 +4,21 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.5.5
-  Last edited:  2026-05-17
+  Version:      2.6.0
+  Last edited:  2026-05-19
   Storage:      localStorage (device-local, never sent to cloud)
-  Schema ver:   6 (no schema change)
+  Schema ver:   7 (goals can now have deadlines)
   
   NAMED: Ledger Compass
   
-  v2.5.5 — CRITICAL MATH BUG FIXES:
-  - BUG 1 FIXED: Set-aside was using "ideal" amount even when income
-    couldn't cover bills. Now: if income < bills, set-aside = $0.
-  - BUG 2 FIXED: "This week's income" only counted FUTURE pay events,
-    missing already-arrived pay from earlier in the same week.
-    Now uses pay events received Mon-now PLUS future ones through Sun.
-  - Result: Numbers now actually add up (income = bills + set-aside + free)
+  v2.6.0 "MOMENTUM" — engagement layer:
+  - 🔥 Multi-dimension streaks (bills on time, savings, under budget)
+  - 🏆 Milestone badges (top 3 earned + locked ones below)
+  - 📈 60-day balance forecast chart on Insights
+  - 📊 Income-vs-expense bar chart (toggle between views)
+  - 🎯 Goals with deadlines + auto-pace calculation
+  - All on Compass tab (Progress section above Weekly Plan)
+  - Schema bump to v7: goal.deadline + state.milestones_earned
   
   COMPLETED FEATURES (carry-over):
   - Transactions, loans, budgets, insights, custom categories
@@ -1568,6 +1569,197 @@
     pointer-events: none;
   }
   
+  /* v2.6: MOMENTUM — streaks + milestones */
+  .streak-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .streak-cell {
+    padding: 12px 8px;
+    background: var(--bg-card);
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .streak-cell.hot {
+    background: linear-gradient(135deg, rgba(251,146,60,0.08), rgba(251,146,60,0.02));
+    border-color: rgba(251,146,60,0.25);
+  }
+  .streak-emoji {
+    font-size: 22px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .streak-count {
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .streak-count.zero { color: var(--text-muted); }
+  .streak-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 6px;
+    line-height: 1.2;
+  }
+  .streak-unit {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  
+  .milestone-section-title {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    margin: 14px 0 10px;
+  }
+  
+  .milestone-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .milestone {
+    padding: 12px 8px;
+    background: var(--bg-card);
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid var(--border);
+    position: relative;
+    transition: transform .15s ease;
+  }
+  .milestone.earned {
+    background: linear-gradient(135deg, rgba(201,255,61,0.1), rgba(201,255,61,0.02));
+    border-color: rgba(201,255,61,0.3);
+  }
+  .milestone.earned.gold {
+    background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.02));
+    border-color: rgba(251,191,36,0.4);
+  }
+  .milestone.earned.silver {
+    background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(168,85,247,0.02));
+    border-color: rgba(168,85,247,0.3);
+  }
+  .milestone.locked { opacity: 0.55; }
+  .milestone-emoji {
+    font-size: 26px;
+    line-height: 1;
+    margin-bottom: 6px;
+    filter: grayscale(0%);
+  }
+  .milestone.locked .milestone-emoji { filter: grayscale(100%); opacity: 0.6; }
+  .milestone-title {
+    font-size: 10px;
+    line-height: 1.3;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .milestone-desc {
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    line-height: 1.3;
+  }
+  .milestone-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+    padding: 16px 0;
+  }
+  
+  /* v2.6: Forecast chart */
+  .forecast-chart-wrap {
+    background: var(--bg-card);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    padding: 14px;
+    margin: 12px 0;
+  }
+  .forecast-toggle {
+    display: flex;
+    gap: 6px;
+    background: rgba(255,255,255,0.03);
+    padding: 4px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+  }
+  .fc-tab {
+    flex: 1;
+    padding: 7px 10px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s ease;
+  }
+  .fc-tab.active {
+    background: var(--bg);
+    color: var(--text);
+  }
+  .forecast-svg {
+    width: 100%;
+    height: 180px;
+    display: block;
+  }
+  .forecast-legend {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 8px;
+  }
+  .forecast-legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  
+  /* v2.6: Goal deadline + pace */
+  .goal-deadline-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 500;
+    margin-left: 8px;
+  }
+  .goal-deadline-badge.on_track {
+    background: rgba(74,222,128,0.12);
+    color: var(--income);
+  }
+  .goal-deadline-badge.behind {
+    background: rgba(251,146,60,0.12);
+    color: var(--warning);
+  }
+  .goal-deadline-badge.ahead {
+    background: rgba(201,255,61,0.12);
+    color: var(--accent);
+  }
+  
   /* Weekly Plan card */
   .weekly-plan-toggle {
     display: flex;
@@ -1780,7 +1972,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">Ledger Compass</span>
-    <span class="version-tag" id="versionTag">v2.5.5</span>
+    <span class="version-tag" id="versionTag">v2.6.0</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" onclick="openSearchModal()">🔍</button>
@@ -1849,6 +2041,18 @@
 <!-- STATS PAGE -->
 <div class="page" id="page-stats">
   <div class="section-title"><h2>Insights</h2></div>
+  
+  <!-- v2.6: Forecast chart -->
+  <div class="forecast-chart-wrap">
+    <div style="font-size:13px;font-weight:500;margin-bottom:4px;">📈 Balance forecast</div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Last 30 days + projected next 60</div>
+    <div class="forecast-toggle">
+      <button class="fc-tab active" data-mode="line" onclick="setForecastMode('line')">Line</button>
+      <button class="fc-tab" data-mode="bars" onclick="setForecastMode('bars')">Bars</button>
+    </div>
+    <div id="forecastChartContainer"></div>
+  </div>
+  
   <div class="stat-grid">
     <div class="stat-card">
       <div class="stat-card-title">This Month</div>
@@ -1904,6 +2108,13 @@
   <button class="compass-cta" onclick="openAffordabilityModal()">
     <span style="font-size:18px;">⚖</span> Can I afford this?
   </button>
+  
+  <!-- v2.6: MOMENTUM SECTION (streaks + milestones) -->
+  <div class="compass-card" id="momentumCard">
+    <div class="compass-card-title">Your progress</div>
+    <div class="compass-card-sub">Streaks, milestones, your wins so far</div>
+    <div id="momentumContent"></div>
+  </div>
   
   <div class="compass-card" id="weeklyPlanCard">
     <div class="compass-card-title">Weekly plan</div>
@@ -2033,7 +2244,7 @@
 
   <div class="setting-row" onclick="refreshApp()" style="border-color: rgba(201,255,61,0.2);">
     <span class="setting-label" style="color: var(--accent);">↻ Refresh App (Force Update)</span>
-    <span class="setting-value" id="versionDisplay">v2.5.5</span>
+    <span class="setting-value" id="versionDisplay">v2.6.0</span>
   </div>
 
   <div class="setting-row" style="border-color: rgba(255,107,107,0.2);" onclick="confirmClearAll()">
@@ -2042,7 +2253,7 @@
   </div>
 
   <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.6;">
-    <div>Ledger Compass v2.5.5 · Schema v6</div>
+    <div>Ledger Compass v2.6.0 · Schema v7</div>
     <div>All data stored on this device</div>
     <div id="lastBackup" style="margin-top: 4px;"></div>
   </div>
@@ -2585,8 +2796,8 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.5.5';
-const SCHEMA_VERSION = 6;
+const APP_VERSION = '2.6.0';
+const SCHEMA_VERSION = 7;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
 const AUTO_SNAPSHOT_PREFIX = 'ledger_snap_';
@@ -2641,7 +2852,8 @@ let state = {
   decisions: [],
   recurringExpenses: [],
   savings: [],        // v2.4: savings deposits/withdrawals
-  savingsGoals: [],   // v2.4: optional savings goals
+  savingsGoals: [],   // v2.4: optional savings goals (v2.6: can have .deadline)
+  earnedMilestones: {}, // v2.6: { milestoneId: timestampEarned }
   currency: 'AUD',
   // UI-only state (not persisted)
   currentType: 'expense',
@@ -2654,6 +2866,7 @@ let state = {
   filter: 'all',
   catPickerMode: 'tx',
   weeklyPlanMode: 'daily', // v2.5: 'daily' or 'weekly'
+  forecastMode: 'line',   // v2.6: 'line' or 'bars'
   editingIncSrcId: null,
   selectedCycle: 'fortnightly',
   pendingAffordCheck: null,
@@ -2685,6 +2898,7 @@ function loadData() {
     state.recurringExpenses = migrated.recurringExpenses || [];
     state.savings = migrated.savings || [];
     state.savingsGoals = migrated.savingsGoals || [];
+    state.earnedMilestones = migrated.earnedMilestones || {};
     state.currency = migrated.currency || 'AUD';
   } catch (e) {
     console.error('Load error:', e);
@@ -2770,6 +2984,20 @@ function runMigrations(data) {
     if (!migrated.savingsGoals) migrated.savingsGoals = []; // optional goals
   }
   
+  // Migration: v6 -> v7 (momentum: goals with deadlines + earned milestones)
+  if (fromVersion < 7) {
+    migrated.schemaVersion = 7;
+    // Goals get optional deadline field (ISO date string or null)
+    if (migrated.savingsGoals) {
+      migrated.savingsGoals = migrated.savingsGoals.map(g => ({
+        ...g,
+        deadline: g.deadline || null,
+      }));
+    }
+    // Track earned milestones so badges persist (key: milestone id, val: earned timestamp)
+    if (!migrated.earnedMilestones) migrated.earnedMilestones = {};
+  }
+  
   // FUTURE MIGRATIONS GO HERE:
   // if (fromVersion < 3) { ... migrated.schemaVersion = 3; }
   
@@ -2789,6 +3017,7 @@ function saveData() {
       recurringExpenses: state.recurringExpenses,
       savings: state.savings,
       savingsGoals: state.savingsGoals,
+      earnedMilestones: state.earnedMilestones || {},
       currency: state.currency,
       lastSaved: Date.now(),
     };
@@ -3055,6 +3284,189 @@ function renderStats() {
 
   renderWeekChart();
   renderCategoryBreakdown();
+  renderForecastChart();   // v2.6
+}
+
+function setForecastMode(mode) {
+  state.forecastMode = mode;
+  document.querySelectorAll('.fc-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.mode === mode);
+  });
+  renderForecastChart();
+}
+
+function renderForecastChart() {
+  const el = document.getElementById('forecastChartContainer');
+  if (!el) return;
+  
+  if (state.forecastMode === 'bars') {
+    el.innerHTML = renderForecastBars();
+  } else {
+    el.innerHTML = renderForecastLine();
+  }
+}
+
+function renderForecastLine() {
+  const points = computeBalanceForecast(60);
+  if (points.length === 0) {
+    return `<div style="text-align:center;padding:30px 10px;color:var(--text-dim);font-size:12px;">Add some transactions to see your forecast.</div>`;
+  }
+  
+  const width = 320, height = 180;
+  const padding = { top: 12, right: 8, bottom: 22, left: 8 };
+  const chartW = width - padding.left - padding.right;
+  const chartH = height - padding.top - padding.bottom;
+  
+  const balances = points.map(p => p.balance);
+  const min = Math.min(0, ...balances);
+  const max = Math.max(...balances, 1);
+  const range = max - min || 1;
+  
+  const xStep = chartW / Math.max(1, points.length - 1);
+  
+  // Build path for past + future
+  let pastPath = '';
+  let futurePath = '';
+  let firstProj = points.findIndex(p => p.isProjection);
+  if (firstProj === -1) firstProj = points.length;
+  
+  points.forEach((p, i) => {
+    const x = padding.left + i * xStep;
+    const y = padding.top + (1 - (p.balance - min) / range) * chartH;
+    if (i < firstProj) {
+      pastPath += (pastPath === '' ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+    } else {
+      if (i === firstProj && i > 0) {
+        // Bridge from last past point
+        const prev = points[i - 1];
+        const px = padding.left + (i - 1) * xStep;
+        const py = padding.top + (1 - (prev.balance - min) / range) * chartH;
+        futurePath = 'M' + px.toFixed(1) + ',' + py.toFixed(1);
+      }
+      futurePath += (futurePath === '' ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+    }
+  });
+  
+  // Zero line
+  const zeroY = padding.top + (1 - (0 - min) / range) * chartH;
+  const showZero = min < 0;
+  
+  // X-axis labels (today + 30d + 60d)
+  const today = points.findIndex(p => p.isProjection) - 1;
+  const xLabels = [
+    { x: padding.left, label: '−30d' },
+    { x: padding.left + (today >= 0 ? today : 0) * xStep, label: 'Today' },
+    { x: padding.left + (points.length - 1) * xStep, label: '+60d' },
+  ];
+  
+  // Final projected balance (for callout)
+  const finalProj = points[points.length - 1].balance;
+  const startBalance = points[today] ? points[today].balance : 0;
+  
+  return `
+    <svg class="forecast-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      ${showZero ? `<line x1="${padding.left}" y1="${zeroY.toFixed(1)}" x2="${width - padding.right}" y2="${zeroY.toFixed(1)}" stroke="rgba(239,68,68,0.3)" stroke-width="0.5" stroke-dasharray="2,2"/>` : ''}
+      
+      <!-- Vertical "today" marker -->
+      ${today >= 0 ? `<line x1="${(padding.left + today * xStep).toFixed(1)}" y1="${padding.top}" x2="${(padding.left + today * xStep).toFixed(1)}" y2="${height - padding.bottom}" stroke="rgba(201,255,61,0.25)" stroke-width="1" stroke-dasharray="3,2"/>` : ''}
+      
+      <!-- Past path (solid) -->
+      <path d="${pastPath}" fill="none" stroke="#c9ff3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      
+      <!-- Future path (dashed) -->
+      <path d="${futurePath}" fill="none" stroke="#c9ff3d" stroke-width="2" stroke-dasharray="4,3" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+      
+      <!-- X-axis labels -->
+      ${xLabels.map(l => `<text x="${l.x.toFixed(1)}" y="${(height - 6).toFixed(1)}" font-size="9" fill="#888" text-anchor="middle" font-family="system-ui,sans-serif">${l.label}</text>`).join('')}
+    </svg>
+    <div class="forecast-legend">
+      <span><span class="forecast-legend-dot" style="background:#c9ff3d;"></span> Actual</span>
+      <span><span class="forecast-legend-dot" style="background:#c9ff3d;opacity:0.5;"></span> Projected</span>
+      ${showZero ? `<span><span class="forecast-legend-dot" style="background:rgba(239,68,68,0.5);"></span> Zero</span>` : ''}
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+      <span>Today: <strong style="color:var(--text);font-family:'Geist Mono',monospace;">${fmt(startBalance)}</strong></span>
+      <span>In 60d: <strong style="color:${finalProj >= startBalance ? 'var(--income)' : 'var(--expense)'};font-family:'Geist Mono',monospace;">${finalProj < 0 ? '−' : ''}${fmt(Math.abs(finalProj))}</strong></span>
+    </div>
+  `;
+}
+
+function renderForecastBars() {
+  // Show income vs expenses for last 4 weeks + projected next 4 weeks
+  const today = new Date(todayISO() + 'T00:00:00');
+  const thisWeekStart = weekStartOf(today);
+  
+  const data = [];
+  
+  // Past 4 weeks
+  for (let i = 4; i >= 1; i--) {
+    const wStart = addDays(thisWeekStart, -i * 7);
+    const wEnd = addDays(wStart, 6);
+    const txs = txInRange(isoOf(wStart), isoOf(wEnd));
+    const income = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+    const expense = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+    data.push({
+      label: wStart.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' }),
+      income, expense, isProjection: false,
+    });
+  }
+  
+  // This + next 3 weeks (projected)
+  const incomeEvents = getUpcomingPayEvents(28, 7);
+  const bills = getUpcomingBills(28);
+  const avgDaily = getAvgDailyExpense();
+  
+  for (let i = 0; i < 4; i++) {
+    const wStart = addDays(thisWeekStart, i * 7);
+    const wEnd = addDays(wStart, 6);
+    const wStartISO = isoOf(wStart);
+    const wEndISO = isoOf(wEnd);
+    
+    const projIncome = incomeEvents
+      .filter(e => e.date >= wStartISO && e.date <= wEndISO)
+      .reduce((s,e) => s + e.amount, 0);
+    const projBills = bills
+      .filter(b => b.date >= wStartISO && b.date <= wEndISO)
+      .reduce((s,b) => s + b.amount, 0);
+    const projExpense = projBills + avgDaily * 7;
+    
+    data.push({
+      label: wStart.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' }),
+      income: projIncome, expense: projExpense, isProjection: i > 0,
+    });
+  }
+  
+  const width = 320, height = 180;
+  const padding = { top: 12, right: 8, bottom: 26, left: 8 };
+  const chartW = width - padding.left - padding.right;
+  const chartH = height - padding.top - padding.bottom;
+  
+  const max = Math.max(1, ...data.flatMap(d => [d.income, d.expense]));
+  const groupWidth = chartW / data.length;
+  const barWidth = (groupWidth - 4) / 2;
+  
+  return `
+    <svg class="forecast-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      ${data.map((d, i) => {
+        const groupX = padding.left + i * groupWidth;
+        const incomeH = (d.income / max) * chartH;
+        const expenseH = (d.expense / max) * chartH;
+        const opacity = d.isProjection ? 0.55 : 1;
+        return `
+          <g opacity="${opacity}">
+            <rect x="${groupX.toFixed(1)}" y="${(padding.top + chartH - incomeH).toFixed(1)}" width="${barWidth.toFixed(1)}" height="${incomeH.toFixed(1)}" fill="#4ade80" rx="2"/>
+            <rect x="${(groupX + barWidth + 2).toFixed(1)}" y="${(padding.top + chartH - expenseH).toFixed(1)}" width="${barWidth.toFixed(1)}" height="${expenseH.toFixed(1)}" fill="#ef4444" rx="2"/>
+            <text x="${(groupX + groupWidth/2 - 1).toFixed(1)}" y="${(height - 8).toFixed(1)}" font-size="8" fill="#888" text-anchor="middle" font-family="system-ui,sans-serif">${d.label}</text>
+          </g>
+        `;
+      }).join('')}
+    </svg>
+    <div class="forecast-legend">
+      <span><span class="forecast-legend-dot" style="background:#4ade80;"></span> Income</span>
+      <span><span class="forecast-legend-dot" style="background:#ef4444;"></span> Spending</span>
+      <span style="opacity:0.55;">Faded = projected</span>
+    </div>
+  `;
 }
 
 function renderWeekChart() {
@@ -4983,6 +5395,346 @@ function getCurrentReservedAmount() {
   return reserved;
 }
 
+/* ============================================================
+   v2.6: MOMENTUM ENGINE — streaks, milestones, forecast
+   ============================================================ */
+
+// Helper: get start-of-week (Monday) for a date
+function weekStartOf(date) {
+  const d = new Date(date);
+  d.setHours(0,0,0,0);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+// Get all transactions within a given ISO date range
+function txInRange(fromISO, toISO) {
+  return state.transactions.filter(t => t.date >= fromISO && t.date <= toISO);
+}
+
+// Get all savings transactions within a date range
+function savingsInRange(fromISO, toISO) {
+  return (state.savings || []).filter(s => s.date >= fromISO && s.date <= toISO);
+}
+
+// === STREAK 1: BILLS ON TIME ===
+// A week counts if EVERY recurring expense that came due in that week
+// was actually paid (has a matching expense transaction within +/- 3 days)
+function computeBillsOnTimeStreak() {
+  const today = new Date(todayISO() + 'T00:00:00');
+  let streak = 0;
+  let weekStart = weekStartOf(today);
+  
+  // Only count weeks that are fully past (so the current week doesn't break it
+  // just because today is mid-week and a bill isn't due yet)
+  weekStart = addDays(weekStart, -7);
+  
+  for (let i = 0; i < 52; i++) {
+    const wStart = isoOf(weekStart);
+    const wEnd = isoOf(addDays(weekStart, 6));
+    
+    // Get bills that came due this week
+    const billsThisWeek = [];
+    state.recurringExpenses.forEach(rec => {
+      if (!rec.active) return;
+      // Was a bill due in this week? Check using the lastAutoLogDate or by computing
+      // backward from nextDue.
+      if (rec.lastAutoLogDate && rec.lastAutoLogDate >= wStart && rec.lastAutoLogDate <= wEnd) {
+        billsThisWeek.push(rec);
+      }
+    });
+    
+    if (billsThisWeek.length === 0) {
+      // No bills due this week — doesn't break or extend streak
+      weekStart = addDays(weekStart, -7);
+      continue;
+    }
+    
+    // Were all bills actually paid? (recurring expenses auto-log, so if lastAutoLogDate
+    // is set within range, count it as paid)
+    const allPaid = billsThisWeek.every(b => {
+      // If autoLog ran, lastAutoLogDate is set. Manual recurring also gets it set.
+      return b.lastAutoLogDate && b.lastAutoLogDate >= wStart;
+    });
+    
+    if (allPaid) {
+      streak++;
+      weekStart = addDays(weekStart, -7);
+    } else {
+      break;
+    }
+  }
+  
+  return streak;
+}
+
+// === STREAK 2: SAVINGS ===
+// A week counts if you added something to savings (any deposit > 0)
+function computeSavingsStreak() {
+  const today = new Date(todayISO() + 'T00:00:00');
+  let streak = 0;
+  // Include current week (don't penalize for today not having a deposit yet)
+  let weekStart = weekStartOf(today);
+  
+  // Special handling for current week: count if a deposit happened, but
+  // don't break streak if no deposit yet (still time)
+  let countingPastOnly = false;
+  
+  for (let i = 0; i < 52; i++) {
+    const wStart = isoOf(weekStart);
+    const wEnd = isoOf(addDays(weekStart, 6));
+    
+    const deposits = savingsInRange(wStart, wEnd).filter(s => s.type === 'deposit' && s.amount > 0);
+    
+    if (deposits.length > 0) {
+      streak++;
+      countingPastOnly = true;
+      weekStart = addDays(weekStart, -7);
+    } else if (!countingPastOnly && i === 0) {
+      // Current week, no deposit yet — skip, look at last week
+      weekStart = addDays(weekStart, -7);
+      continue;
+    } else {
+      break;
+    }
+  }
+  
+  return streak;
+}
+
+// === STREAK 3: UNDER BUDGET ===
+// A week counts if variable spending was <= rolling 8-week median
+function computeUnderBudgetStreak() {
+  const today = new Date(todayISO() + 'T00:00:00');
+  let streak = 0;
+  let weekStart = weekStartOf(today);
+  // Only count fully-past weeks (current week not done yet)
+  weekStart = addDays(weekStart, -7);
+  
+  // Compute the user's typical weekly variable spend (8-week median for stability)
+  const weeklyTotals = [];
+  for (let i = 0; i < 8; i++) {
+    const wStart = addDays(weekStart, -i * 7);
+    const wEnd = addDays(wStart, 6);
+    const txs = txInRange(isoOf(wStart), isoOf(wEnd));
+    const varSpend = txs
+      .filter(t => t.type === 'expense' && isVariableExpense(t))
+      .reduce((s,t) => s + t.amount, 0);
+    weeklyTotals.push(varSpend);
+  }
+  const sorted = [...weeklyTotals].sort((a,b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)] || 0;
+  
+  if (median === 0) return 0;
+  
+  for (let i = 0; i < 26; i++) {
+    const wStart = isoOf(weekStart);
+    const wEnd = isoOf(addDays(weekStart, 6));
+    const txs = txInRange(wStart, wEnd);
+    const varSpend = txs
+      .filter(t => t.type === 'expense' && isVariableExpense(t))
+      .reduce((s,t) => s + t.amount, 0);
+    
+    if (varSpend <= median) {
+      streak++;
+      weekStart = addDays(weekStart, -7);
+    } else {
+      break;
+    }
+  }
+  
+  return streak;
+}
+
+function computeAllStreaks() {
+  return {
+    billsOnTime: computeBillsOnTimeStreak(),
+    savings: computeSavingsStreak(),
+    underBudget: computeUnderBudgetStreak(),
+  };
+}
+
+// === MILESTONES ===
+// Each milestone: { id, emoji, title, desc, check: (state, streaks) => bool }
+
+const MILESTONES = [
+  // Savings milestones
+  { id: 'first_save_100', emoji: '🌱', title: 'First A$100 saved', desc: 'You started building a cushion', tier: 'bronze',
+    check: (s) => getTotalSavingsBalance() >= 100 },
+  { id: 'first_save_500', emoji: '💰', title: 'A$500 saved', desc: 'A small emergency cushion', tier: 'bronze',
+    check: (s) => getTotalSavingsBalance() >= 500 },
+  { id: 'first_save_1k', emoji: '💎', title: 'A$1,000 saved', desc: 'Real safety net territory', tier: 'silver',
+    check: (s) => getTotalSavingsBalance() >= 1000 },
+  { id: 'first_save_5k', emoji: '🏆', title: 'A$5,000 saved', desc: 'Serious savings — well done', tier: 'gold',
+    check: (s) => getTotalSavingsBalance() >= 5000 },
+  { id: 'first_save_10k', emoji: '👑', title: 'A$10,000 saved', desc: 'You\'re building wealth', tier: 'gold',
+    check: (s) => getTotalSavingsBalance() >= 10000 },
+  
+  // Streak milestones
+  { id: 'streak_save_4', emoji: '🔥', title: '4-week savings streak', desc: 'Saved every week for a month', tier: 'bronze',
+    check: (s, st) => st.savings >= 4 },
+  { id: 'streak_save_12', emoji: '🔥🔥', title: '12-week savings streak', desc: 'Saved every week for 3 months', tier: 'silver',
+    check: (s, st) => st.savings >= 12 },
+  { id: 'streak_bills_4', emoji: '✅', title: '4 weeks bills on time', desc: 'Every bill paid on time for a month', tier: 'bronze',
+    check: (s, st) => st.billsOnTime >= 4 },
+  { id: 'streak_bills_12', emoji: '✅✅', title: '12 weeks bills on time', desc: 'Quarter of consistent on-time bills', tier: 'silver',
+    check: (s, st) => st.billsOnTime >= 12 },
+  { id: 'streak_budget_4', emoji: '🎯', title: '4 weeks under budget', desc: 'Lived below your average for a month', tier: 'bronze',
+    check: (s, st) => st.underBudget >= 4 },
+  
+  // Loan milestones
+  { id: 'first_loan_payoff', emoji: '🎉', title: 'Paid off a loan', desc: 'One debt eliminated for good', tier: 'silver',
+    check: (s) => s.loans.some(l => l.total > 0 && getLoanPaid(l) >= l.total) },
+  { id: 'all_loans_paid', emoji: '🚀', title: 'Debt-free', desc: 'All loans paid in full', tier: 'gold',
+    check: (s) => s.loans.length > 0 && s.loans.every(l => getLoanPaid(l) >= l.total) },
+  
+  // Engagement milestones
+  { id: 'first_week_logged', emoji: '🌟', title: 'First week tracked', desc: 'You started — that\'s the hardest part', tier: 'bronze',
+    check: (s) => s.transactions.length >= 5 },
+  { id: 'thirty_days_logged', emoji: '📈', title: '30 days tracked', desc: 'A month of awareness', tier: 'bronze',
+    check: (s) => {
+      const dates = new Set(s.transactions.map(t => t.date));
+      return dates.size >= 30;
+    }},
+  { id: 'hundred_tx', emoji: '📊', title: '100 transactions', desc: 'Data is power', tier: 'silver',
+    check: (s) => s.transactions.length >= 100 },
+  
+  // Goal milestones
+  { id: 'first_goal_hit', emoji: '🎯', title: 'First goal achieved', desc: 'You hit a savings goal!', tier: 'silver',
+    check: (s) => {
+      return (s.savingsGoals || []).some(g => {
+        const progress = getGoalProgress(g);
+        return progress >= g.target;
+      });
+    }},
+];
+
+function getTotalSavingsBalance() {
+  return getSavingsBalance();  // delegate to existing v2.4 helper
+}
+
+function getGoalProgress(goal) {
+  return getSavingsForGoal(goal.id);  // delegate to existing v2.4 helper
+}
+
+// Returns all milestones with current earned status
+function computeMilestoneStatuses() {
+  const streaks = computeAllStreaks();
+  return MILESTONES.map(m => ({
+    ...m,
+    earned: m.check(state, streaks),
+    earnedAt: state.earnedMilestones[m.id] || null,
+  }));
+}
+
+// Check for newly-earned milestones and persist them
+function checkAndPersistMilestones() {
+  const statuses = computeMilestoneStatuses();
+  let newlyEarned = [];
+  statuses.forEach(m => {
+    if (m.earned && !state.earnedMilestones[m.id]) {
+      state.earnedMilestones[m.id] = Date.now();
+      newlyEarned.push(m);
+    }
+  });
+  if (newlyEarned.length > 0) {
+    saveData();
+  }
+  return newlyEarned;
+}
+
+// === FORECAST CHART DATA ===
+// Returns array of {date, balance, isProjection} for next N days
+function computeBalanceForecast(daysAhead = 60) {
+  const today = new Date(todayISO() + 'T00:00:00');
+  const currentBalance = getCurrentBalance();
+  const points = [];
+  
+  // Past 30 days (actual balance history)
+  // Reconstruct balance by walking backwards through transactions
+  const txByDate = {};
+  state.transactions.forEach(t => {
+    const sign = t.type === 'income' ? 1 : -1;
+    if (!txByDate[t.date]) txByDate[t.date] = 0;
+    txByDate[t.date] += sign * t.amount;
+  });
+  
+  // Build past balance by walking from today backwards
+  let runningBalance = currentBalance;
+  const pastDays = 30;
+  const pastPoints = [];
+  for (let i = 0; i < pastDays; i++) {
+    const d = addDays(today, -i);
+    const dISO = isoOf(d);
+    pastPoints.push({ date: dISO, balance: runningBalance, isProjection: false });
+    // Subtract this day's net to get yesterday's balance
+    const netToday = txByDate[dISO] || 0;
+    runningBalance -= netToday;
+  }
+  pastPoints.reverse();
+  points.push(...pastPoints);
+  
+  // Future projection
+  const incomeEvents = getUpcomingPayEvents(daysAhead);
+  const bills = getUpcomingBills(daysAhead);
+  const avgDaily = getAvgDailyExpense();
+  
+  let projBalance = currentBalance;
+  for (let i = 1; i <= daysAhead; i++) {
+    const d = addDays(today, i);
+    const dISO = isoOf(d);
+    
+    // Add incomes due today
+    const incomeToday = incomeEvents.filter(e => e.date === dISO).reduce((s,e) => s + e.amount, 0);
+    // Subtract bills due today
+    const billsToday = bills.filter(b => b.date === dISO).reduce((s,b) => s + b.amount, 0);
+    // Subtract average daily variable spend
+    projBalance += incomeToday - billsToday - avgDaily;
+    
+    points.push({ date: dISO, balance: projBalance, isProjection: true });
+  }
+  
+  return points;
+}
+
+// === GOAL DEADLINES + AUTO-PACE ===
+function computeGoalPace(goal) {
+  if (!goal.deadline) return null;
+  const today = new Date(todayISO() + 'T00:00:00');
+  const deadline = new Date(goal.deadline + 'T00:00:00');
+  if (deadline <= today) return null;
+  
+  const progress = getGoalProgress(goal);
+  const remaining = Math.max(0, goal.target - progress);
+  const daysLeft = Math.ceil((deadline - today) / 86400000);
+  const weeksLeft = Math.max(1, Math.ceil(daysLeft / 7));
+  const weeklyPace = remaining / weeksLeft;
+  
+  // Compute "on track" status
+  // If you set goal X months ago for $Y, you should have saved $Y/months_total * months_elapsed
+  let onTrackStatus = 'on_track';
+  if (goal.createdAt) {
+    const created = new Date(goal.createdAt);
+    const totalMs = deadline - created;
+    const elapsedMs = today - created;
+    const fractionElapsed = Math.min(1, Math.max(0, elapsedMs / totalMs));
+    const expectedProgress = goal.target * fractionElapsed;
+    if (progress >= expectedProgress * 1.05) onTrackStatus = 'ahead';
+    else if (progress < expectedProgress * 0.85) onTrackStatus = 'behind';
+  }
+  
+  return {
+    remaining,
+    daysLeft,
+    weeksLeft,
+    weeklyPace,
+    onTrackStatus,
+    progressPercent: goal.target > 0 ? Math.min(100, (progress / goal.target) * 100) : 0,
+  };
+}
+
 function computeLoanStrategy() {
   const active = state.loans
     .filter(l => getLoanPaid(l) < l.total)
@@ -5925,6 +6677,7 @@ function renderWeeklyPlanWeekly(weeks, el) {
 }
 
 function renderCompass() {
+  renderMomentum();   // v2.6: streaks + milestones at top
   renderWeeklyPlan();
   renderExpectedMonthly();
   renderSafeSave();
@@ -5933,6 +6686,91 @@ function renderCompass() {
   renderForecast();
   renderRatios();
   renderSmartInsights();
+}
+
+function renderMomentum() {
+  const el = document.getElementById('momentumContent');
+  if (!el) return;
+  
+  // Persist any new milestone earnings
+  const newlyEarned = checkAndPersistMilestones();
+  // Show toast for any newly earned milestones (max 1 per render to avoid spam)
+  if (newlyEarned.length > 0) {
+    setTimeout(() => {
+      showToast(newlyEarned[0].emoji + ' ' + newlyEarned[0].title + ' unlocked!', '🎉');
+    }, 600);
+  }
+  
+  const streaks = computeAllStreaks();
+  const statuses = computeMilestoneStatuses();
+  const earned = statuses.filter(m => m.earned).sort((a,b) => (b.earnedAt || 0) - (a.earnedAt || 0));
+  const locked = statuses.filter(m => !m.earned);
+  
+  // Sort locked by tier priority (bronze first → user sees achievable next steps)
+  const tierOrder = { bronze: 0, silver: 1, gold: 2 };
+  locked.sort((a,b) => (tierOrder[a.tier]||0) - (tierOrder[b.tier]||0));
+  
+  // Render streaks (3 columns: bills, savings, under-budget)
+  const streakHtml = `
+    <div class="streak-row">
+      <div class="streak-cell ${streaks.billsOnTime > 0 ? 'hot' : ''}">
+        <div class="streak-emoji">✅</div>
+        <div class="streak-count ${streaks.billsOnTime === 0 ? 'zero' : ''}">${streaks.billsOnTime}</div>
+        <div class="streak-unit">week${streaks.billsOnTime === 1 ? '' : 's'}</div>
+        <div class="streak-label">Bills on time</div>
+      </div>
+      <div class="streak-cell ${streaks.savings > 0 ? 'hot' : ''}">
+        <div class="streak-emoji">🔥</div>
+        <div class="streak-count ${streaks.savings === 0 ? 'zero' : ''}">${streaks.savings}</div>
+        <div class="streak-unit">week${streaks.savings === 1 ? '' : 's'}</div>
+        <div class="streak-label">Savings streak</div>
+      </div>
+      <div class="streak-cell ${streaks.underBudget > 0 ? 'hot' : ''}">
+        <div class="streak-emoji">🎯</div>
+        <div class="streak-count ${streaks.underBudget === 0 ? 'zero' : ''}">${streaks.underBudget}</div>
+        <div class="streak-unit">week${streaks.underBudget === 1 ? '' : 's'}</div>
+        <div class="streak-label">Under budget</div>
+      </div>
+    </div>
+  `;
+  
+  // Render top 3 earned milestones
+  const top3 = earned.slice(0, 3);
+  const earnedHtml = top3.length > 0 ? `
+    <div class="milestone-section-title">🏆 Recent wins</div>
+    <div class="milestone-grid">
+      ${top3.map(m => `
+        <div class="milestone earned ${m.tier}">
+          <div class="milestone-emoji">${m.emoji}</div>
+          <div class="milestone-title">${escapeHtml(m.title)}</div>
+        </div>
+      `).join('')}
+    </div>
+  ` : `
+    <div class="milestone-section-title">🏆 Recent wins</div>
+    <div class="milestone-grid">
+      <div class="milestone-empty">
+        No milestones earned yet — keep going, your first one is close!
+      </div>
+    </div>
+  `;
+  
+  // Render locked milestones (first 6, "next up" feel)
+  const nextLocked = locked.slice(0, 6);
+  const lockedHtml = nextLocked.length > 0 ? `
+    <div class="milestone-section-title">🔒 Next up</div>
+    <div class="milestone-grid">
+      ${nextLocked.map(m => `
+        <div class="milestone locked">
+          <div class="milestone-emoji">${m.emoji}</div>
+          <div class="milestone-title">${escapeHtml(m.title)}</div>
+          <div class="milestone-desc">${escapeHtml(m.desc)}</div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
+  
+  el.innerHTML = streakHtml + earnedHtml + lockedHtml;
 }
 
 function renderExpectedMonthly() {
@@ -6847,23 +7685,42 @@ function renderSavingsPage() {
       
       let deadlineStr = '';
       let pacingStr = '';
+      let statusBadge = '';
+      
       if (g.deadline) {
+        const pace = computeGoalPace(g);
         const daysUntil = Math.ceil((new Date(g.deadline + 'T00:00:00') - new Date(todayISO() + 'T00:00:00')) / 86400000);
-        if (daysUntil < 0) deadlineStr = `<span style="color:var(--expense);">Deadline passed ${Math.abs(daysUntil)}d ago</span>`;
-        else if (daysUntil === 0) deadlineStr = 'Due today';
-        else deadlineStr = `${daysUntil} days left`;
         
-        if (!isDone && daysUntil > 0) {
-          const weeklyNeeded = remaining / (daysUntil / 7);
-          pacingStr = `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Need to save ~${fmt(weeklyNeeded)}/week to hit target</div>`;
+        if (daysUntil < 0) {
+          deadlineStr = `<span style="color:var(--expense);">Deadline passed ${Math.abs(daysUntil)}d ago</span>`;
+        } else if (daysUntil === 0) {
+          deadlineStr = 'Due today';
+        } else if (daysUntil < 14) {
+          deadlineStr = `${daysUntil} days left`;
+        } else {
+          const weeks = Math.round(daysUntil / 7);
+          deadlineStr = `${weeks} weeks left`;
+        }
+        
+        if (!isDone && pace && pace.daysLeft > 0) {
+          pacingStr = `<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">📍 Save ~<strong style="color:var(--text);">${fmt(pace.weeklyPace)}/week</strong> to hit target</div>`;
+          
+          // On-track status badge
+          if (pace.onTrackStatus === 'ahead') {
+            statusBadge = `<span class="goal-deadline-badge ahead">🚀 Ahead</span>`;
+          } else if (pace.onTrackStatus === 'behind') {
+            statusBadge = `<span class="goal-deadline-badge behind">⚠ Behind</span>`;
+          } else {
+            statusBadge = `<span class="goal-deadline-badge on_track">✓ On track</span>`;
+          }
         }
       }
       
       return `
         <div style="padding:14px;background:var(--bg-card);border-radius:12px;margin-bottom:8px;border:1px solid var(--border);" onclick="openGoalModal('${g.id}')">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-            <div>
-              <div style="font-size:14px;font-weight:500;">${g.emoji || '🎯'} ${escapeHtml(g.name)}</div>
+            <div style="flex:1;">
+              <div style="font-size:14px;font-weight:500;">${g.emoji || '🎯'} ${escapeHtml(g.name)}${statusBadge}</div>
               ${deadlineStr ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">${deadlineStr}</div>` : ''}
             </div>
             <div style="text-align:right;">
