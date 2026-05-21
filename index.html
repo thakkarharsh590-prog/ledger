@@ -4,21 +4,21 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.6.0
-  Last edited:  2026-05-19
+  Version:      2.6.1
+  Last edited:  2026-05-21
   Storage:      localStorage (device-local, never sent to cloud)
-  Schema ver:   7 (goals can now have deadlines)
+  Schema ver:   7
   
   NAMED: Ledger Compass
   
-  v2.6.0 "MOMENTUM" — engagement layer:
-  - 🔥 Multi-dimension streaks (bills on time, savings, under budget)
-  - 🏆 Milestone badges (top 3 earned + locked ones below)
-  - 📈 60-day balance forecast chart on Insights
-  - 📊 Income-vs-expense bar chart (toggle between views)
-  - 🎯 Goals with deadlines + auto-pace calculation
-  - All on Compass tab (Progress section above Weekly Plan)
-  - Schema bump to v7: goal.deadline + state.milestones_earned
+  v2.6.1 — WELCOME TOUR:
+  - First-launch guided tour with spotlight overlay
+  - 7 steps covering: balance, nav, activity, compass, progress,
+    settings, final call-to-action
+  - Auto-navigates between tabs during tour
+  - Skip / Next / Done controls
+  - Replayable anytime from Settings → "Show welcome tour"
+  - Stores tour_completed flag in localStorage
   
   COMPLETED FEATURES (carry-over):
   - Transactions, loans, budgets, insights, custom categories
@@ -1548,6 +1548,116 @@
     background: var(--income);
     color: #0a0a0f;
   }
+  /* v2.6.1: WELCOME TOUR */
+  .tour-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    pointer-events: none;
+  }
+  .tour-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.78);
+    pointer-events: auto;
+    transition: clip-path .35s ease;
+  }
+  .tour-card {
+    position: absolute;
+    width: calc(100vw - 32px);
+    max-width: 340px;
+    padding: 18px 18px 16px;
+    background: var(--bg-card);
+    border: 1px solid rgba(201,255,61,0.3);
+    border-radius: 16px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(201,255,61,0.1);
+    pointer-events: auto;
+    transition: top .35s ease, left .35s ease, opacity .25s ease;
+  }
+  .tour-progress {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    margin-bottom: 8px;
+    font-family: 'Geist Mono', monospace;
+  }
+  .tour-title {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .tour-body {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+  .tour-body strong { color: var(--text); }
+  .tour-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .tour-btn {
+    padding: 9px 16px;
+    border-radius: 10px;
+    border: none;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .tour-btn-skip {
+    background: transparent;
+    color: var(--text-muted);
+  }
+  .tour-btn-skip:active { color: var(--text-dim); }
+  .tour-btn-next {
+    background: var(--accent);
+    color: #0a0a0f;
+    font-weight: 600;
+    padding: 9px 22px;
+  }
+  .tour-btn-next:active { transform: scale(0.97); }
+  
+  /* Spotlight — drawn as a transparent rect with a huge box-shadow that
+     acts as the overlay everywhere except inside the rect itself */
+  .tour-spotlight {
+    position: absolute;
+    border-radius: 12px;
+    box-shadow: 0 0 0 99999px rgba(0, 0, 0, 0.78);
+    pointer-events: none;
+    transition: top .35s ease, left .35s ease, width .35s ease, height .35s ease;
+    animation: tour-pulse 2s ease-in-out infinite;
+  }
+  @keyframes tour-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 99999px rgba(0, 0, 0, 0.78),
+                  0 0 0 0 rgba(201,255,61,0.5);
+    }
+    50% {
+      box-shadow: 0 0 0 99999px rgba(0, 0, 0, 0.78),
+                  0 0 0 8px rgba(201,255,61,0);
+    }
+  }
+  
+  /* When spotlight is hidden (intro/outro), backdrop covers everything */
+  .tour-overlay.no-spotlight .tour-backdrop {
+    opacity: 1;
+  }
+  .tour-overlay.has-spotlight .tour-backdrop {
+    /* The spotlight handles the masking; backdrop is transparent base */
+    background: transparent;
+  }
+  
   /* v2.5.1: version banner that flashes on launch */
   .version-banner {
     position: fixed;
@@ -1964,6 +2074,25 @@
 
 <div id="versionBanner" class="version-banner" style="display:none;"></div>
 
+<!-- v2.6.1: WELCOME TOUR OVERLAY -->
+<div id="tourOverlay" class="tour-overlay" style="display:none;">
+  <!-- Dark backdrop with spotlight cutout -->
+  <div id="tourBackdrop" class="tour-backdrop"></div>
+  
+  <!-- Tooltip card (positioned dynamically) -->
+  <div id="tourCard" class="tour-card">
+    <div class="tour-progress">
+      <span id="tourStepNum">1</span> of <span id="tourStepTotal">7</span>
+    </div>
+    <div id="tourTitle" class="tour-title"></div>
+    <div id="tourBody" class="tour-body"></div>
+    <div class="tour-controls">
+      <button id="tourSkip" class="tour-btn tour-btn-skip" onclick="endTour(false)">Skip tour</button>
+      <button id="tourNext" class="tour-btn tour-btn-next" onclick="nextTourStep()">Next →</button>
+    </div>
+  </div>
+</div>
+
 <div class="topbar">
   <div class="brand">
     <svg viewBox="0 0 24 24" width="20" height="20" class="brand-needle">
@@ -1972,7 +2101,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">Ledger Compass</span>
-    <span class="version-tag" id="versionTag">v2.6.0</span>
+    <span class="version-tag" id="versionTag">v2.6.1</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" onclick="openSearchModal()">🔍</button>
@@ -2244,7 +2373,12 @@
 
   <div class="setting-row" onclick="refreshApp()" style="border-color: rgba(201,255,61,0.2);">
     <span class="setting-label" style="color: var(--accent);">↻ Refresh App (Force Update)</span>
-    <span class="setting-value" id="versionDisplay">v2.6.0</span>
+    <span class="setting-value" id="versionDisplay">v2.6.1</span>
+  </div>
+
+  <div class="setting-row" onclick="restartTour()">
+    <span class="setting-label">👋 Show welcome tour</span>
+    <span class="setting-value">→</span>
   </div>
 
   <div class="setting-row" style="border-color: rgba(255,107,107,0.2);" onclick="confirmClearAll()">
@@ -2253,7 +2387,7 @@
   </div>
 
   <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.6;">
-    <div>Ledger Compass v2.6.0 · Schema v7</div>
+    <div>Ledger Compass v2.6.1 · Schema v7</div>
     <div>All data stored on this device</div>
     <div id="lastBackup" style="margin-top: 4px;"></div>
   </div>
@@ -2796,7 +2930,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.6.0';
+const APP_VERSION = '2.6.1';
 const SCHEMA_VERSION = 7;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
@@ -8456,6 +8590,234 @@ function flashVersionBanner() {
 }
 
 /* ============================================================
+   v2.6.1: WELCOME TOUR ENGINE
+   ============================================================ */
+
+const TOUR_STEPS = [
+  {
+    title: '👋 Welcome to Ledger Compass',
+    body: 'Your <strong>smart finance buddy</strong>. Let me show you around in 30 seconds — tap Next to start.',
+    target: null,  // intro, no spotlight
+    page: 'home',
+  },
+  {
+    title: 'Your balance lives here',
+    body: 'This is your <strong>current balance</strong> across all accounts. Tap the income/spent stats below to see breakdowns.',
+    target: '#page-home .hero',
+    page: 'home',
+  },
+  {
+    title: 'Log money in two taps',
+    body: 'Use <strong>+ Income</strong> when you get paid, <strong>+ Expense</strong> when you spend. Categories auto-suggest based on what you type.',
+    target: '#page-home .quickadd',
+    page: 'home',
+  },
+  {
+    title: 'See every transaction',
+    body: 'The <strong>Activity</strong> tab shows every transaction with filters and search. Tap any entry to edit it.',
+    target: '.nav-item[data-page="activity"]',
+    page: 'home',  // stay on home, just point at the nav
+  },
+  {
+    title: 'Your weekly plan',
+    body: 'The <strong>Compass</strong> tab tells you what to do this week — pay bills, save aside, and what\'s free to spend. Smart and adaptive.',
+    target: '.nav-item[data-page="compass"]',
+    page: 'home',
+  },
+  {
+    title: 'Track your progress',
+    body: 'On Compass you\'ll see <strong>🔥 streaks</strong> and <strong>🏆 milestones</strong>. Save consistently, pay bills on time, watch them grow.',
+    target: '#momentumCard',
+    page: 'compass',  // navigate to compass for this one
+  },
+  {
+    title: 'Set up your income first',
+    body: 'Tap the <strong>⚙ settings gear</strong> (top right) → <strong>Income Sources</strong> to add your jobs/paychecks. Recurring expenses live there too — once set, the app does the rest. <br><br>You\'re ready. Have fun! 💪',
+    target: '.icon-btn[onclick*="settings"]',
+    page: 'home',
+    isLast: true,
+  },
+];
+
+let currentTourStep = 0;
+let tourActive = false;
+
+function startTour() {
+  currentTourStep = 0;
+  tourActive = true;
+  document.getElementById('tourStepTotal').textContent = TOUR_STEPS.length;
+  document.getElementById('tourOverlay').style.display = 'block';
+  showTourStep(0);
+}
+
+function showTourStep(idx) {
+  if (idx < 0 || idx >= TOUR_STEPS.length) {
+    endTour(true);
+    return;
+  }
+  
+  const step = TOUR_STEPS[idx];
+  currentTourStep = idx;
+  
+  // Update step number
+  document.getElementById('tourStepNum').textContent = idx + 1;
+  document.getElementById('tourTitle').textContent = step.title;
+  document.getElementById('tourBody').innerHTML = step.body;
+  
+  // Update button text on last step
+  const nextBtn = document.getElementById('tourNext');
+  nextBtn.textContent = step.isLast ? 'Got it! 🎉' : 'Next →';
+  
+  // Navigate to the right page if needed
+  if (step.page && !document.getElementById('page-' + step.page).classList.contains('active')) {
+    goPage(step.page);
+  }
+  
+  // Wait a bit for navigation/render, then position the spotlight
+  setTimeout(() => positionTourSpotlight(step), 150);
+}
+
+function positionTourSpotlight(step) {
+  const overlay = document.getElementById('tourOverlay');
+  const card = document.getElementById('tourCard');
+  let spotlight = document.getElementById('tourSpotlight');
+  
+  if (!step.target) {
+    // No spotlight — center the card on screen
+    overlay.classList.add('no-spotlight');
+    overlay.classList.remove('has-spotlight');
+    if (spotlight) spotlight.remove();
+    
+    // Center the card
+    const cardRect = card.getBoundingClientRect();
+    card.style.top = (window.innerHeight / 2 - cardRect.height / 2) + 'px';
+    card.style.left = (window.innerWidth / 2 - cardRect.width / 2) + 'px';
+    return;
+  }
+  
+  // Find the target element
+  const target = document.querySelector(step.target);
+  if (!target) {
+    console.warn('Tour target not found:', step.target);
+    // Fall back to centered card with no spotlight
+    overlay.classList.add('no-spotlight');
+    overlay.classList.remove('has-spotlight');
+    if (spotlight) spotlight.remove();
+    const cardRect = card.getBoundingClientRect();
+    card.style.top = (window.innerHeight / 2 - cardRect.height / 2) + 'px';
+    card.style.left = (window.innerWidth / 2 - cardRect.width / 2) + 'px';
+    return;
+  }
+  
+  // Scroll target into view if not visible
+  const rect = target.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const inView = rect.top >= 0 && rect.bottom <= vh;
+  if (!inView) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Wait for scroll, then re-position
+    setTimeout(() => positionTourSpotlight(step), 400);
+    return;
+  }
+  
+  // Get fresh rect after potential scroll
+  const r = target.getBoundingClientRect();
+  
+  // Create spotlight if it doesn't exist
+  if (!spotlight) {
+    spotlight = document.createElement('div');
+    spotlight.id = 'tourSpotlight';
+    spotlight.className = 'tour-spotlight';
+    overlay.appendChild(spotlight);
+  }
+  
+  // Position spotlight with 6px padding around the element
+  const pad = 6;
+  spotlight.style.top = (r.top - pad) + 'px';
+  spotlight.style.left = (r.left - pad) + 'px';
+  spotlight.style.width = (r.width + pad * 2) + 'px';
+  spotlight.style.height = (r.height + pad * 2) + 'px';
+  
+  overlay.classList.add('has-spotlight');
+  overlay.classList.remove('no-spotlight');
+  
+  // Position the tooltip card — try to place below the highlight, fall back to above
+  const cardRect = card.getBoundingClientRect();
+  const cardW = Math.min(340, window.innerWidth - 32);
+  const cardH = cardRect.height || 200;  // estimate if not yet rendered
+  
+  let cardTop, cardLeft;
+  
+  // Try below first
+  const spaceBelow = vh - (r.bottom + pad);
+  const spaceAbove = r.top - pad;
+  
+  if (spaceBelow >= cardH + 20) {
+    cardTop = r.bottom + pad + 16;
+  } else if (spaceAbove >= cardH + 20) {
+    cardTop = r.top - pad - cardH - 16;
+  } else {
+    // Not enough space either side — center vertically
+    cardTop = Math.max(20, vh / 2 - cardH / 2);
+  }
+  
+  // Center horizontally, but keep within viewport
+  cardLeft = Math.max(16, Math.min(window.innerWidth - cardW - 16, window.innerWidth / 2 - cardW / 2));
+  
+  card.style.top = cardTop + 'px';
+  card.style.left = cardLeft + 'px';
+}
+
+function nextTourStep() {
+  const step = TOUR_STEPS[currentTourStep];
+  if (step && step.isLast) {
+    endTour(true);
+    return;
+  }
+  showTourStep(currentTourStep + 1);
+}
+
+function endTour(completed) {
+  tourActive = false;
+  document.getElementById('tourOverlay').style.display = 'none';
+  const spotlight = document.getElementById('tourSpotlight');
+  if (spotlight) spotlight.remove();
+  
+  if (completed) {
+    localStorage.setItem('tour_completed', 'yes');
+    showToast('Welcome aboard! 🎉');
+  } else {
+    localStorage.setItem('tour_completed', 'skipped');
+  }
+}
+
+function maybeStartTourOnFirstLaunch() {
+  const tourDone = localStorage.getItem('tour_completed');
+  if (tourDone) return;  // Already completed or skipped
+  
+  // Don't start tour if user already has data (they're an upgrader, not a new user)
+  if (state.transactions.length > 0 || state.incomeSources.length > 0) {
+    localStorage.setItem('tour_completed', 'auto-skipped');
+    return;
+  }
+  
+  // Delay so first-launch warning and version banner finish first
+  setTimeout(() => {
+    // Re-check that user hasn't acted in the meantime
+    if (!tourActive) startTour();
+  }, 2000);
+}
+
+// Manually trigger from Settings
+function restartTour() {
+  // Settings is a page, navigate back to home first
+  goPage('home');
+  // Reset the completed flag so the tour can show
+  localStorage.removeItem('tour_completed');
+  setTimeout(() => startTour(), 400);
+}
+
+/* ============================================================
    v2.1: VERSION CHANGE DETECTION
    ============================================================ */
 
@@ -8514,6 +8876,7 @@ function init() {
   checkRecoveryMode();     // Offer restore if storage is empty but backups exist
   showFirstLaunchWarningIfNeeded();
   flashVersionBanner();    // v2.5.1: 2-second flash showing current version
+  maybeStartTourOnFirstLaunch();  // v2.6.1: welcome tour for new users
   
   // Re-render every minute so "Today/Yesterday" stays accurate
   setInterval(() => { 
