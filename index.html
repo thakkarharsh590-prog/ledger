@@ -4,13 +4,18 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.6.1
-  Last edited:  2026-05-21
+  Version:      2.6.2
+  Last edited:  2026-05-24
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   7
   
   NAMED: Ledger Compass
   
+  v2.6.2 — WELCOME TOUR FIX:
+  - Rebuilt tour card: white background, dark text, lime dot-progress bar
+  - Fixed broken spotlight on Activity nav (wrong data-page selector)
+  - Lime ring pulse on spotlight highlight
+
   v2.6.1 — WELCOME TOUR:
   - First-launch guided tour with spotlight overlay
   - 7 steps covering: balance, nav, activity, compass, progress,
@@ -1558,55 +1563,64 @@
   .tour-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.78);
+    background: rgba(0, 0, 0, 0.75);
     pointer-events: auto;
-    transition: clip-path .35s ease;
+  }
+  .tour-overlay.has-spotlight .tour-backdrop {
+    background: transparent;
   }
   .tour-card {
     position: absolute;
     width: calc(100vw - 32px);
     max-width: 340px;
-    padding: 18px 18px 16px;
-    background: var(--bg-card);
-    border: 1px solid rgba(201,255,61,0.3);
-    border-radius: 16px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(201,255,61,0.1);
+    padding: 20px 20px 16px;
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.25);
     pointer-events: auto;
-    transition: top .35s ease, left .35s ease, opacity .25s ease;
+    transition: top .3s ease, left .3s ease;
   }
-  .tour-progress {
-    font-size: 10px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 500;
-    margin-bottom: 8px;
-    font-family: 'Geist Mono', monospace;
+  .tour-dots {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 13px;
+  }
+  .tour-dot {
+    height: 6px;
+    width: 6px;
+    border-radius: 3px;
+    background: #d8d8e0;
+    transition: width .2s ease, background .2s ease;
+  }
+  .tour-dot.active {
+    width: 18px;
+    background: #c9ff3d;
+  }
+  .tour-dot.done {
+    background: #9ec92e;
   }
   .tour-title {
     font-family: 'Fraunces', serif;
-    font-size: 20px;
-    font-weight: 500;
+    font-size: 19px;
+    font-weight: 600;
     line-height: 1.25;
-    letter-spacing: -0.01em;
-    color: var(--text);
-    margin-bottom: 8px;
+    color: #0a0a0f;
+    margin-bottom: 7px;
   }
   .tour-body {
-    font-size: 13px;
-    line-height: 1.55;
-    color: var(--text-dim);
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: #44444e;
     margin-bottom: 16px;
   }
-  .tour-body strong { color: var(--text); }
+  .tour-body strong { color: #0a0a0f; }
   .tour-controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
   }
   .tour-btn {
-    padding: 9px 16px;
+    padding: 9px 18px;
     border-radius: 10px;
     border: none;
     font-family: inherit;
@@ -1617,45 +1631,33 @@
   }
   .tour-btn-skip {
     background: transparent;
-    color: var(--text-muted);
+    color: #9090a0;
   }
-  .tour-btn-skip:active { color: var(--text-dim); }
+  .tour-btn-skip:active { color: #555; }
   .tour-btn-next {
-    background: var(--accent);
+    background: #c9ff3d;
     color: #0a0a0f;
-    font-weight: 600;
-    padding: 9px 22px;
+    font-weight: 700;
+    padding: 9px 24px;
   }
   .tour-btn-next:active { transform: scale(0.97); }
-  
-  /* Spotlight — drawn as a transparent rect with a huge box-shadow that
-     acts as the overlay everywhere except inside the rect itself */
+
   .tour-spotlight {
     position: absolute;
     border-radius: 12px;
-    box-shadow: 0 0 0 99999px rgba(0, 0, 0, 0.78);
     pointer-events: none;
-    transition: top .35s ease, left .35s ease, width .35s ease, height .35s ease;
+    transition: top .3s ease, left .3s ease, width .3s ease, height .3s ease;
     animation: tour-pulse 2s ease-in-out infinite;
   }
   @keyframes tour-pulse {
     0%, 100% {
-      box-shadow: 0 0 0 99999px rgba(0, 0, 0, 0.78),
-                  0 0 0 0 rgba(201,255,61,0.5);
+      box-shadow: 0 0 0 3px rgba(201,255,61,1),
+                  0 0 0 99999px rgba(0,0,0,0.75);
     }
     50% {
-      box-shadow: 0 0 0 99999px rgba(0, 0, 0, 0.78),
-                  0 0 0 8px rgba(201,255,61,0);
+      box-shadow: 0 0 0 7px rgba(201,255,61,0.25),
+                  0 0 0 99999px rgba(0,0,0,0.75);
     }
-  }
-  
-  /* When spotlight is hidden (intro/outro), backdrop covers everything */
-  .tour-overlay.no-spotlight .tour-backdrop {
-    opacity: 1;
-  }
-  .tour-overlay.has-spotlight .tour-backdrop {
-    /* The spotlight handles the masking; backdrop is transparent base */
-    background: transparent;
   }
   
   /* v2.5.1: version banner that flashes on launch */
@@ -2076,18 +2078,13 @@
 
 <!-- v2.6.1: WELCOME TOUR OVERLAY -->
 <div id="tourOverlay" class="tour-overlay" style="display:none;">
-  <!-- Dark backdrop with spotlight cutout -->
   <div id="tourBackdrop" class="tour-backdrop"></div>
-  
-  <!-- Tooltip card (positioned dynamically) -->
   <div id="tourCard" class="tour-card">
-    <div class="tour-progress">
-      <span id="tourStepNum">1</span> of <span id="tourStepTotal">7</span>
-    </div>
+    <div id="tourDots" class="tour-dots"></div>
     <div id="tourTitle" class="tour-title"></div>
     <div id="tourBody" class="tour-body"></div>
     <div class="tour-controls">
-      <button id="tourSkip" class="tour-btn tour-btn-skip" onclick="endTour(false)">Skip tour</button>
+      <button class="tour-btn tour-btn-skip" onclick="endTour(false)">Skip</button>
       <button id="tourNext" class="tour-btn tour-btn-next" onclick="nextTourStep()">Next →</button>
     </div>
   </div>
@@ -2101,7 +2098,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">Ledger Compass</span>
-    <span class="version-tag" id="versionTag">v2.6.1</span>
+    <span class="version-tag" id="versionTag">v2.6.2</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" onclick="openSearchModal()">🔍</button>
@@ -2373,7 +2370,7 @@
 
   <div class="setting-row" onclick="refreshApp()" style="border-color: rgba(201,255,61,0.2);">
     <span class="setting-label" style="color: var(--accent);">↻ Refresh App (Force Update)</span>
-    <span class="setting-value" id="versionDisplay">v2.6.1</span>
+    <span class="setting-value" id="versionDisplay">v2.6.2</span>
   </div>
 
   <div class="setting-row" onclick="restartTour()">
@@ -2387,7 +2384,7 @@
   </div>
 
   <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.6;">
-    <div>Ledger Compass v2.6.1 · Schema v7</div>
+    <div>Ledger Compass v2.6.2 · Schema v7</div>
     <div>All data stored on this device</div>
     <div id="lastBackup" style="margin-top: 4px;"></div>
   </div>
@@ -2930,7 +2927,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.6.1';
+const APP_VERSION = '2.6.2';
 const SCHEMA_VERSION = 7;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
@@ -8615,7 +8612,7 @@ const TOUR_STEPS = [
   {
     title: 'See every transaction',
     body: 'The <strong>Activity</strong> tab shows every transaction with filters and search. Tap any entry to edit it.',
-    target: '.nav-item[data-page="activity"]',
+    target: '.nav-item[data-page="transactions"]',
     page: 'home',  // stay on home, just point at the nav
   },
   {
@@ -8645,7 +8642,6 @@ let tourActive = false;
 function startTour() {
   currentTourStep = 0;
   tourActive = true;
-  document.getElementById('tourStepTotal').textContent = TOUR_STEPS.length;
   document.getElementById('tourOverlay').style.display = 'block';
   showTourStep(0);
 }
@@ -8659,8 +8655,13 @@ function showTourStep(idx) {
   const step = TOUR_STEPS[idx];
   currentTourStep = idx;
   
-  // Update step number
-  document.getElementById('tourStepNum').textContent = idx + 1;
+  // Render dot progress indicators
+  const dotsEl = document.getElementById('tourDots');
+  dotsEl.innerHTML = TOUR_STEPS.map((_, i) => {
+    const cls = i < idx ? 'done' : i === idx ? 'active' : '';
+    return `<span class="tour-dot ${cls}"></span>`;
+  }).join('');
+
   document.getElementById('tourTitle').textContent = step.title;
   document.getElementById('tourBody').innerHTML = step.body;
   
