@@ -4,13 +4,20 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.7.0
-  Last edited:  2026-05-25
+  Version:      2.7.1
+  Last edited:  2026-05-27
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   7
   
   NAMED: Ledger Compass
   
+  v2.7.1 — WEEKLY PLAN LOGIC FIX:
+  - Set-aside pool now subtracts spending allowance before computing set-aside
+  - Set-aside capped at 60% of pool (guarantees 40% flows to savings)
+  - Savings displayed as a numbered plan line (income − bills − spending − set-aside)
+  - Summary chips now show Spending and Save up to rows
+  - Balance buffer note references biggest upcoming bill
+
   v2.7.0 — PREMIUM THEME REFRESH:
   - New dark palette: #0A0A0F bg, #15151C cards, #C9FF3D accent
   - New light palette: warm cream/white, olive-lime accent (#8FB820)
@@ -2324,7 +2331,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">Ledger Compass</span>
-    <span class="version-tag" id="versionTag">v2.7.0</span>
+    <span class="version-tag" id="versionTag">v2.7.1</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme">
@@ -5664,7 +5671,10 @@ function computeWeeklyPlan() {
   // Compute average variable spend per week (median-based)
   const avgDaily = getAvgDailyExpense();
   const variableWeekly = avgDaily * 7;
-  
+
+  // Snapshot balance once — used for set-aside pool and week objects
+  const currentBalance = getCurrentBalance();
+
   // Track how much has been "saved up" for each bill so far
   const billSavedSoFar = {};
   bills.forEach(b => { billSavedSoFar[b.id + b.date] = 0; });
@@ -5684,9 +5694,10 @@ function computeWeeklyPlan() {
       .filter(b => b.date >= isoOf(weekStart) && b.date <= isoOf(weekEnd));
     const weekBillsDueAmount = weekBillsDue.reduce((s,b) => s + b.amount, 0);
     
-    // v2.5.4 ADAPTIVE: how much CAN we save from this week's income?
-    // = income - bills due this week (never negative)
-    const incomeAvailableForSetAside = Math.max(0, weekIncome - weekBillsDueAmount);
+    // Pool from which set-aside is drawn — income minus bills and spending allowance
+    const incomeAvailableForSetAside = Math.max(0, weekIncome - weekBillsDueAmount - variableWeekly);
+    // Cap set-aside at 60% of pool so 40% always flows to savings
+    const setAsideCap = incomeAvailableForSetAside * 0.6;
     
     // Compute "ideal" set-aside per bill (target if we had unlimited cash)
     const idealBreakdown = [];
@@ -5714,23 +5725,18 @@ function computeWeeklyPlan() {
       });
     });
     
-    // v2.5.5 BUG FIX: when income is 0 OR less than bills, set-aside MUST be 0.
-    // Previously this branch was using ideal portions anyway. Now strict.
     let actualSetAside = 0;
     const setAsideBreakdown = [];
-    const isHeavyWeek = totalIdealSetAside > incomeAvailableForSetAside && weekIncome > 0;
+    const isHeavyWeek = totalIdealSetAside > setAsideCap && weekIncome > 0;
     
     idealBreakdown.forEach(item => {
       let actualPortion;
-      if (incomeAvailableForSetAside === 0) {
-        // No money left after bills — can't save anything this week
+      if (setAsideCap === 0) {
         actualPortion = 0;
-      } else if (totalIdealSetAside <= incomeAvailableForSetAside) {
-        // Can afford ideal
+      } else if (totalIdealSetAside <= setAsideCap) {
         actualPortion = Math.min(item.idealPortion, item.stillNeeded);
       } else {
-        // Heavy week — scale down proportionally to what's available
-        const scale = incomeAvailableForSetAside / totalIdealSetAside;
+        const scale = setAsideCap / totalIdealSetAside;
         actualPortion = item.idealPortion * scale;
       }
       
@@ -5748,8 +5754,9 @@ function computeWeeklyPlan() {
       });
     });
     
-    // Free spend after bills + actual (possibly scaled) set-aside
-    const freeToSpend = weekIncome - weekBillsDueAmount - actualSetAside - variableWeekly;
+    // Savings = what's left from income after bills, spending allowance, and set-aside
+    const savingsAmount = Math.max(0, weekIncome - weekBillsDueAmount - variableWeekly - actualSetAside);
+    const freeToSpend = savingsAmount;
     
     const noIncomeThisWeek = weekIncome === 0;
     const nextIncomeEvent = incomeEvents.find(e => e.date > isoOf(weekEnd));
@@ -5766,7 +5773,10 @@ function computeWeeklyPlan() {
       isHeavyWeek,
       setAsideBreakdown,
       variableSpend: variableWeekly,
+      spendingAllowance: variableWeekly,
       freeToSpend,
+      savingsAmount,
+      currentBalance: w === 0 ? currentBalance : null,
       isNow: w === 0,
       noIncomeThisWeek,
       nextIncomeEvent: nextIncomeEvent || null,
@@ -6738,6 +6748,8 @@ function renderWeeklyPlanToday(weeks, el) {
   const billsDueThisWeek = Math.round(thisWeek.billsDueAmount);
   const income = Math.round(thisWeek.income);
   const currentBalance = Math.round(getCurrentBalance());
+  const spendingAllowance = Math.round(thisWeek.spendingAllowance || 0);
+  const savingsAmount = Math.max(0, Math.round(thisWeek.savingsAmount || 0));
   const isHeavyWeek = thisWeek.isHeavyWeek;
   const horizonCanCatchUp = weeks.horizonCanCatchUp;
   
@@ -6749,66 +6761,55 @@ function renderWeeklyPlanToday(weeks, el) {
   let heroLine, planLines, savingsSuggestion, whyLine, headlineColor;
   
   if (income > 0) {
-    // === HAS INCOME THIS WEEK ===
     heroLine = `You're earning ${fmt(income)} this week`;
     planLines = [];
-    
+
     if (billsDueThisWeek > 0) {
       planLines.push(`Pay <strong>${fmt(billsDueThisWeek)}</strong> in bills`);
     }
-    
+    if (spendingAllowance > 0) {
+      planLines.push(`Spend up to <strong>${fmt(spendingAllowance)}</strong> this week`);
+    }
+    if (setAside > 0) {
+      planLines.push(`Set aside <strong>${fmt(setAside)}</strong> for upcoming bills`);
+    }
+    if (savingsAmount > 0) {
+      planLines.push(`Save up to <strong style="color:var(--accent);">${fmt(savingsAmount)}</strong> toward goals`);
+    }
+
+    // Balance buffer note — reference biggest upcoming bill by amount
+    const biggestUpcoming = thisWeek.setAsideBreakdown.length > 0
+      ? [...thisWeek.setAsideBreakdown].sort((a,b) => b.amount - a.amount)[0]
+      : null;
+    if (biggestUpcoming && currentBalance >= biggestUpcoming.amount * 0.5) {
+      savingsSuggestion = `Your ${fmt(currentBalance)} balance has you halfway covered for the ${fmt(biggestUpcoming.amount)} ${escapeHtml(biggestUpcoming.name)} in ${biggestUpcoming.daysUntil} days.`;
+    }
+
     if (isHeavyWeek) {
-      // Income can't cover both bills and ideal set-aside
-      // Show what we CAN save this week
-      if (setAside > 0) {
-        planLines.push(`Save <strong>${fmt(setAside)}</strong> toward upcoming bills (what's left after bills)`);
-      } else {
-        planLines.push(`Skip set-aside this week — bills take all of pay`);
-      }
-      headlineColor = 'var(--accent)';  // not warning — this is normal
-      
-      // Encouraging tone — savings catch up next week
+      headlineColor = 'var(--accent)';
+      let catchUpNote;
       if (horizonCanCatchUp) {
-        // Find first lighter week
-        const lightWeek = weeks.slice(1).find(w => w.income > 0 && w.income - w.billsDueAmount > 200);
-        if (lightWeek) {
-          const lightStart = new Date(lightWeek.weekStart + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long' });
-          savingsSuggestion = `💪 Bills first this week — savings catch up next week. Light bills coming up means you'll be back on the plan by ${lightStart}.`;
-        } else {
-          savingsSuggestion = `💪 Bills first this week — savings catch up across the next few weeks.`;
-        }
+        const lightWeek = weeks.slice(1).find(w => w.income > 0 && !w.isHeavyWeek);
+        catchUpNote = lightWeek
+          ? `Bills are heavier this week — set-aside catches up from ${new Date(lightWeek.weekStart + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long' })}.`
+          : `Bills are heavier this week — set-aside catches up across the next few weeks.`;
       } else {
-        // Horizon can't catch up — only NOW suggest balance
         const shortage = Math.round(idealSetAside - setAside);
-        if (currentBalance >= shortage) {
-          savingsSuggestion = `⚠ Bills are heavy across all 4 weeks. If you can, dip <strong>${fmt(shortage)}</strong> from your balance (${fmt(currentBalance)} available) to stay on plan.`;
-        } else {
-          savingsSuggestion = `⚠ Bills exceed 4-week income. Consider pushing a non-urgent bill or temporarily cutting variable spend.`;
-        }
+        catchUpNote = currentBalance >= shortage
+          ? `Bills are heavy across all 4 weeks. You could dip <strong>${fmt(shortage)}</strong> from your balance (${fmt(currentBalance)} available) to stay on plan.`
+          : `Bills are heavy across all 4 weeks. Consider pushing a non-urgent bill or trimming variable spend temporarily.`;
       }
+      savingsSuggestion = catchUpNote + (savingsSuggestion ? '<br>' + savingsSuggestion : '');
+    } else if (savingsAmount >= 200) {
+      headlineColor = 'var(--income)';
     } else {
-      // Comfortable week
-      if (setAside > 0) {
-        planLines.push(`Set aside <strong>${fmt(setAside)}</strong> for upcoming bills`);
-      }
-      const totalNeeded = billsDueThisWeek + setAside;
-      const remaining = income - totalNeeded;
-      
-      if (remaining >= 50) {
-        const saveSuggest = Math.round(remaining * 0.5);
-        savingsSuggestion = `💰 You can put <strong style="color:var(--accent);">${fmt(saveSuggest)}</strong> in savings, keep <strong>${fmt(remaining - saveSuggest)}</strong> for spending`;
-      } else if (remaining > 0) {
-        savingsSuggestion = `💰 Skip savings this week — keep the <strong>${fmt(remaining)}</strong> as buffer for spending`;
-      } else {
-        savingsSuggestion = `💰 Skip savings this week — plan is balanced`;
-      }
       headlineColor = 'var(--text)';
-      
-      if (billsDueThisWeek === 0 && setAside === 0) {
-        heroLine = `Easy week — ${fmt(income)} all yours`;
-        planLines = [`No bills due, nothing to set aside`];
-        headlineColor = 'var(--income)';
-      }
+    }
+
+    if (billsDueThisWeek === 0 && setAside === 0) {
+      heroLine = `Easy week — ${fmt(income)} all yours`;
+      planLines = [`No bills due, nothing to set aside`];
+      headlineColor = 'var(--income)';
     }
   } else {
     // === NO INCOME THIS WEEK === (use balance as working capital)
@@ -6935,10 +6936,22 @@ function renderWeeklyPlanToday(weeks, el) {
             <div class="wp-summary-value" style="color:var(--expense);">−${fmt(billsDueThisWeek)}</div>
           </div>
         ` : ''}
+        ${spendingAllowance > 0 ? `
+          <div class="wp-summary-cell">
+            <div class="wp-summary-label">💸 Spending</div>
+            <div class="wp-summary-value" style="color:var(--text-dim);">up to ${fmt(spendingAllowance)}</div>
+          </div>
+        ` : ''}
         ${setAside > 0 ? `
           <div class="wp-summary-cell">
             <div class="wp-summary-label">🔒 Set aside</div>
             <div class="wp-summary-value" style="color:#a855f7;">−${fmt(setAside)}</div>
+          </div>
+        ` : ''}
+        ${savingsAmount > 0 ? `
+          <div class="wp-summary-cell">
+            <div class="wp-summary-label">📈 Save up to</div>
+            <div class="wp-summary-value" style="color:var(--accent);">+${fmt(savingsAmount)}</div>
           </div>
         ` : ''}
       </div>
