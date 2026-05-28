@@ -4,12 +4,20 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.8.1
-  Last edited:  2026-05-27
+  Version:      2.8.2
+  Last edited:  2026-05-28
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   9
 
   NAMED: Ledger Compass
+
+  v2.8.2 — TIMEZONE + DEDUP FIX (schema v9 unchanged):
+  - isoOf() rewritten to use local date parts (getFullYear/getMonth/getDate) — eliminates UTC shift in UTC+10/+11
+  - All toISOString().slice(0,10) calls replaced with isoOf() — 20 sites fixed across filters, charts, forecast, simulation, stats
+  - getUpcomingPayEvents: events now carry srcId field; date uses isoOf (local)
+  - computeWeeklyPlan week 0: per-source dedup — sources already paid this week excluded from futureScheduled (by autoLogId for auto-logged, by name match for manual)
+  - openNameModal: fixed ReferenceError — calls classList.add('open') directly instead of non-existent openModal()
+  - Migration v7→v8: todayStr now uses todayISO() instead of toISOString()
 
   v2.8.1 — UX RESTRUCTURE (schema v9):
   - Bottom nav: Home, Compass, Insights, Loans, Profile (Activity removed from nav)
@@ -3210,7 +3218,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.8.1';
+const APP_VERSION = '2.8.2';
 const SCHEMA_VERSION = 9;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
@@ -3418,7 +3426,7 @@ function runMigrations(data) {
   if (fromVersion < 8) {
     migrated.schemaVersion = 8;
     const txns = migrated.transactions || [];
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = todayISO();
 
     if (migrated.incomeSources) {
       migrated.incomeSources = migrated.incomeSources.map(src => {
@@ -3666,7 +3674,7 @@ function getUserInitials(name) {
 
 function openNameModal() {
   document.getElementById('inpUserName').value = state.userName || '';
-  openModal('nameModal');
+  document.getElementById('nameModal').classList.add('open');
 }
 
 function saveUserName() {
@@ -3741,11 +3749,11 @@ function renderTransactions() {
   else if (state.filter === 'expense') list = list.filter(t => t.type === 'expense');
   else if (state.filter === 'week') {
     const wk = new Date(); wk.setDate(wk.getDate() - 7);
-    const wkISO = wk.toISOString().slice(0,10);
+    const wkISO = isoOf(wk);
     list = list.filter(t => t.date >= wkISO);
   } else if (state.filter === 'month') {
     const m = new Date(); m.setDate(1);
-    const mISO = m.toISOString().slice(0,10);
+    const mISO = isoOf(m);
     list = list.filter(t => t.date >= mISO);
   }
   list.sort((a,b) => b.date.localeCompare(a.date) || (b.createdAt||0) - (a.createdAt||0));
@@ -3798,7 +3806,7 @@ function emptyState(title, sub) {
 function renderStats() {
   const now = new Date();
   const mStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const mStartISO = mStart.toISOString().slice(0,10);
+  const mStartISO = isoOf(mStart);
   
   let mIn = 0, mOut = 0;
   state.transactions.forEach(t => {
@@ -3813,7 +3821,7 @@ function renderStats() {
   mn.style.color = net >= 0 ? 'var(--income)' : 'var(--expense)';
   
   const d30 = new Date(); d30.setDate(d30.getDate() - 30);
-  const d30ISO = d30.toISOString().slice(0,10);
+  const d30ISO = isoOf(d30);
   let last30 = 0;
   state.transactions.forEach(t => {
     if (t.date >= d30ISO && t.type === 'expense') last30 += t.amount;
@@ -4013,7 +4021,7 @@ function renderWeekChart() {
     const d = new Date();
     d.setDate(d.getDate() - i);
     days.push({
-      iso: d.toISOString().slice(0,10),
+      iso: isoOf(d),
       label: d.toLocaleDateString('en-US', { weekday: 'narrow' }),
       income: 0, expense: 0,
     });
@@ -4039,7 +4047,7 @@ function renderWeekChart() {
 
 function renderCategoryBreakdown() {
   const now = new Date();
-  const mStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const mStart = isoOf(new Date(now.getFullYear(), now.getMonth(), 1));
   const totals = {};
   let grandTotal = 0;
   state.transactions.forEach(t => {
@@ -4076,7 +4084,7 @@ function renderCategoryBreakdown() {
 function renderBudgets() {
   const list = document.getElementById('budgetList');
   const now = new Date();
-  const mStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const mStart = isoOf(new Date(now.getFullYear(), now.getMonth(), 1));
   const spent = {};
   state.transactions.forEach(t => {
     if (t.type === 'expense' && t.date >= mStart) {
@@ -5188,7 +5196,7 @@ function median(arr) {
 // (median + outlier trim = stable estimate immune to one-off purchases)
 function getAvgDailyExpense() {
   const d60 = new Date(); d60.setDate(d60.getDate() - 60);
-  const d60ISO = d60.toISOString().slice(0,10);
+  const d60ISO = isoOf(d60);
   
   // Bucket variable expenses by date
   const byDay = {};
@@ -5232,7 +5240,7 @@ function getMonthlyIncomeEstimate() {
     const irregularSources = state.incomeSources.filter(s => s.cycle === 'irregular');
     if (irregularSources.length > 0) {
       const d90 = new Date(); d90.setDate(d90.getDate() - 90);
-      const d90ISO = d90.toISOString().slice(0,10);
+      const d90ISO = isoOf(d90);
       let irr = 0;
       state.transactions.forEach(t => {
         if (t.type === 'income' && t.date >= d90ISO) irr += t.amount;
@@ -5244,7 +5252,7 @@ function getMonthlyIncomeEstimate() {
   
   // Fallback: average from last 90 days of income transactions
   const d90 = new Date(); d90.setDate(d90.getDate() - 90);
-  const d90ISO = d90.toISOString().slice(0,10);
+  const d90ISO = isoOf(d90);
   let total = 0;
   state.transactions.forEach(t => {
     if (t.type === 'income' && t.date >= d90ISO) total += t.amount;
@@ -5689,7 +5697,7 @@ function addDays(date, days) {
 }
 
 function isoOf(date) {
-  return date.toISOString().slice(0, 10);
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 }
 
 // Compute upcoming bills due in next N days
@@ -5749,9 +5757,23 @@ function computeWeeklyPlan() {
   // Already-arrived income this week: actual transactions, not phantom projections.
   // This is the "actual data trumps estimates" anchor. Captures variable pay (extra
   // shifts, tips, short week) correctly because it reads what's actually been logged.
-  const pastWeekIncome = state.transactions
-    .filter(t => t.type === 'income' && t.date >= weekStartStr && t.date <= todayStr)
-    .reduce((s, t) => s + t.amount, 0);
+  const pastWeekTxns = state.transactions
+    .filter(t => t.type === 'income' && t.date >= weekStartStr && t.date <= todayStr);
+  const pastWeekIncome = pastWeekTxns.reduce((s, t) => s + t.amount, 0);
+
+  // Build set of source IDs already paid this week to prevent double-counting.
+  // Matches auto-logged via autoLogId prefix and manual transactions by name.
+  const paidSourceIds = new Set();
+  const _srcByName = {};
+  state.incomeSources.forEach(src => { _srcByName[src.name.toLowerCase().trim()] = String(src.id); });
+  pastWeekTxns.forEach(t => {
+    if (t.autoLogId && t.autoLogId.startsWith('auto_inc_')) {
+      paidSourceIds.add(t.autoLogId.slice('auto_inc_'.length).replace(/_\d{4}-\d{2}-\d{2}$/, ''));
+    } else if (t.description) {
+      const sid = _srcByName[t.description.toLowerCase().trim()];
+      if (sid) paidSourceIds.add(sid);
+    }
+  });
 
   // Track how much has been "saved up" for each bill so far
   const billSavedSoFar = {};
@@ -5769,7 +5791,7 @@ function computeWeeklyPlan() {
     let weekIncome;
     if (w === 0) {
       const futureScheduled = incomeEvents
-        .filter(e => e.date > todayStr && e.date <= weekEndISO)
+        .filter(e => e.date > todayStr && e.date <= weekEndISO && !paidSourceIds.has(String(e.srcId)))
         .reduce((s, e) => s + e.amount, 0);
       weekIncome = pastWeekIncome + futureScheduled;
     } else {
@@ -6497,7 +6519,7 @@ function computeSmartAffordability(amount) {
     
     for (let day = 1; day <= 180; day++) {
       simDate.setDate(simDate.getDate() + 1);
-      const isoDate = simDate.toISOString().slice(0, 10);
+      const isoDate = isoOf(simDate);
       
       // Daily spend
       simBal -= avgDaily;
@@ -6522,7 +6544,7 @@ function computeSmartAffordability(amount) {
       // Realistic wait — use weeks (universal, not confused by multiple jobs)
       const targetDate = new Date(todayISO() + 'T00:00:00');
       targetDate.setDate(targetDate.getDate() + foundDay);
-      const targetISO = targetDate.toISOString().slice(0, 10);
+      const targetISO = isoOf(targetDate);
       const weeks = Math.round(foundDay / 7);
       // Plain phrasing scaled to actual wait length
       let weekText;
@@ -6698,7 +6720,8 @@ function getUpcomingPayEvents(daysAhead = 30, daysBack = 0) {
         // Only emit events on or after startDate
         if (!srcStart || next >= srcStart) {
           events.push({
-            date: next.toISOString().slice(0,10),
+            date: isoOf(next),
+            srcId: src.id,
             amount: src.amount,
             name: src.name,
           });
@@ -6746,7 +6769,7 @@ function getUpcomingLoanPayments(daysAhead = 30) {
     while (nextDate <= horizon) {
       if (nextDate >= today) {
         events.push({
-          date: nextDate.toISOString().slice(0,10),
+          date: isoOf(nextDate),
           amount: avgAmt,
           name: loan.name + ' payment',
         });
@@ -6770,7 +6793,7 @@ function forecastBalance(daysAhead = 30) {
   for (let i = 1; i <= daysAhead; i++) {
     const d = new Date(today + 'T00:00:00');
     d.setDate(d.getDate() + i);
-    const iso = d.toISOString().slice(0,10);
+    const iso = isoOf(d);
     
     // Daily spending
     bal -= avgDailyOut;
@@ -7541,7 +7564,7 @@ function computeHealthScore() {
   
   // Factor 1: Savings rate (this month)
   const now = new Date();
-  const mStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const mStart = isoOf(new Date(now.getFullYear(), now.getMonth(), 1));
   let mIn = 0, mOut = 0;
   state.transactions.forEach(t => {
     if (t.date >= mStart) {
@@ -7762,7 +7785,7 @@ function renderSmartInsights() {
   
   // 2. Biggest category
   const now = new Date();
-  const mStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const mStart = isoOf(new Date(now.getFullYear(), now.getMonth(), 1));
   const catTotals = {};
   state.transactions.forEach(t => {
     if (t.type === 'expense' && t.date >= mStart) {
@@ -8141,7 +8164,7 @@ function renderSavingsPage() {
   
   // Recent deposits trend (last 30 days)
   const d30 = new Date(); d30.setDate(d30.getDate() - 30);
-  const d30ISO = d30.toISOString().slice(0,10);
+  const d30ISO = isoOf(d30);
   let recentDeposits = 0;
   state.savings.forEach(s => {
     if (s.date >= d30ISO && s.type === 'deposit') recentDeposits += s.amount;
