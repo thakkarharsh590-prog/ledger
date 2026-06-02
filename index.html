@@ -4624,10 +4624,51 @@ function saveTransaction() {
   renderAll();
 }
 
+function refreshAutoLogSourceState(autoLogId) {
+  if (!autoLogId) return;
+
+  const incMatch = autoLogId.match(/^auto_inc_(.+)_\d{4}-\d{2}-\d{2}$/);
+  if (incMatch) {
+    const src = state.incomeSources.find(s => s.id === incMatch[1]);
+    if (!src) return;
+    const dates = state.transactions
+      .filter(t => t.autoLogId && t.autoLogId.startsWith('auto_inc_' + src.id + '_'))
+      .map(t => t.date)
+      .sort();
+    const latest = dates[dates.length - 1] || null;
+    src.lastAutoLogDate = latest;
+    if (latest && src.cycle !== 'irregular') {
+      src.nextPay = computeNextPayDate({ ...src, nextPay: advanceRecurringDate(latest, src.cycle) });
+    } else if (src.nextPay) {
+      src.nextPay = computeNextPayDate(src) || src.nextPay;
+    }
+    return;
+  }
+
+  const expMatch = autoLogId.match(/^auto_exp_(.+)_\d{4}-\d{2}-\d{2}$/);
+  if (expMatch) {
+    const rec = state.recurringExpenses.find(r => r.id === expMatch[1]);
+    if (!rec) return;
+    const dates = state.transactions
+      .filter(t => t.autoLogId && t.autoLogId.startsWith('auto_exp_' + rec.id + '_'))
+      .map(t => t.date)
+      .sort();
+    const latest = dates[dates.length - 1] || null;
+    rec.lastAutoLogDate = latest;
+    if (latest) {
+      rec.nextDue = computeNextDueDate({ ...rec, nextDue: advanceRecurringDate(latest, rec.cycle) });
+    } else if (rec.nextDue) {
+      rec.nextDue = computeNextDueDate(rec) || rec.nextDue;
+    }
+  }
+}
+
 function deleteCurrentTransaction() {
   if (!state.editingId) return;
   if (!confirm('Delete this transaction?')) return;
+  const deleted = state.transactions.find(t => t.id === state.editingId);
   state.transactions = state.transactions.filter(t => t.id !== state.editingId);
+  if (deleted && deleted.autoLogId) refreshAutoLogSourceState(deleted.autoLogId);
   saveData();
   closeModal('addModal');
   renderAll();
@@ -5106,10 +5147,14 @@ function saveIncomeSource() {
   if (state.editingIncSrcId) {
     const idx = state.incomeSources.findIndex(s => s.id === state.editingIncSrcId);
     if (idx >= 0) {
+      const prev = state.incomeSources[idx];
+      const scheduleChanged = prev.nextPay !== nextPay || prev.cycle !== state.selectedCycle;
       state.incomeSources[idx] = {
-        ...state.incomeSources[idx],
+        ...prev,
         name, amount, cycle: state.selectedCycle, nextPay, note,
         autoLog: state.incSrcAutoLogOn,
+        lastAutoLogDate: scheduleChanged ? null : prev.lastAutoLogDate,
+        startDate: scheduleChanged ? (nextPay || todayISO()) : prev.startDate,
       };
     }
     showToast('Updated');
@@ -5127,10 +5172,10 @@ function saveIncomeSource() {
   
   saveData();
   closeModal('incomeSrcModal');
-  renderIncomeSources();
-  renderCompass();
   // Run auto-log immediately in case the new source is already due
   runAutoLog();
+  renderIncomeSources();
+  renderCompass();
 }
 
 function deleteCurrentIncomeSource() {
@@ -8509,11 +8554,15 @@ function saveRecExp() {
   if (state.editingRecExpId) {
     const idx = state.recurringExpenses.findIndex(r => r.id === state.editingRecExpId);
     if (idx >= 0) {
+      const prev = state.recurringExpenses[idx];
+      const scheduleChanged = prev.nextDue !== nextDue || prev.cycle !== state.selectedRecCycle;
       state.recurringExpenses[idx] = {
-        ...state.recurringExpenses[idx],
+        ...prev,
         name, amount, category: state.selectedCategory,
         cycle: state.selectedRecCycle, nextDue, note,
         active: state.recExpActiveOn,
+        lastAutoLogDate: scheduleChanged ? null : prev.lastAutoLogDate,
+        startDate: scheduleChanged ? (nextDue || todayISO()) : prev.startDate,
       };
     }
     showToast('Updated');
@@ -8532,8 +8581,8 @@ function saveRecExp() {
   
   saveData();
   closeModal('recExpModal');
-  renderRecExps();
   runAutoLog();
+  renderRecExps();
 }
 
 function deleteCurrentRecExp() {
@@ -8554,15 +8603,15 @@ function runAutoLog() {
   const today = todayISO();
   const todayDate = new Date(today + 'T00:00:00');
   const created = [];
+  let advancedAny = false;
   
   // --- Income sources with autoLog enabled ---
   state.incomeSources.forEach(src => {
     if (!src.autoLog || src.cycle === 'irregular' || !src.nextPay) return;
     
-    // Walk forward from nextPay (or lastAutoLogDate+1) through today
-    let checkDate = src.lastAutoLogDate 
-      ? advanceRecurringDate(src.lastAutoLogDate, src.cycle)
-      : src.nextPay;
+    // nextPay is the source of truth. lastAutoLogDate is only history.
+    let checkDate = src.nextPay;
+    let latestLoggedDate = null;
     
     // Safety: cap iterations
     let iterations = 0;
@@ -8587,15 +8636,16 @@ function runAutoLog() {
           });
           created.push({ name: src.name, amount: src.amount, type: 'income', date: checkDate });
         }
-        src.lastAutoLogDate = checkDate;
+        latestLoggedDate = checkDate;
       }
       checkDate = advanceRecurringDate(checkDate, src.cycle);
       iterations++;
     }
     
-    // Update nextPay forward
-    if (src.lastAutoLogDate) {
-      src.nextPay = advanceRecurringDate(src.lastAutoLogDate, src.cycle);
+    if (latestLoggedDate) {
+      src.lastAutoLogDate = latestLoggedDate;
+      src.nextPay = checkDate;
+      advancedAny = true;
     }
   });
   
@@ -8603,9 +8653,8 @@ function runAutoLog() {
   state.recurringExpenses.forEach(rec => {
     if (!rec.active || !rec.nextDue) return;
     
-    let checkDate = rec.lastAutoLogDate 
-      ? advanceRecurringDate(rec.lastAutoLogDate, rec.cycle)
-      : rec.nextDue;
+    let checkDate = rec.nextDue;
+    let latestLoggedDate = null;
     
     let iterations = 0;
     while (checkDate <= today && iterations < 100) {
@@ -8628,22 +8677,26 @@ function runAutoLog() {
           });
           created.push({ name: rec.name, amount: rec.amount, type: 'expense', date: checkDate });
         }
-        rec.lastAutoLogDate = checkDate;
+        latestLoggedDate = checkDate;
       }
       checkDate = advanceRecurringDate(checkDate, rec.cycle);
       iterations++;
     }
     
-    if (rec.lastAutoLogDate) {
-      rec.nextDue = advanceRecurringDate(rec.lastAutoLogDate, rec.cycle);
+    if (latestLoggedDate) {
+      rec.lastAutoLogDate = latestLoggedDate;
+      rec.nextDue = checkDate;
+      advancedAny = true;
     }
   });
   
-  if (created.length > 0) {
+  if (created.length > 0 || advancedAny) {
     saveData();
-    state.recentAutoLogged = created;
     renderAll();
-    renderAutoLogBanner();
+    if (created.length > 0) {
+      state.recentAutoLogged = created;
+      renderAutoLogBanner();
+    }
   }
   
   return created;
