@@ -14,57 +14,85 @@ function makeClock(todayISOValue) {
   };
 }
 
-function currentAdvanceRecurringDate(dateISO, cycle) {
-  const d = new Date(dateISO + 'T00:00:00');
+function isValidISODate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day;
+}
+
+function parseISODateLocal(value) {
+  if (!isValidISODate(value)) return null;
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function daysInMonth(year, monthIndex) {
+  return new Date(year, monthIndex + 1, 0).getDate();
+}
+
+function monthlyAnchorDay(item, dateKey) {
+  const anchorISO = isValidISODate(item.startDate) ? item.startDate : item[dateKey];
+  const anchor = parseISODateLocal(anchorISO);
+  return anchor ? anchor.getDate() : null;
+}
+
+function addMonthsClamped(date, months, anchorDay) {
+  const next = new Date(date.getFullYear(), date.getMonth() + months, 1);
+  const wantedDay = anchorDay || date.getDate();
+  next.setDate(Math.min(wantedDay, daysInMonth(next.getFullYear(), next.getMonth())));
+  return next;
+}
+
+function currentAdvanceRecurringDate(dateISO, cycle, anchorDay = null) {
+  const d = parseISODateLocal(dateISO);
+  if (!d) return null;
   if (cycle === 'weekly') d.setDate(d.getDate() + 7);
   else if (cycle === 'fortnightly') d.setDate(d.getDate() + 14);
   else if (cycle === 'monthly') {
-    const day = d.getDate();
+    const day = anchorDay || d.getDate();
     d.setDate(1);
     d.setMonth(d.getMonth() + 1);
     const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
     d.setDate(Math.min(day, lastDay));
   } else if (cycle === 'yearly') d.setFullYear(d.getFullYear() + 1);
+  else return null;
   return isoOf(d);
 }
 
 function currentComputeNextPayDate(src, todayISOValue) {
   if (!src.nextPay || src.cycle === 'irregular') return null;
-  const today = new Date(todayISOValue + 'T00:00:00');
-  let next = new Date(src.nextPay + 'T00:00:00');
+  const today = parseISODateLocal(todayISOValue);
+  let next = parseISODateLocal(src.nextPay);
+  if (!next) return null;
   if (next >= today) return src.nextPay;
 
-  const origDay = next.getDate();
+  const anchorDay = src.cycle === 'monthly' ? monthlyAnchorDay(src, 'nextPay') : null;
   if (src.cycle === 'weekly') {
     while (next < today) next.setDate(next.getDate() + 7);
   } else if (src.cycle === 'fortnightly') {
     while (next < today) next.setDate(next.getDate() + 14);
   } else if (src.cycle === 'monthly') {
     while (next < today) {
-      next.setDate(1);
-      next.setMonth(next.getMonth() + 1);
-      const last = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-      next.setDate(Math.min(origDay, last));
+      next = addMonthsClamped(next, 1, anchorDay);
     }
-  }
+  } else return null;
   return isoOf(next);
 }
 
 function currentComputeNextDueDate(rec, todayISOValue) {
   if (!rec.nextDue) return null;
-  const today = new Date(todayISOValue + 'T00:00:00');
-  let next = new Date(rec.nextDue + 'T00:00:00');
+  const today = parseISODateLocal(todayISOValue);
+  let next = parseISODateLocal(rec.nextDue);
+  if (!next) return null;
   if (next >= today) return rec.nextDue;
 
-  const origDay = next.getDate();
+  const anchorDay = rec.cycle === 'monthly' ? monthlyAnchorDay(rec, 'nextDue') : null;
   while (next < today) {
     if (rec.cycle === 'weekly') next.setDate(next.getDate() + 7);
     else if (rec.cycle === 'fortnightly') next.setDate(next.getDate() + 14);
     else if (rec.cycle === 'monthly') {
-      next.setDate(1);
-      next.setMonth(next.getMonth() + 1);
-      const last = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-      next.setDate(Math.min(origDay, last));
+      next = addMonthsClamped(next, 1, anchorDay);
     } else if (rec.cycle === 'yearly') next.setFullYear(next.getFullYear() + 1);
     else break;
   }
@@ -79,11 +107,13 @@ function currentRunAutoLog(state, todayISOValue) {
 
   state.incomeSources.forEach((src) => {
     if (!src.autoLog || src.cycle === 'irregular' || !src.nextPay) return;
+    if (!isValidISODate(src.nextPay)) return;
     let checkDate = src.nextPay;
     let latestLoggedDate = null;
+    const anchorDay = src.cycle === 'monthly' ? monthlyAnchorDay(src, 'nextPay') : null;
     let iterations = 0;
-    while (checkDate <= today && iterations < 100) {
-      const cd = new Date(checkDate + 'T00:00:00');
+    while (checkDate && checkDate <= today && iterations < 100) {
+      const cd = parseISODateLocal(checkDate);
       if (cd <= todayDate) {
         const dupId = 'auto_inc_' + src.id + '_' + checkDate;
         const exists = state.transactions.some((t) => t.autoLogId === dupId);
@@ -104,10 +134,16 @@ function currentRunAutoLog(state, todayISOValue) {
         }
         latestLoggedDate = checkDate;
       }
-      checkDate = currentAdvanceRecurringDate(checkDate, src.cycle);
+      checkDate = currentAdvanceRecurringDate(checkDate, src.cycle, anchorDay);
       iterations++;
     }
-    if (latestLoggedDate) {
+    if (checkDate && checkDate <= today) {
+      checkDate = currentComputeNextPayDate({ ...src, nextPay: checkDate }, todayISOValue) || checkDate;
+      while (checkDate && checkDate <= today) {
+        checkDate = currentAdvanceRecurringDate(checkDate, src.cycle, anchorDay);
+      }
+    }
+    if (latestLoggedDate || (checkDate && checkDate !== src.nextPay)) {
       src.lastAutoLogDate = latestLoggedDate;
       src.nextPay = checkDate;
       advancedAny = true;
@@ -116,11 +152,13 @@ function currentRunAutoLog(state, todayISOValue) {
 
   state.recurringExpenses.forEach((rec) => {
     if (!rec.active || !rec.nextDue) return;
+    if (!isValidISODate(rec.nextDue)) return;
     let checkDate = rec.nextDue;
     let latestLoggedDate = null;
+    const anchorDay = rec.cycle === 'monthly' ? monthlyAnchorDay(rec, 'nextDue') : null;
     let iterations = 0;
-    while (checkDate <= today && iterations < 100) {
-      const cd = new Date(checkDate + 'T00:00:00');
+    while (checkDate && checkDate <= today && iterations < 100) {
+      const cd = parseISODateLocal(checkDate);
       if (cd <= todayDate) {
         const dupId = 'auto_exp_' + rec.id + '_' + checkDate;
         const exists = state.transactions.some((t) => t.autoLogId === dupId);
@@ -141,10 +179,16 @@ function currentRunAutoLog(state, todayISOValue) {
         }
         latestLoggedDate = checkDate;
       }
-      checkDate = currentAdvanceRecurringDate(checkDate, rec.cycle);
+      checkDate = currentAdvanceRecurringDate(checkDate, rec.cycle, anchorDay);
       iterations++;
     }
-    if (latestLoggedDate) {
+    if (checkDate && checkDate <= today) {
+      checkDate = currentComputeNextDueDate({ ...rec, nextDue: checkDate }, todayISOValue) || checkDate;
+      while (checkDate && checkDate <= today) {
+        checkDate = currentAdvanceRecurringDate(checkDate, rec.cycle, anchorDay);
+      }
+    }
+    if (latestLoggedDate || (checkDate && checkDate !== rec.nextDue)) {
       rec.lastAutoLogDate = latestLoggedDate;
       rec.nextDue = checkDate;
       advancedAny = true;
@@ -168,7 +212,8 @@ function currentRefreshAutoLogSourceState(state, autoLogId, todayISOValue, delet
     const latest = dates[dates.length - 1] || null;
     src.lastAutoLogDate = latest;
     if (latest && src.cycle !== 'irregular') {
-      src.nextPay = currentComputeNextPayDate({ ...src, nextPay: currentAdvanceRecurringDate(latest, src.cycle) }, todayISOValue);
+      const anchorDay = src.cycle === 'monthly' ? monthlyAnchorDay(src, 'nextPay') : null;
+      src.nextPay = currentComputeNextPayDate({ ...src, nextPay: currentAdvanceRecurringDate(latest, src.cycle, anchorDay) }, todayISOValue);
     } else if (deletedDate) {
       src.nextPay = deletedDate;
     } else if (src.nextPay) {
@@ -188,7 +233,8 @@ function currentRefreshAutoLogSourceState(state, autoLogId, todayISOValue, delet
     const latest = dates[dates.length - 1] || null;
     rec.lastAutoLogDate = latest;
     if (latest) {
-      rec.nextDue = currentComputeNextDueDate({ ...rec, nextDue: currentAdvanceRecurringDate(latest, rec.cycle) }, todayISOValue);
+      const anchorDay = rec.cycle === 'monthly' ? monthlyAnchorDay(rec, 'nextDue') : null;
+      rec.nextDue = currentComputeNextDueDate({ ...rec, nextDue: currentAdvanceRecurringDate(latest, rec.cycle, anchorDay) }, todayISOValue);
     } else if (deletedDate) {
       rec.nextDue = deletedDate;
     } else if (rec.nextDue) {
@@ -207,17 +253,20 @@ function currentGetUpcomingPayEvents(state, todayISOValue, daysAhead = 30, daysB
 
   state.incomeSources.forEach((src) => {
     if (src.cycle === 'irregular' || !src.nextPay) return;
-    const srcStart = src.startDate ? new Date(src.startDate + 'T00:00:00') : null;
-    let next = new Date(currentComputeNextPayDate(src, todayISOValue) + 'T00:00:00');
+    const srcStart = parseISODateLocal(src.startDate);
+    const nextPayISO = currentComputeNextPayDate(src, todayISOValue);
+    let next = parseISODateLocal(nextPayISO);
+    if (!next) return;
+    const anchorDay = src.cycle === 'monthly' ? monthlyAnchorDay(src, 'nextPay') : null;
 
     if (daysBack > 0) {
       const cycleDays = src.cycle === 'weekly' ? 7 : src.cycle === 'fortnightly' ? 14 : src.cycle === 'monthly' ? 30 : 0;
       if (cycleDays > 0) {
         while (next > lookback) {
-          const prev = new Date(next);
+          let prev = new Date(next);
           if (src.cycle === 'weekly') prev.setDate(prev.getDate() - 7);
           else if (src.cycle === 'fortnightly') prev.setDate(prev.getDate() - 14);
-          else if (src.cycle === 'monthly') prev.setMonth(prev.getMonth() - 1);
+          else if (src.cycle === 'monthly') prev = addMonthsClamped(prev, -1, anchorDay);
           else break;
           if (prev < lookback) break;
           if (srcStart && prev < srcStart) break;
@@ -234,7 +283,7 @@ function currentGetUpcomingPayEvents(state, todayISOValue, daysAhead = 30, daysB
       }
       if (src.cycle === 'weekly') next.setDate(next.getDate() + 7);
       else if (src.cycle === 'fortnightly') next.setDate(next.getDate() + 14);
-      else if (src.cycle === 'monthly') next.setMonth(next.getMonth() + 1);
+      else if (src.cycle === 'monthly') next = addMonthsClamped(next, 1, anchorDay);
       else break;
     }
   });
@@ -315,6 +364,16 @@ test('Auto-log Tuesday weekly with duplicate existing transaction still advances
   equal(state.incomeSources[0].nextPay, '2026-06-09');
 });
 
+test('Monthly income auto-log recovers to 31st after February clamp', 'Medium', 'Auto-log', 'A Jan 31 monthly source should become Mar 31 after logging Feb 28', () => {
+  const state = {
+    transactions: [],
+    incomeSources: [{ id: 'inc_monthly', name: 'Monthly', amount: 1000, cycle: 'monthly', nextPay: '2026-02-28', startDate: '2026-01-31', autoLog: true }],
+    recurringExpenses: [],
+  };
+  currentRunAutoLog(state, '2026-02-28');
+  equal(state.incomeSources[0].nextPay, '2026-03-31');
+});
+
 test('Stale Monday lastAutoLogDate does not override Tuesday nextPay', 'High', 'Auto-log', 'History should not rewrite user-selected date', () => {
   const state = {
     transactions: [],
@@ -339,20 +398,40 @@ test('Monthly 8th remains 8th', 'High', 'Income schedule', 'Monthly normal day r
   equal(currentComputeNextPayDate({ nextPay: '2026-01-08', cycle: 'monthly' }, '2026-06-02'), '2026-06-08');
 });
 
-test('Monthly 31st should return to 31st after February but current logic does not', 'Medium', 'Monthly schedule', 'Expected March 31, current code gives February 28 or March 28 style drift', () => {
-  const afterFeb = currentAdvanceRecurringDate('2026-01-31', 'monthly');
-  const afterMar = currentAdvanceRecurringDate(afterFeb, 'monthly');
+test('Monthly 31st returns to 31st after February', 'Medium', 'Monthly schedule', 'February clamps, later months recover to the intended day', () => {
+  const afterFeb = currentAdvanceRecurringDate('2026-01-31', 'monthly', 31);
+  const afterMar = currentAdvanceRecurringDate(afterFeb, 'monthly', 31);
   equal([afterFeb, afterMar], ['2026-02-28', '2026-03-31']);
+});
+
+test('Monthly compute uses startDate to recover from a clamped February date', 'Medium', 'Monthly schedule', 'Saved Feb 28 with Jan 31 start should compute Mar 31', () => {
+  equal(currentComputeNextPayDate({ nextPay: '2026-02-28', startDate: '2026-01-31', cycle: 'monthly' }, '2026-03-01'), '2026-03-31');
+});
+
+test('Monthly 30th clamps in February then returns to 30th', 'Medium', 'Monthly schedule', '30th schedules should not become 28th forever', () => {
+  const afterFeb = currentAdvanceRecurringDate('2026-01-30', 'monthly', 30);
+  const afterMar = currentAdvanceRecurringDate(afterFeb, 'monthly', 30);
+  equal([afterFeb, afterMar], ['2026-02-28', '2026-03-30']);
+});
+
+test('Monthly 29th handles leap year February', 'Medium', 'Monthly schedule', 'Leap-year February should support the 29th', () => {
+  const afterFeb = currentAdvanceRecurringDate('2024-01-29', 'monthly', 29);
+  const afterMar = currentAdvanceRecurringDate(afterFeb, 'monthly', 29);
+  equal([afterFeb, afterMar], ['2024-02-29', '2024-03-29']);
 });
 
 test('Recurring weekly expense keeps Wednesday', 'High', 'Recurring expenses', 'Wednesday recurring bill remains Wednesday', () => {
   equal(currentComputeNextDueDate({ nextDue: '2026-06-03', cycle: 'weekly' }, '2026-06-16'), '2026-06-17');
 });
 
-test('Recurring monthly 31st should return to 31st after February but current logic does not', 'Medium', 'Recurring expenses', 'Monthly bill on 31st should not become 28th forever', () => {
-  const afterFeb = currentAdvanceRecurringDate('2026-01-31', 'monthly');
-  const afterMar = currentAdvanceRecurringDate(afterFeb, 'monthly');
+test('Recurring monthly 31st returns to 31st after February', 'Medium', 'Recurring expenses', 'Monthly bill on 31st should not become 28th forever', () => {
+  const afterFeb = currentAdvanceRecurringDate('2026-01-31', 'monthly', 31);
+  const afterMar = currentAdvanceRecurringDate(afterFeb, 'monthly', 31);
   equal([afterFeb, afterMar], ['2026-02-28', '2026-03-31']);
+});
+
+test('Recurring monthly due date uses startDate to recover from February clamp', 'Medium', 'Recurring expenses', 'Saved Feb 28 with Jan 31 start should compute Mar 31', () => {
+  equal(currentComputeNextDueDate({ nextDue: '2026-02-28', startDate: '2026-01-31', cycle: 'monthly' }, '2026-03-01'), '2026-03-31');
 });
 
 test('Deleting the only auto-logged income leaves nextPay advanced instead of restoring deleted date', 'High', 'Delete auto-log', 'Deleting today auto-log should let source be due today again or clearly ask user', () => {
@@ -383,6 +462,30 @@ test('Deleting the only auto-logged expense leaves nextDue advanced instead of r
   equal({ nextDue: state.recurringExpenses[0].nextDue, lastAutoLogDate: state.recurringExpenses[0].lastAutoLogDate }, { nextDue: '2026-06-02', lastAutoLogDate: null });
 });
 
+test('Deleting latest monthly income auto-log keeps 31st anchor from older log', 'Medium', 'Delete auto-log', 'After deleting Mar 31, remaining Feb 28 log should set next pay back to Mar 31', () => {
+  const state = {
+    transactions: [
+      { id: 'tx_1', type: 'income', date: '2026-02-28', autoLogId: 'auto_inc_inc_monthly_2026-02-28' },
+    ],
+    incomeSources: [{ id: 'inc_monthly', name: 'Monthly', amount: 1000, cycle: 'monthly', nextPay: '2026-04-30', startDate: '2026-01-31', autoLog: true, lastAutoLogDate: '2026-03-31' }],
+    recurringExpenses: [],
+  };
+  currentRefreshAutoLogSourceState(state, 'auto_inc_inc_monthly_2026-03-31', '2026-03-31', '2026-03-31');
+  equal({ nextPay: state.incomeSources[0].nextPay, lastAutoLogDate: state.incomeSources[0].lastAutoLogDate }, { nextPay: '2026-03-31', lastAutoLogDate: '2026-02-28' });
+});
+
+test('Deleting latest monthly expense auto-log keeps 31st anchor from older log', 'Medium', 'Delete auto-log', 'After deleting Mar 31, remaining Feb 28 log should set next due back to Mar 31', () => {
+  const state = {
+    transactions: [
+      { id: 'tx_1', type: 'expense', date: '2026-02-28', autoLogId: 'auto_exp_rec_monthly_2026-02-28' },
+    ],
+    incomeSources: [],
+    recurringExpenses: [{ id: 'rec_monthly', name: 'Monthly', amount: 100, category: 'home', cycle: 'monthly', nextDue: '2026-04-30', startDate: '2026-01-31', active: true, lastAutoLogDate: '2026-03-31' }],
+  };
+  currentRefreshAutoLogSourceState(state, 'auto_exp_rec_monthly_2026-03-31', '2026-03-31', '2026-03-31');
+  equal({ nextDue: state.recurringExpenses[0].nextDue, lastAutoLogDate: state.recurringExpenses[0].lastAutoLogDate }, { nextDue: '2026-03-31', lastAutoLogDate: '2026-02-28' });
+});
+
 test('Upcoming monthly pay events from 31st should not skip or drift', 'Medium', 'Forecast', 'Forecast should emit Jan31, Feb28, Mar31 style dates', () => {
   const state = {
     transactions: [],
@@ -393,9 +496,45 @@ test('Upcoming monthly pay events from 31st should not skip or drift', 'Medium',
   equal(dates.slice(0, 3), ['2026-01-31', '2026-02-28', '2026-03-31']);
 });
 
+test('Forecast skips invalid income source dates', 'Medium', 'Forecast', 'Bad saved income dates should not create fake forecast events', () => {
+  const state = {
+    transactions: [],
+    incomeSources: [{ id: 'inc_bad', name: 'Bad', amount: 100, cycle: 'weekly', nextPay: 'bad-date', startDate: 'bad-date' }],
+    recurringExpenses: [],
+  };
+  equal(currentGetUpcomingPayEvents(state, '2026-06-02', 30), []);
+});
+
 test('Invalid date strings should not silently become NaN output', 'Medium', 'Data safety', 'Bad saved dates should be rejected or ignored safely', () => {
   const value = currentComputeNextPayDate({ nextPay: 'bad-date', cycle: 'weekly' }, '2026-06-02');
   assert(value === null || /^\d{4}-\d{2}-\d{2}$/.test(value), `Unsafe output: ${value}`);
+});
+
+test('Invalid recurring expense date should not become NaN output', 'Medium', 'Data safety', 'Bad saved recurring dates should be ignored safely', () => {
+  const value = currentComputeNextDueDate({ nextDue: '2026-02-31', cycle: 'monthly' }, '2026-06-02');
+  equal(value, null);
+});
+
+test('Auto-log ignores invalid income dates without creating transactions', 'Medium', 'Data safety', 'Bad saved income dates should not create bad auto-logs', () => {
+  const state = {
+    transactions: [],
+    incomeSources: [{ id: 'inc_bad', name: 'Bad', amount: 100, cycle: 'weekly', nextPay: 'bad-date', autoLog: true }],
+    recurringExpenses: [],
+  };
+  currentRunAutoLog(state, '2026-06-02');
+  equal(state.transactions, []);
+  equal(state.incomeSources[0].nextPay, 'bad-date');
+});
+
+test('Auto-log ignores invalid recurring expense dates without creating transactions', 'Medium', 'Data safety', 'Bad saved bill dates should not create bad auto-logs', () => {
+  const state = {
+    transactions: [],
+    incomeSources: [],
+    recurringExpenses: [{ id: 'rec_bad', name: 'Bad', amount: 100, category: 'home', cycle: 'weekly', nextDue: '2026-02-31', active: true }],
+  };
+  currentRunAutoLog(state, '2026-06-02');
+  equal(state.transactions, []);
+  equal(state.recurringExpenses[0].nextDue, '2026-02-31');
 });
 
 test('No date-only UTC conversion exists in test harness', 'High', 'Timezone', 'Local date strings are not sent through toISOString', () => {
@@ -421,6 +560,16 @@ test('Recurring weekly expense due today advances to next same weekday', 'High',
   };
   currentRunAutoLog(state, '2026-06-03');
   equal(state.recurringExpenses[0].nextDue, '2026-06-10');
+});
+
+test('Monthly expense auto-log recovers to 31st after February clamp', 'Medium', 'Auto-log', 'A Jan 31 monthly bill should become Mar 31 after logging Feb 28', () => {
+  const state = {
+    transactions: [],
+    incomeSources: [],
+    recurringExpenses: [{ id: 'rec_monthly', name: 'Monthly', amount: 100, category: 'home', cycle: 'monthly', nextDue: '2026-02-28', startDate: '2026-01-31', active: true }],
+  };
+  currentRunAutoLog(state, '2026-02-28');
+  equal(state.recurringExpenses[0].nextDue, '2026-03-31');
 });
 
 test('Upcoming weekly pay events remain on Tuesday', 'High', 'Forecast', 'Forecast should list Tuesday dates for Tuesday source', () => {
@@ -475,7 +624,7 @@ test('Auto-log cap leaves very old weekly income still in the past', 'Medium', '
     recurringExpenses: [],
   };
   currentRunAutoLog(state, '2026-06-02');
-  assert(state.incomeSources[0].nextPay >= '2026-06-02', `Still in past: ${state.incomeSources[0].nextPay}`);
+  assert(state.incomeSources[0].nextPay > '2026-06-02', `Still due today or in past: ${state.incomeSources[0].nextPay}`);
 });
 
 test('Auto-log cap leaves very old weekly expense still in the past', 'Medium', 'Auto-log', 'Long gaps should catch up or clearly stop safely', () => {
@@ -485,7 +634,7 @@ test('Auto-log cap leaves very old weekly expense still in the past', 'Medium', 
     recurringExpenses: [{ id: 'rec_old', name: 'Old', amount: 100, category: 'home', cycle: 'weekly', nextDue: '2020-01-06', active: true, lastAutoLogDate: null }],
   };
   currentRunAutoLog(state, '2026-06-02');
-  assert(state.recurringExpenses[0].nextDue >= '2026-06-02', `Still in past: ${state.recurringExpenses[0].nextDue}`);
+  assert(state.recurringExpenses[0].nextDue > '2026-06-02', `Still due today or in past: ${state.recurringExpenses[0].nextDue}`);
 });
 
 test('Visible version labels match APP_VERSION', 'Low', 'Versioning', 'Tester should see the same version the code uses', () => {
