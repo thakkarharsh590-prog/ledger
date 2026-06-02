@@ -4,13 +4,85 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.6.1
-  Last edited:  2026-05-21
+  Version:      2.8.3
+  Last edited:  2026-05-28
   Storage:      localStorage (device-local, never sent to cloud)
-  Schema ver:   7
-  
+  Schema ver:   9
+
   NAMED: Ledger Compass
-  
+
+  v2.8.3 — AUTO-LOG DELETE REPAIR (schema v9 unchanged):
+  - Deleting an auto-logged income now restores the linked source to the deleted pay date when no later auto-log remains
+  - Deleting an auto-logged recurring expense now restores the linked bill to the deleted due date when no later auto-log remains
+  - Visible version labels updated to match APP_VERSION
+
+  v2.8.2 — TIMEZONE + DEDUP FIX (schema v9 unchanged):
+  - isoOf() rewritten to use local date parts (getFullYear/getMonth/getDate) — eliminates UTC shift in UTC+10/+11
+  - All toISOString().slice(0,10) calls replaced with isoOf() — 20 sites fixed across filters, charts, forecast, simulation, stats
+  - getUpcomingPayEvents: events now carry srcId field; date uses isoOf (local)
+  - computeWeeklyPlan week 0: per-source dedup — sources already paid this week excluded from futureScheduled (by autoLogId for auto-logged, by name match for manual)
+  - openNameModal: fixed ReferenceError — calls classList.add('open') directly instead of non-existent openModal()
+  - Migration v7→v8: todayStr now uses todayISO() instead of toISOString()
+
+  v2.8.1 — UX RESTRUCTURE (schema v9):
+  - Bottom nav: Home, Compass, Insights, Loans, Profile (Activity removed from nav)
+  - Profile tab replaces Settings: avatar + name + Income Sources + Recurring Expenses + Savings + Settings
+  - Current Balance card on Home tappable → Activity view with back button + search
+  - Topbar: gear + search icons removed; theme toggle only
+  - userName field added to schema (default empty string, max 50 chars)
+  - Dead code removed: showSnapshotsModal, showStorageInfo, updateStorageInfo, updateSnapshotsCount
+
+  v2.8.0 — STARTDATE FIX (schema v8):
+  - Income sources and recurring expenses now carry a startDate field
+  - New sources: startDate auto-set from nextPay / nextDue — no UI field required
+  - Migration: existing auto-logged sources anchored to earliest transaction; others anchored to next scheduled date
+  - computeWeeklyPlan (week 0): actual logged transactions for past days + scheduled events for remaining days
+  - computeWeeklyPlan (weeks 1-3): scheduled events only, gated by source.startDate
+  - getUpcomingPayEvents: walkback stops at startDate — no phantom income for not-yet-started sources
+  - Income cards show "First pay in X days" and "Starts YYYY-MM-DD" for future sources
+  - Recurring expense cards show "Starts YYYY-MM-DD" for future sources
+
+  v2.7.2 — 50/30/20 MIRROR REMOVED:
+  - Removed 50/30/20 Mirror card from Compass tab
+  - Removed renderRatios() function and all associated CSS/variables
+
+  v2.7.1 — WEEKLY PLAN LOGIC FIX:
+  - Set-aside pool now subtracts spending allowance before computing set-aside
+  - Set-aside capped at 60% of pool (guarantees 40% flows to savings)
+  - Savings displayed as a numbered plan line (income − bills − spending − set-aside)
+  - Summary chips now show Spending and Save up to rows
+  - Balance buffer note references biggest upcoming bill
+
+  v2.7.0 — PREMIUM THEME REFRESH:
+  - New dark palette: #0A0A0F bg, #15151C cards, #C9FF3D accent
+  - New light palette: warm cream/white, olive-lime accent (#8FB820)
+  - Inter font body (replaces Geist); Fraunces for brand + hero balance; Geist Mono for currency
+  - 15 semantic alpha-tint CSS variables (--accent-subtle, --income-border, etc.)
+  - font-variant-numeric: tabular-nums on all monetary display elements
+  - Theme toggle: Dark / Light / System (follows OS) with live prefers-color-scheme listener
+  - localStorage key migrated from ledger_theme → theme_preference (old key read as fallback)
+
+  v2.6.4 — LIGHT/DARK THEME TOGGLE:
+  - Sun/moon toggle button in topbar (next to search)
+  - Full premium light theme: warm cream backgrounds, charcoal text
+  - Darker olive-lime accent (#8ab300) for readability on light
+  - All CSS custom properties override via [data-theme="light"]
+  - Hero card: soft green-tinted linen gradient in light mode
+  - Preference persisted in localStorage (theme_preference key; reads ledger_theme as fallback)
+
+  v2.6.3 — PREMIUM UI POLISH:
+  - Hero card: 52px balance, deeper layered gradient, dual glow orbs, inset highlight
+  - Bottom nav: lime pill indicator on active, clean SVG icons (no more unicode)
+  - QuickAdd: gradient-tinted income/expense backgrounds, heavier weight
+  - Transaction rows: 16px radius, box-shadow depth, larger icon container
+  - Cards/charts: subtle box-shadows throughout
+  - Global: border token 0.06→0.08, stronger ambient body gradient
+
+  v2.6.3 — WELCOME TOUR FIX:
+  - Rebuilt tour card: white background, dark text, lime dot-progress bar
+  - Fixed broken spotlight on Activity nav (wrong data-page selector)
+  - Lime ring pulse on spotlight highlight
+
   v2.6.1 — WELCOME TOUR:
   - First-launch guided tour with spotlight overlay
   - 7 steps covering: balance, nav, activity, compass, progress,
@@ -78,34 +150,180 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   
   :root {
-    --bg: #0a0a0f;
-    --bg-elevated: #14141c;
-    --bg-card: #1a1a24;
-    --bg-card-hover: #20202c;
-    --border: rgba(255,255,255,0.06);
-    --border-strong: rgba(255,255,255,0.12);
-    --text: #f5f5f7;
-    --text-dim: #8a8a96;
-    --text-muted: #5a5a66;
-    --accent: #c9ff3d;
-    --accent-dim: #9ec92e;
-    --income: #4ade80;
-    --expense: #ff6b6b;
-    --warning: #fbbf24;
-    --shadow: 0 8px 32px rgba(0,0,0,0.4);
+    /* Backgrounds */
+    --bg: #0A0A0F;
+    --bg-elevated: #1C1C26;
+    --bg-card: #15151C;
+    --bg-card-hover: #1E1E28;
+
+    /* Borders */
+    --border: #26262E;
+    --border-strong: #3A3A45;
+
+    /* Text */
+    --text: #E8E8ED;
+    --text-dim: #9A9AA5;
+    --text-muted: #5A5A65;
+
+    /* Accent */
+    --accent: #C9FF3D;
+    --accent-dim: #9EC92E;
+    --accent-on-accent: #0A0A0F;
+
+    /* Semantic colours */
+    --income: #4ADE80;
+    --expense: #EF4444;
+    --warning: #FBBF24;
+
+    /* Alpha tints */
+    --accent-subtle: rgba(201,255,61,0.08);
+    --accent-border: rgba(201,255,61,0.25);
+    --income-subtle: rgba(74,222,128,0.08);
+    --income-border: rgba(74,222,128,0.25);
+    --expense-subtle: rgba(239,68,68,0.08);
+    --expense-border: rgba(239,68,68,0.25);
+    --warning-subtle: rgba(251,191,36,0.08);
+    --warning-border: rgba(251,191,36,0.25);
+    --surface-overlay: rgba(255,255,255,0.04);
+
+    /* Elevation */
+    --shadow: 0 8px 32px rgba(0,0,0,0.5);
+    --shadow-card: none;
+
+    /* Safe area */
     --safe-top: env(safe-area-inset-top, 0);
     --safe-bottom: env(safe-area-inset-bottom, 0);
   }
 
+  /* ─── LIGHT THEME ─────────────────────────────────── */
+  [data-theme="light"] {
+    /* Backgrounds */
+    --bg: #FAFAF7;
+    --bg-elevated: #F0F0EB;
+    --bg-card: #FFFFFF;
+    --bg-card-hover: #F5F5F0;
+
+    /* Borders */
+    --border: #E8E8E0;
+    --border-strong: #C8C8C0;
+
+    /* Text */
+    --text: #0A0A0F;
+    --text-dim: #6B6B73;
+    --text-muted: #9A9AA5;
+
+    /* Accent */
+    --accent: #8FB820;
+    --accent-dim: #6E8F18;
+    --accent-on-accent: #0A0A0F;
+
+    /* Semantic colours */
+    --income: #16A34A;
+    --expense: #DC2626;
+    --warning: #D97706;
+
+    /* Alpha tints */
+    --accent-subtle: rgba(143,184,32,0.08);
+    --accent-border: rgba(143,184,32,0.25);
+    --income-subtle: rgba(22,163,74,0.08);
+    --income-border: rgba(22,163,74,0.25);
+    --expense-subtle: rgba(220,38,38,0.08);
+    --expense-border: rgba(220,38,38,0.25);
+    --warning-subtle: rgba(217,119,6,0.08);
+    --warning-border: rgba(217,119,6,0.25);
+    --surface-overlay: rgba(0,0,0,0.03);
+
+    /* Elevation */
+    --shadow: 0 8px 32px rgba(0,0,0,0.15);
+    --shadow-card: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  }
+  /* ─── LIGHT THEME: COMPONENT OVERRIDES ─────────────────── */
+
+  [data-theme="light"] body {
+    background-image:
+      radial-gradient(ellipse 100% 45% at top, var(--accent-subtle), transparent 60%),
+      radial-gradient(ellipse 60% 40% at bottom right, var(--income-subtle), transparent 50%);
+  }
+  [data-theme="light"] .topbar {
+    background: rgba(250,250,247,0.92);
+  }
+  [data-theme="light"] .hero {
+    background: linear-gradient(160deg, #EEF3E2 0%, #E6EDD2 55%, #E0E9CA 100%);
+    box-shadow: var(--shadow-card);
+  }
+  [data-theme="light"] .hero::before {
+    background: radial-gradient(circle, var(--accent-subtle), transparent 65%);
+  }
+  [data-theme="light"] .hero::after {
+    background: radial-gradient(circle, var(--income-subtle), transparent 65%);
+  }
+  [data-theme="light"] .hero-stat {
+    background: var(--surface-overlay);
+    border-color: rgba(0,0,0,0.06);
+  }
+  [data-theme="light"] .bottom-nav {
+    background: rgba(250,250,247,0.95);
+  }
+  [data-theme="light"] .loans-summary {
+    background: linear-gradient(135deg, #F0F0E8, #E8E8E0);
+  }
+  [data-theme="light"] .loans-summary-stat {
+    background: var(--surface-overlay);
+  }
+  [data-theme="light"] .cat-bar-wrap,
+  [data-theme="light"] .budget-bar-wrap,
+  [data-theme="light"] .loan-progress-wrap {
+    background: rgba(0,0,0,0.08);
+  }
+  [data-theme="light"] .quickadd .add-income {
+    background: linear-gradient(135deg, var(--income-subtle) 0%, rgba(22,163,74,0.03) 100%);
+    border-color: var(--income-border);
+  }
+  [data-theme="light"] .quickadd .add-expense {
+    background: linear-gradient(135deg, var(--expense-subtle) 0%, rgba(220,38,38,0.03) 100%);
+    border-color: var(--expense-border);
+  }
+  [data-theme="light"] .quickadd .add-income .icon { background: var(--income-subtle); }
+  [data-theme="light"] .quickadd .add-expense .icon { background: var(--expense-subtle); }
+  [data-theme="light"] .verdict-card.green {
+    background: linear-gradient(135deg, var(--income-subtle), rgba(22,163,74,0.02));
+    border-color: var(--income-border);
+  }
+  [data-theme="light"] .verdict-card.yellow {
+    background: linear-gradient(135deg, var(--warning-subtle), rgba(217,119,6,0.02));
+    border-color: var(--warning-border);
+  }
+  [data-theme="light"] .verdict-card.red {
+    background: linear-gradient(135deg, var(--expense-subtle), rgba(220,38,38,0.02));
+    border-color: var(--expense-border);
+  }
+  [data-theme="light"] .tx,
+  [data-theme="light"] .stat-card,
+  [data-theme="light"] .chart-wrap,
+  [data-theme="light"] .budget-card,
+  [data-theme="light"] .loan-card,
+  [data-theme="light"] .compass-card {
+    box-shadow: var(--shadow-card);
+  }
+  [data-theme="light"] .install-banner,
+  [data-theme="light"] .auto-log-banner {
+    background: linear-gradient(135deg, var(--accent-subtle), var(--income-subtle));
+    border-color: var(--accent-border);
+  }
+  [data-theme="light"] .insight-item  { background: var(--surface-overlay); }
+  [data-theme="light"] .confidence    { background: var(--surface-overlay); }
+
+  /* ─────────────────────────────────────────────────────────── */
+
   html, body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'Geist', -apple-system, system-ui, sans-serif;
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
     overscroll-behavior-y: contain;
@@ -116,9 +334,9 @@
     min-height: 100dvh;
     padding-top: var(--safe-top);
     padding-bottom: calc(80px + var(--safe-bottom));
-    background-image: 
-      radial-gradient(ellipse at top, rgba(201,255,61,0.04), transparent 60%),
-      radial-gradient(ellipse at bottom right, rgba(74,222,128,0.03), transparent 50%);
+    background-image:
+      radial-gradient(ellipse 100% 45% at top, var(--accent-subtle), transparent 60%),
+      radial-gradient(ellipse 60% 40% at bottom right, var(--income-subtle), transparent 50%);
   }
 
   /* Top Bar */
@@ -156,8 +374,8 @@
   .version-tag {
     font-size: 10px;
     color: var(--accent);
-    background: rgba(201,255,61,0.1);
-    border: 1px solid rgba(201,255,61,0.3);
+    background: var(--accent-subtle);
+    border: 1px solid var(--accent-border);
     padding: 2px 6px;
     border-radius: 6px;
     font-family: 'Geist Mono', monospace;
@@ -190,77 +408,97 @@
   /* Balance Hero */
   .hero {
     margin: 8px 0 24px;
-    padding: 28px 24px;
-    background: linear-gradient(135deg, #1c1c28 0%, #14141c 100%);
+    padding: 28px 24px 24px;
+    background: linear-gradient(160deg, #1A1A28 0%, #13131F 55%, #0F0F1A 100%);
     border: 1px solid var(--border);
     border-radius: 24px;
     position: relative;
     overflow: hidden;
+    box-shadow: var(--shadow-card);
   }
   .hero::before {
     content: '';
     position: absolute;
-    top: -50%; right: -30%;
-    width: 300px; height: 300px;
-    background: radial-gradient(circle, rgba(201,255,61,0.12), transparent 70%);
+    top: -40%; right: -20%;
+    width: 320px; height: 320px;
+    background: radial-gradient(circle, var(--accent-subtle), transparent 65%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -60%; left: -20%;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, var(--income-subtle), transparent 65%);
     pointer-events: none;
   }
   .hero-label {
-    font-size: 11px;
+    font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: var(--text-dim);
+    letter-spacing: 0.18em;
+    color: var(--text-muted);
     margin-bottom: 10px;
+    font-family: 'Geist Mono', monospace;
   }
   .hero-amount {
     font-family: 'Fraunces', serif;
-    font-size: 44px;
-    font-weight: 500;
+    font-size: 52px;
+    font-weight: 600;
     letter-spacing: -0.03em;
     line-height: 1;
     margin-bottom: 6px;
   }
   .hero-currency {
-    font-size: 18px;
+    font-size: 22px;
     color: var(--text-dim);
     font-weight: 400;
+    vertical-align: baseline;
   }
   .hero-sub {
-    color: var(--text-dim);
-    font-size: 13px;
+    color: var(--text-muted);
+    font-size: 12px;
     margin-top: 4px;
+    letter-spacing: 0.03em;
   }
   .hero-row {
     margin-top: 22px;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 12px;
     position: relative;
   }
   .hero-stat {
     padding: 14px;
-    background: rgba(255,255,255,0.03);
+    background: var(--surface-overlay);
     border-radius: 14px;
     border: 1px solid var(--border);
   }
   .hero-stat-label {
-    font-size: 11px;
-    color: var(--text-dim);
+    font-size: 10px;
+    color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 6px;
+    letter-spacing: 0.12em;
+    margin-bottom: 7px;
     display: flex;
     align-items: center;
     gap: 6px;
+    font-family: 'Geist Mono', monospace;
   }
-  .hero-stat-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .hero-stat-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .hero-stat-value {
     font-family: 'Geist Mono', monospace;
-    font-size: 18px;
-    font-weight: 500;
+    font-size: 17px;
+    font-weight: 600;
   }
   .income-text { color: var(--income); }
   .expense-text { color: var(--expense); }
+
+  /* Tabular nums — all monetary display classes */
+  .hero-amount, .hero-stat-value, .tx-amount, .cat-amount,
+  .budget-amount, .loan-stat-val, .loans-summary-stat-val,
+  .income-src-amount, .rec-exp-amount, .payment-amt {
+    font-variant-numeric: tabular-nums;
+  }
 
   /* Section Title */
   .section-title {
@@ -271,14 +509,16 @@
   }
   .section-title h2 {
     font-family: 'Fraunces', serif;
-    font-size: 20px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
   }
   .section-title .link {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--accent);
     cursor: pointer;
+    font-weight: 500;
+    letter-spacing: 0.01em;
   }
 
   /* Quick Add */
@@ -289,34 +529,42 @@
     margin-bottom: 24px;
   }
   .quickadd button {
-    padding: 16px;
+    padding: 18px 16px;
     border-radius: 16px;
     border: 1px solid var(--border);
     background: var(--bg-card);
     color: var(--text);
     font-family: inherit;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    transition: all .15s;
+    transition: all .18s cubic-bezier(.2,.9,.3,1);
   }
-  .quickadd button:active { transform: scale(0.97); }
-  .quickadd .add-income { border-color: rgba(74,222,128,0.3); color: var(--income); }
-  .quickadd .add-expense { border-color: rgba(255,107,107,0.3); color: var(--expense); }
+  .quickadd button:active { transform: scale(0.96); }
+  .quickadd .add-income {
+    background: linear-gradient(135deg, var(--income-subtle) 0%, rgba(74,222,128,0.03) 100%);
+    border-color: var(--income-border);
+    color: var(--income);
+  }
+  .quickadd .add-expense {
+    background: linear-gradient(135deg, var(--expense-subtle) 0%, rgba(239,68,68,0.03) 100%);
+    border-color: var(--expense-border);
+    color: var(--expense);
+  }
   .quickadd .icon {
-    width: 22px; height: 22px; border-radius: 50%;
+    width: 24px; height: 24px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 14px; font-weight: 600;
+    font-size: 15px; font-weight: 700;
   }
-  .add-income .icon { background: rgba(74,222,128,0.15); }
-  .add-expense .icon { background: rgba(255,107,107,0.15); }
+  .add-income .icon { background: var(--income-subtle); }
+  .add-expense .icon { background: var(--expense-subtle); }
 
   /* Transactions */
-  .tx-list { display: flex; flex-direction: column; gap: 4px; }
+  .tx-list { display: flex; flex-direction: column; gap: 6px; }
   .tx-group-date {
     font-size: 11px;
     text-transform: uppercase;
@@ -331,16 +579,17 @@
     padding: 14px;
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: 16px;
     cursor: pointer;
     transition: all .15s;
+    box-shadow: var(--shadow-card);
   }
-  .tx:active { background: var(--bg-card-hover); transform: scale(0.99); }
+  .tx:active { background: var(--bg-card-hover); transform: scale(0.985); }
   .tx-icon {
-    width: 40px; height: 40px;
-    border-radius: 12px;
+    width: 42px; height: 42px;
+    border-radius: 13px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
+    font-size: 19px;
     flex-shrink: 0;
   }
   .tx-main { flex: 1; min-width: 0; }
@@ -382,6 +631,7 @@
     border: 1px solid var(--border);
     border-radius: 16px;
     margin-bottom: 12px;
+    box-shadow: var(--shadow-card);
   }
   .stat-card-title {
     font-size: 12px;
@@ -410,6 +660,7 @@
     border-radius: 16px;
     padding: 18px;
     margin-bottom: 20px;
+    box-shadow: var(--shadow-card);
   }
   .chart-title {
     font-family: 'Fraunces', serif;
@@ -447,8 +698,8 @@
     min-height: 2px;
     transition: all .3s ease;
   }
-  .bar.in { background: linear-gradient(180deg, var(--income), rgba(74,222,128,0.4)); }
-  .bar.out { background: linear-gradient(180deg, var(--expense), rgba(255,107,107,0.4)); }
+  .bar.in  { background: linear-gradient(180deg, var(--income), var(--income-subtle)); }
+  .bar.out { background: linear-gradient(180deg, var(--expense), var(--expense-subtle)); }
   .bar-label {
     font-size: 10px;
     color: var(--text-dim);
@@ -475,7 +726,7 @@
   .cat-bar-wrap {
     width: 100%;
     height: 4px;
-    background: rgba(255,255,255,0.06);
+    background: var(--surface-overlay);
     border-radius: 2px;
     margin-top: 6px;
     overflow: hidden;
@@ -526,7 +777,7 @@
   .budget-bar-wrap {
     width: 100%;
     height: 8px;
-    background: rgba(255,255,255,0.06);
+    background: var(--surface-overlay);
     border-radius: 4px;
     overflow: hidden;
   }
@@ -545,7 +796,7 @@
 
   /* Loans */
   .loans-summary {
-    background: linear-gradient(135deg, #1c1c28, #14141c);
+    background: linear-gradient(135deg, var(--bg-elevated), var(--bg-card));
     border: 1px solid var(--border);
     border-radius: 20px;
     padding: 20px;
@@ -558,7 +809,7 @@
     position: absolute;
     top: -40%; right: -20%;
     width: 200px; height: 200px;
-    background: radial-gradient(circle, rgba(251,191,36,0.1), transparent 70%);
+    background: radial-gradient(circle, var(--warning-subtle), transparent 70%);
   }
   .loans-summary-label {
     font-size: 11px;
@@ -583,7 +834,7 @@
   }
   .loans-summary-stat {
     padding: 10px 12px;
-    background: rgba(255,255,255,0.03);
+    background: var(--surface-overlay);
     border-radius: 10px;
     border: 1px solid var(--border);
   }
@@ -609,7 +860,7 @@
     transition: all .15s;
   }
   .loan-card:active { transform: scale(0.99); background: var(--bg-card-hover); }
-  .loan-card.paid-off { border-color: rgba(74,222,128,0.3); }
+  .loan-card.paid-off { border-color: var(--income-border); }
   .loan-head {
     display: flex;
     justify-content: space-between;
@@ -630,7 +881,7 @@
     font-size: 10px;
     padding: 3px 8px;
     border-radius: 100px;
-    background: rgba(74,222,128,0.15);
+    background: var(--income-subtle);
     color: var(--income);
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -638,13 +889,13 @@
     white-space: nowrap;
   }
   .loan-badge.active-loan {
-    background: rgba(251,191,36,0.15);
+    background: var(--warning-subtle);
     color: var(--warning);
   }
   .loan-progress-wrap {
     width: 100%;
     height: 10px;
-    background: rgba(255,255,255,0.06);
+    background: var(--surface-overlay);
     border-radius: 5px;
     overflow: hidden;
     margin-bottom: 10px;
@@ -843,7 +1094,7 @@
   .cat-pick:active { transform: scale(0.95); }
   .cat-pick.selected {
     border-color: var(--accent);
-    background: rgba(201,255,61,0.08);
+    background: var(--accent-subtle);
   }
   .cat-pick .emoji { font-size: 20px; }
   .cat-pick .name { font-size: 10px; color: var(--text-dim); text-align: center; line-height: 1.1; }
@@ -860,7 +1111,7 @@
     width: 100%;
     padding: 16px;
     background: var(--accent);
-    color: #0a0a0f;
+    color: var(--accent-on-accent);
     border: none;
     border-radius: 14px;
     font-family: inherit;
@@ -886,9 +1137,9 @@
   .btn-danger {
     width: 100%;
     padding: 14px;
-    background: rgba(255,107,107,0.1);
+    background: var(--expense-subtle);
     color: var(--expense);
-    border: 1px solid rgba(255,107,107,0.3);
+    border: 1px solid var(--expense-border);
     border-radius: 14px;
     font-family: inherit;
     font-size: 14px;
@@ -960,7 +1211,7 @@
     transition: all .2s cubic-bezier(.2,.9,.3,1);
   }
   .switch.on { background: var(--accent); border-color: var(--accent); }
-  .switch.on::after { transform: translateX(18px); background: #0a0a0f; }
+  .switch.on::after { transform: translateX(18px); background: var(--accent-on-accent); }
 
   /* Bottom Nav */
   .bottom-nav {
@@ -969,9 +1220,9 @@
     left: 0;
     right: 0;
     z-index: 50;
-    background: rgba(20,20,28,0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: rgba(12,12,18,0.94);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border-top: 1px solid var(--border);
     padding: 10px 8px;
     padding-bottom: calc(10px + var(--safe-bottom));
@@ -983,19 +1234,33 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    gap: 4px;
     padding: 6px 2px;
     color: var(--text-muted);
     cursor: pointer;
     font-size: 10px;
     font-weight: 500;
-    transition: color .15s;
+    transition: color .2s;
     background: none;
     border: none;
     font-family: inherit;
+    position: relative;
+  }
+  .nav-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%) scaleX(0);
+    width: 24px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 0 0 4px 4px;
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1);
   }
   .nav-item.active { color: var(--accent); }
-  .nav-icon { font-size: 18px; }
+  .nav-item.active::before { transform: translateX(-50%) scaleX(1); }
+  .nav-icon { width: 22px; height: 22px; display: block; }
 
   /* Filter Pills */
   .filter-pills {
@@ -1019,7 +1284,7 @@
   }
   .pill.active {
     background: var(--accent);
-    color: #0a0a0f;
+    color: var(--accent-on-accent);
     border-color: var(--accent);
     font-weight: 500;
   }
@@ -1068,8 +1333,8 @@
   .install-banner {
     margin: 12px 0 20px;
     padding: 14px 16px;
-    background: linear-gradient(135deg, rgba(201,255,61,0.08), rgba(74,222,128,0.04));
-    border: 1px solid rgba(201,255,61,0.2);
+    background: linear-gradient(135deg, var(--accent-subtle), var(--income-subtle));
+    border: 1px solid var(--accent-border);
     border-radius: 14px;
     display: flex;
     align-items: center;
@@ -1091,16 +1356,16 @@
     overflow: hidden;
   }
   .verdict-card.green {
-    background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04));
-    border: 1px solid rgba(74,222,128,0.3);
+    background: linear-gradient(135deg, var(--income-subtle), rgba(74,222,128,0.02));
+    border: 1px solid var(--income-border);
   }
   .verdict-card.yellow {
-    background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.04));
-    border: 1px solid rgba(251,191,36,0.3);
+    background: linear-gradient(135deg, var(--warning-subtle), rgba(251,191,36,0.02));
+    border: 1px solid var(--warning-border);
   }
   .verdict-card.red {
-    background: linear-gradient(135deg, rgba(255,107,107,0.12), rgba(255,107,107,0.04));
-    border: 1px solid rgba(255,107,107,0.3);
+    background: linear-gradient(135deg, var(--expense-subtle), rgba(239,68,68,0.02));
+    border: 1px solid var(--expense-border);
   }
   .verdict-label {
     font-size: 11px;
@@ -1189,51 +1454,6 @@
     margin-top: 4px;
   }
   
-  /* 50/30/20 bars */
-  .ratio-row {
-    margin-bottom: 14px;
-  }
-  .ratio-row:last-child { margin-bottom: 0; }
-  .ratio-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-    font-size: 13px;
-  }
-  .ratio-name {
-    font-weight: 500;
-  }
-  .ratio-vals {
-    font-family: 'Geist Mono', monospace;
-    font-size: 12px;
-    color: var(--text-dim);
-  }
-  .ratio-bar-wrap {
-    width: 100%;
-    height: 8px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 4px;
-    position: relative;
-    overflow: hidden;
-  }
-  .ratio-bar-target {
-    position: absolute;
-    top: -2px;
-    bottom: -2px;
-    width: 2px;
-    background: var(--text-muted);
-    z-index: 2;
-  }
-  .ratio-bar-fill {
-    height: 100%;
-    border-radius: 4px;
-    transition: width .5s cubic-bezier(.2,.9,.3,1);
-  }
-  .ratio-bar-fill.needs { background: #60a5fa; }
-  .ratio-bar-fill.wants { background: #f472b6; }
-  .ratio-bar-fill.savings { background: var(--income); }
-  
   /* Forecast chart */
   .forecast-chart {
     height: 160px;
@@ -1295,7 +1515,7 @@
     display: flex;
     gap: 12px;
     padding: 12px;
-    background: rgba(255,255,255,0.02);
+    background: var(--surface-overlay);
     border-radius: 12px;
     margin-bottom: 8px;
   }
@@ -1342,9 +1562,9 @@
     padding: 2px 8px;
     border-radius: 100px;
   }
-  .decision-verdict-dot.green { background: rgba(74,222,128,0.15); color: var(--income); }
-  .decision-verdict-dot.yellow { background: rgba(251,191,36,0.15); color: var(--warning); }
-  .decision-verdict-dot.red { background: rgba(255,107,107,0.15); color: var(--expense); }
+  .decision-verdict-dot.green  { background: var(--income-subtle);  color: var(--income); }
+  .decision-verdict-dot.yellow { background: var(--warning-subtle); color: var(--warning); }
+  .decision-verdict-dot.red    { background: var(--expense-subtle); color: var(--expense); }
   .decision-meta {
     font-size: 11px;
     color: var(--text-dim);
@@ -1364,7 +1584,7 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     padding: 3px 8px;
-    background: rgba(255,255,255,0.03);
+    background: var(--surface-overlay);
     border-radius: 100px;
     display: inline-block;
     margin-top: 8px;
@@ -1373,7 +1593,7 @@
   /* Affordability inline button */
   .compass-cta {
     background: linear-gradient(135deg, var(--accent), var(--accent-dim));
-    color: #0a0a0f;
+    color: var(--accent-on-accent);
     border: none;
     border-radius: 16px;
     padding: 18px;
@@ -1408,7 +1628,7 @@
   }
   .cycle-opt.selected {
     border-color: var(--accent);
-    background: rgba(201,255,61,0.08);
+    background: var(--accent-subtle);
   }
   .cycle-opt .opt-name { font-weight: 500; }
   .cycle-opt .opt-sub { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
@@ -1419,8 +1639,8 @@
   .auto-log-banner {
     margin: 12px 0 16px;
     padding: 14px 16px;
-    background: linear-gradient(135deg, rgba(201,255,61,0.1), rgba(74,222,128,0.05));
-    border: 1px solid rgba(201,255,61,0.25);
+    background: linear-gradient(135deg, var(--accent-subtle), var(--income-subtle));
+    border: 1px solid var(--accent-border);
     border-radius: 14px;
     display: flex;
     align-items: center;
@@ -1447,12 +1667,12 @@
     cursor: pointer;
   }
   .backup-warn.yellow {
-    background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(251,191,36,0.04));
-    border: 1px solid rgba(251,191,36,0.3);
+    background: linear-gradient(135deg, var(--warning-subtle), rgba(251,191,36,0.02));
+    border: 1px solid var(--warning-border);
   }
   .backup-warn.red {
-    background: linear-gradient(135deg, rgba(255,107,107,0.1), rgba(255,107,107,0.04));
-    border: 1px solid rgba(255,107,107,0.3);
+    background: linear-gradient(135deg, var(--expense-subtle), rgba(239,68,68,0.02));
+    border: 1px solid var(--expense-border);
   }
   .backup-warn-icon { font-size: 22px; }
   .backup-warn-text { flex: 1; }
@@ -1467,7 +1687,7 @@
     font-size: 9px;
     padding: 1px 6px;
     border-radius: 100px;
-    background: rgba(201,255,61,0.15);
+    background: var(--accent-subtle);
     color: var(--accent);
     margin-left: 6px;
     text-transform: uppercase;
@@ -1514,8 +1734,8 @@
   .recovery-card {
     margin: 12px 0 16px;
     padding: 18px;
-    background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04));
-    border: 1px solid rgba(74,222,128,0.3);
+    background: linear-gradient(135deg, var(--income-subtle), rgba(74,222,128,0.02));
+    border: 1px solid var(--income-border);
     border-radius: 16px;
   }
   .recovery-title {
@@ -1546,7 +1766,7 @@
   }
   .recovery-restore {
     background: var(--income);
-    color: #0a0a0f;
+    color: var(--accent-on-accent);
   }
   /* v2.6.1: WELCOME TOUR */
   .tour-overlay {
@@ -1558,55 +1778,67 @@
   .tour-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.78);
+    background: rgba(0, 0, 0, 0.75);
     pointer-events: auto;
-    transition: clip-path .35s ease;
+  }
+  .tour-overlay.has-spotlight .tour-backdrop {
+    background: transparent;
   }
   .tour-card {
     position: absolute;
+    z-index: 2;
     width: calc(100vw - 32px);
     max-width: 340px;
-    padding: 18px 18px 16px;
-    background: var(--bg-card);
-    border: 1px solid rgba(201,255,61,0.3);
-    border-radius: 16px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(201,255,61,0.1);
+    padding: 20px 20px 16px;
+    background: #ffffff;
+    color: #0a0a0f;
+    color-scheme: light;
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.25);
     pointer-events: auto;
-    transition: top .35s ease, left .35s ease, opacity .25s ease;
+    transition: top .3s ease, left .3s ease;
   }
-  .tour-progress {
-    font-size: 10px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 500;
-    margin-bottom: 8px;
-    font-family: 'Geist Mono', monospace;
+  .tour-dots {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 13px;
+  }
+  .tour-dot {
+    height: 6px;
+    width: 6px;
+    border-radius: 3px;
+    background: #d8d8e0;
+    transition: width .2s ease, background .2s ease;
+  }
+  .tour-dot.active {
+    width: 18px;
+    background: #c9ff3d;
+  }
+  .tour-dot.done {
+    background: #9ec92e;
   }
   .tour-title {
     font-family: 'Fraunces', serif;
-    font-size: 20px;
-    font-weight: 500;
+    font-size: 19px;
+    font-weight: 600;
     line-height: 1.25;
-    letter-spacing: -0.01em;
-    color: var(--text);
-    margin-bottom: 8px;
+    color: #0a0a0f;
+    margin-bottom: 7px;
   }
   .tour-body {
-    font-size: 13px;
-    line-height: 1.55;
-    color: var(--text-dim);
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: #44444e;
     margin-bottom: 16px;
   }
-  .tour-body strong { color: var(--text); }
+  .tour-body strong { color: #0a0a0f; }
   .tour-controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
   }
   .tour-btn {
-    padding: 9px 16px;
+    padding: 9px 18px;
     border-radius: 10px;
     border: none;
     font-family: inherit;
@@ -1617,45 +1849,33 @@
   }
   .tour-btn-skip {
     background: transparent;
-    color: var(--text-muted);
+    color: #9090a0;
   }
-  .tour-btn-skip:active { color: var(--text-dim); }
+  .tour-btn-skip:active { color: #555; }
   .tour-btn-next {
-    background: var(--accent);
+    background: #c9ff3d;
     color: #0a0a0f;
-    font-weight: 600;
-    padding: 9px 22px;
+    font-weight: 700;
+    padding: 9px 24px;
   }
   .tour-btn-next:active { transform: scale(0.97); }
-  
-  /* Spotlight — drawn as a transparent rect with a huge box-shadow that
-     acts as the overlay everywhere except inside the rect itself */
+
   .tour-spotlight {
     position: absolute;
     border-radius: 12px;
-    box-shadow: 0 0 0 99999px rgba(0, 0, 0, 0.78);
     pointer-events: none;
-    transition: top .35s ease, left .35s ease, width .35s ease, height .35s ease;
+    transition: top .3s ease, left .3s ease, width .3s ease, height .3s ease;
     animation: tour-pulse 2s ease-in-out infinite;
   }
   @keyframes tour-pulse {
     0%, 100% {
-      box-shadow: 0 0 0 99999px rgba(0, 0, 0, 0.78),
-                  0 0 0 0 rgba(201,255,61,0.5);
+      box-shadow: 0 0 0 3px rgba(201,255,61,1),
+                  0 0 0 99999px rgba(0,0,0,0.75);
     }
     50% {
-      box-shadow: 0 0 0 99999px rgba(0, 0, 0, 0.78),
-                  0 0 0 8px rgba(201,255,61,0);
+      box-shadow: 0 0 0 7px rgba(201,255,61,0.25),
+                  0 0 0 99999px rgba(0,0,0,0.75);
     }
-  }
-  
-  /* When spotlight is hidden (intro/outro), backdrop covers everything */
-  .tour-overlay.no-spotlight .tour-backdrop {
-    opacity: 1;
-  }
-  .tour-overlay.has-spotlight .tour-backdrop {
-    /* The spotlight handles the masking; backdrop is transparent base */
-    background: transparent;
   }
   
   /* v2.5.1: version banner that flashes on launch */
@@ -1752,12 +1972,12 @@
     transition: transform .15s ease;
   }
   .milestone.earned {
-    background: linear-gradient(135deg, rgba(201,255,61,0.1), rgba(201,255,61,0.02));
-    border-color: rgba(201,255,61,0.3);
+    background: linear-gradient(135deg, var(--accent-subtle), rgba(201,255,61,0.02));
+    border-color: var(--accent-border);
   }
   .milestone.earned.gold {
-    background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.02));
-    border-color: rgba(251,191,36,0.4);
+    background: linear-gradient(135deg, var(--warning-subtle), rgba(251,191,36,0.02));
+    border-color: var(--warning-border);
   }
   .milestone.earned.silver {
     background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(168,85,247,0.02));
@@ -1802,7 +2022,7 @@
   .forecast-toggle {
     display: flex;
     gap: 6px;
-    background: rgba(255,255,255,0.03);
+    background: var(--surface-overlay);
     padding: 4px;
     border-radius: 10px;
     margin-bottom: 14px;
@@ -1874,7 +2094,7 @@
   .weekly-plan-toggle {
     display: flex;
     gap: 6px;
-    background: rgba(255,255,255,0.03);
+    background: var(--surface-overlay);
     padding: 4px;
     border-radius: 10px;
     margin-bottom: 14px;
@@ -1932,7 +2152,7 @@
     align-items: center;
     padding: 10px 0;
     font-size: 13px;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid var(--border);
   }
   .wp-row:last-child { border-bottom: none; }
   .wp-row-label { color: var(--text-dim); flex: 1; }
@@ -2057,7 +2277,7 @@
     padding: 4px 0;
   }
   .save-tip:not(:last-child) {
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid var(--border);
     padding-bottom: 6px;
     margin-bottom: 4px;
   }
@@ -2067,7 +2287,57 @@
   details summary::marker { content: ''; }
   details[open] summary { background: rgba(201,255,61,0.1) !important; }
   details summary:hover { background: rgba(201,255,61,0.08) !important; }
-  
+
+  /* Profile tab */
+  .profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 16px 24px;
+    text-align: center;
+  }
+  .profile-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    user-select: none;
+  }
+  .profile-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .profile-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    font-family: 'Fraunces', serif;
+  }
+  .profile-edit-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 2px 4px;
+    line-height: 1;
+  }
+  .profile-version {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
 </style>
 </head>
 <body>
@@ -2076,18 +2346,13 @@
 
 <!-- v2.6.1: WELCOME TOUR OVERLAY -->
 <div id="tourOverlay" class="tour-overlay" style="display:none;">
-  <!-- Dark backdrop with spotlight cutout -->
   <div id="tourBackdrop" class="tour-backdrop"></div>
-  
-  <!-- Tooltip card (positioned dynamically) -->
   <div id="tourCard" class="tour-card">
-    <div class="tour-progress">
-      <span id="tourStepNum">1</span> of <span id="tourStepTotal">7</span>
-    </div>
+    <div id="tourDots" class="tour-dots"></div>
     <div id="tourTitle" class="tour-title"></div>
     <div id="tourBody" class="tour-body"></div>
     <div class="tour-controls">
-      <button id="tourSkip" class="tour-btn tour-btn-skip" onclick="endTour(false)">Skip tour</button>
+      <button class="tour-btn tour-btn-skip" onclick="endTour(false)">Skip</button>
       <button id="tourNext" class="tour-btn tour-btn-next" onclick="nextTourStep()">Next →</button>
     </div>
   </div>
@@ -2101,11 +2366,14 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">Ledger Compass</span>
-    <span class="version-tag" id="versionTag">v2.6.1</span>
+    <span class="version-tag" id="versionTag">v2.8.3</span>
   </div>
   <div class="topbar-actions">
-    <button class="icon-btn" onclick="openSearchModal()">🔍</button>
-    <button class="icon-btn" onclick="goPage('settings')">⚙</button>
+    <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+    </button>
   </div>
 </div>
 
@@ -2115,11 +2383,11 @@
   <div id="backupWarnBanner"></div>
   <div id="installBanner"></div>
   
-  <div class="hero">
+  <div class="hero" onclick="goPage('transactions')" style="cursor:pointer;">
     <div class="hero-label">Current Balance</div>
     <div class="hero-amount"><span class="hero-currency" id="currencySymbol">A$</span><span id="balance">0.00</span></div>
     <div class="hero-sub" id="balanceSub">All time</div>
-    <div class="reserved-badge" id="reservedBadge" style="display:none;" onclick="goPage('compass')"></div>
+    <div class="reserved-badge" id="reservedBadge" style="display:none;" onclick="goPage('compass'); event.stopPropagation()"></div>
     <div class="hero-row">
       <div class="hero-stat">
         <div class="hero-stat-label">
@@ -2136,6 +2404,7 @@
         <div class="hero-stat-value expense-text" id="totalExpense">A$0.00</div>
       </div>
     </div>
+    <div style="text-align:right;font-size:11px;color:var(--text-muted);margin-top:10px;opacity:0.7;">View all activity ›</div>
   </div>
 
   <div class="quickadd">
@@ -2156,6 +2425,10 @@
 
 <!-- TRANSACTIONS PAGE -->
 <div class="page" id="page-transactions">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <button class="back-btn" onclick="goPage('home')">← Back</button>
+    <button class="icon-btn" onclick="openSearchModal()">🔍</button>
+  </div>
   <div class="section-title"><h2>All Transactions</h2></div>
   <div class="filter-pills" id="filterPills">
     <div class="pill active" data-filter="all">All</div>
@@ -2300,12 +2573,6 @@
   </div>
   
   <div class="compass-card">
-    <div class="compass-card-title">50/30/20 Mirror</div>
-    <div class="compass-card-sub">Your spending vs. the classic benchmark</div>
-    <div id="ratioBars"></div>
-  </div>
-  
-  <div class="compass-card">
     <div class="compass-card-title">Smart Insights</div>
     <div class="compass-card-sub">Patterns from your data</div>
     <div id="smartInsights"></div>
@@ -2322,27 +2589,56 @@
 </div>
 
 <!-- SETTINGS PAGE -->
-<div class="page" id="page-settings">
-  <div class="section-title"><h2>Settings</h2></div>
-  
-  <div class="setting-row" onclick="openCurrencyModal()">
-    <span class="setting-label">Currency</span>
-    <span class="setting-value" id="currencyLabel">AUD (A$)</span>
+<!-- PROFILE PAGE -->
+<div class="page" id="page-profile">
+
+  <div class="profile-header">
+    <div class="profile-avatar" id="profileAvatar" onclick="openNameModal()">?</div>
+    <div class="profile-name-row">
+      <span class="profile-name" id="profileName">Set your name</span>
+      <button class="profile-edit-btn" onclick="openNameModal()" title="Edit name">✏</button>
+    </div>
+    <div class="profile-version">Ledger Compass v<span id="profileVersion">2.8.3</span></div>
   </div>
 
-  <div class="setting-row" onclick="goPage('income-sources')">
-    <span class="setting-label">Income Sources</span>
-    <span class="setting-value" id="incomeSourcesCount">—</span>
+  <div class="section-title">
+    <h2>Income Sources</h2>
+    <span class="link" onclick="openIncomeSrcModal()">+ Add</span>
   </div>
-
-  <div class="setting-row" onclick="goPage('recurring-expenses')">
-    <span class="setting-label">Recurring Expenses</span>
-    <span class="setting-value" id="recurringExpensesCount">—</span>
+  <div style="color:var(--text-dim);font-size:12px;line-height:1.6;margin-bottom:16px;padding:12px 14px;background:var(--bg-card);border-radius:12px;border:1px solid var(--border);">
+    Set up your paychecks for cash flow forecasting. Supports multiple jobs with different pay cycles. Toggle "Auto-log on pay date" to skip manual entry.
   </div>
+  <div id="incomeSrcList"></div>
 
+  <div class="section-title" style="margin-top:24px;">
+    <h2>Recurring Expenses</h2>
+    <span class="link" onclick="openRecExpModal()">+ Add</span>
+  </div>
+  <div style="color:var(--text-dim);font-size:12px;line-height:1.6;margin-bottom:16px;padding:12px 14px;background:var(--bg-card);border-radius:12px;border:1px solid var(--border);">
+    Set fixed expenses (rent, Netflix, gym) to auto-log on their due dates. Skip the manual entry forever.
+  </div>
+  <div id="recExpList"></div>
+
+  <div class="section-title" style="margin-top:24px;">
+    <h2>Savings & Goals</h2>
+  </div>
   <div class="setting-row" onclick="goPage('savings')">
     <span class="setting-label">💰 Savings & Goals</span>
     <span class="setting-value" id="savingsCount">—</span>
+  </div>
+
+  <div class="section-title" style="margin-top:24px;">
+    <h2>Settings</h2>
+  </div>
+
+  <div class="setting-row" onclick="restartTour()">
+    <span class="setting-label">👋 Show welcome tour</span>
+    <span class="setting-value">→</span>
+  </div>
+
+  <div class="setting-row" onclick="openCurrencyModal()">
+    <span class="setting-label">Currency</span>
+    <span class="setting-value" id="currencyLabel">AUD (A$)</span>
   </div>
 
   <div class="setting-row" onclick="exportData()">
@@ -2361,24 +2657,9 @@
   </div>
   <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
 
-  <div class="setting-row" onclick="showSnapshotsModal()">
-    <span class="setting-label">Internal Snapshots</span>
-    <span class="setting-value" id="snapshotsCount">—</span>
-  </div>
-
-  <div class="setting-row" onclick="showStorageInfo()">
-    <span class="setting-label">Storage Info</span>
-    <span class="setting-value" id="storageInfo">—</span>
-  </div>
-
   <div class="setting-row" onclick="refreshApp()" style="border-color: rgba(201,255,61,0.2);">
     <span class="setting-label" style="color: var(--accent);">↻ Refresh App (Force Update)</span>
-    <span class="setting-value" id="versionDisplay">v2.6.1</span>
-  </div>
-
-  <div class="setting-row" onclick="restartTour()">
-    <span class="setting-label">👋 Show welcome tour</span>
-    <span class="setting-value">→</span>
+    <span class="setting-value" id="versionDisplay">v2.8.3</span>
   </div>
 
   <div class="setting-row" style="border-color: rgba(255,107,107,0.2);" onclick="confirmClearAll()">
@@ -2386,43 +2667,16 @@
     <span class="setting-value">⚠</span>
   </div>
 
-  <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.6;">
-    <div>Ledger Compass v2.6.1 · Schema v7</div>
+  <div style="margin-top:24px;text-align:center;color:var(--text-muted);font-size:11px;line-height:1.6;padding-bottom:24px;">
     <div>All data stored on this device</div>
-    <div id="lastBackup" style="margin-top: 4px;"></div>
+    <div id="lastBackup" style="margin-top:4px;"></div>
   </div>
-</div>
-
-<!-- INCOME SOURCES PAGE -->
-<div class="page" id="page-income-sources">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-    <button class="back-btn" onclick="goPage('settings')">← Back</button>
-    <span class="link" onclick="openIncomeSrcModal()">+ Add</span>
-  </div>
-  <div class="section-title"><h2>Income Sources</h2></div>
-  <div style="color:var(--text-dim);font-size:12px;line-height:1.6;margin-bottom:16px;padding:12px 14px;background:var(--bg-card);border-radius:12px;border:1px solid var(--border);">
-    Set up your paychecks for cash flow forecasting. Supports multiple jobs with different pay cycles. Toggle "Auto-log on pay date" to skip manual entry.
-  </div>
-  <div id="incomeSrcList"></div>
-</div>
-
-<!-- RECURRING EXPENSES PAGE -->
-<div class="page" id="page-recurring-expenses">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-    <button class="back-btn" onclick="goPage('settings')">← Back</button>
-    <span class="link" onclick="openRecExpModal()">+ Add</span>
-  </div>
-  <div class="section-title"><h2>Recurring Expenses</h2></div>
-  <div style="color:var(--text-dim);font-size:12px;line-height:1.6;margin-bottom:16px;padding:12px 14px;background:var(--bg-card);border-radius:12px;border:1px solid var(--border);">
-    Set fixed expenses (rent, Netflix, gym) to auto-log on their due dates. Skip the manual entry forever.
-  </div>
-  <div id="recExpList"></div>
 </div>
 
 <!-- SAVINGS PAGE -->
 <div class="page" id="page-savings">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-    <button class="back-btn" onclick="goPage('settings')">← Back</button>
+    <button class="back-btn" onclick="goPage('profile')">← Back</button>
     <span class="link" onclick="openSavingsModal()">+ Log</span>
   </div>
   <div class="section-title"><h2>Savings & Goals</h2></div>
@@ -2439,6 +2693,23 @@
     <h3 style="font-family:'Fraunces',serif;font-size:18px;font-weight:500;letter-spacing:-0.01em;">History</h3>
   </div>
   <div id="savingsHistory"></div>
+</div>
+
+<!-- NAME EDIT MODAL -->
+<div class="modal-backdrop" id="nameModal" onclick="closeModalOnBg(event, 'nameModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Your Name</div>
+    <div class="modal-sub">Shown on your profile</div>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="inpUserName" placeholder="e.g. Harsh Thakkar" maxlength="50">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('nameModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveUserName()">Save</button>
+    </div>
+  </div>
 </div>
 
 <!-- SAVINGS LOG MODAL -->
@@ -2909,19 +3180,41 @@
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <button class="nav-item active" data-page="home" onclick="goPage('home')">
-    <span class="nav-icon">⌂</span> Home
-  </button>
-  <button class="nav-item" data-page="transactions" onclick="goPage('transactions')">
-    <span class="nav-icon">≡</span> Activity
-  </button>
-  <button class="nav-item" data-page="stats" onclick="goPage('stats')">
-    <span class="nav-icon">◆</span> Insights
-  </button>
-  <button class="nav-item" data-page="loans" onclick="goPage('loans')">
-    <span class="nav-icon">◉</span> Loans
+    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+      <polyline points="9,22 9,12 15,12 15,22"/>
+    </svg>
+    Home
   </button>
   <button class="nav-item" data-page="compass" onclick="goPage('compass')">
-    <span class="nav-icon">◈</span> Compass
+    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="12" cy="12" r="9" stroke-linecap="round"/>
+      <path d="M12 5l2.5 7L12 19l-2.5-7z" fill="currentColor" stroke="none"/>
+      <circle cx="12" cy="12" r="1.8" fill="var(--bg)" stroke="none"/>
+    </svg>
+    Compass
+  </button>
+  <button class="nav-item" data-page="stats" onclick="goPage('stats')">
+    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="20" x2="12" y2="10"/>
+      <line x1="18" y1="20" x2="18" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="16"/>
+    </svg>
+    Insights
+  </button>
+  <button class="nav-item" data-page="loans" onclick="goPage('loans')">
+    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 7v1.5m0 7V17m-2.5-7.8C9.5 8.1 10.6 7.5 12 7.5s2.5.9 2.5 2c0 1.2-1 1.7-2.5 2.2S9.5 13 9.5 14.3s1.1 2.2 2.5 2.2 2.5-.9 2.5-2"/>
+    </svg>
+    Loans
+  </button>
+  <button class="nav-item" data-page="profile" onclick="goPage('profile')">
+    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="8" r="4"/>
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+    </svg>
+    Profile
   </button>
 </div>
 
@@ -2930,8 +3223,8 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.6.1';
-const SCHEMA_VERSION = 7;
+const APP_VERSION = '2.8.3';
+const SCHEMA_VERSION = 9;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
 const AUTO_SNAPSHOT_PREFIX = 'ledger_snap_';
@@ -2989,6 +3282,7 @@ let state = {
   savingsGoals: [],   // v2.4: optional savings goals (v2.6: can have .deadline)
   earnedMilestones: {}, // v2.6: { milestoneId: timestampEarned }
   currency: 'AUD',
+  userName: '',
   // UI-only state (not persisted)
   currentType: 'expense',
   selectedCategory: null,
@@ -3034,6 +3328,7 @@ function loadData() {
     state.savingsGoals = migrated.savingsGoals || [];
     state.earnedMilestones = migrated.earnedMilestones || {};
     state.currency = migrated.currency || 'AUD';
+    state.userName = migrated.userName || '';
   } catch (e) {
     console.error('Load error:', e);
     showToast('Load error — using empty data', '⚠');
@@ -3132,9 +3427,53 @@ function runMigrations(data) {
     if (!migrated.earnedMilestones) migrated.earnedMilestones = {};
   }
   
-  // FUTURE MIGRATIONS GO HERE:
-  // if (fromVersion < 3) { ... migrated.schemaVersion = 3; }
-  
+  // Migration: v7 -> v8 (startDate on income sources and recurring expenses)
+  if (fromVersion < 8) {
+    migrated.schemaVersion = 8;
+    const txns = migrated.transactions || [];
+    const todayStr = todayISO();
+
+    if (migrated.incomeSources) {
+      migrated.incomeSources = migrated.incomeSources.map(src => {
+        if (src.startDate) return src;
+        // Find earliest auto-logged income transaction for this source
+        const autoLogs = txns.filter(t =>
+          t.autoLogId && t.autoLogId.startsWith('auto_inc_' + src.id + '_')
+        );
+        let startDate;
+        if (autoLogs.length > 0) {
+          startDate = autoLogs.map(t => t.date).sort()[0];
+        } else {
+          // No auto-logs: anchor to next scheduled pay date
+          startDate = computeNextPayDate(src) || todayStr;
+        }
+        return { ...src, startDate };
+      });
+    }
+
+    if (migrated.recurringExpenses) {
+      migrated.recurringExpenses = migrated.recurringExpenses.map(rec => {
+        if (rec.startDate) return rec;
+        const autoLogs = txns.filter(t =>
+          t.autoLogId && t.autoLogId.startsWith('auto_exp_' + rec.id + '_')
+        );
+        let startDate;
+        if (autoLogs.length > 0) {
+          startDate = autoLogs.map(t => t.date).sort()[0];
+        } else {
+          startDate = computeNextDueDate(rec) || todayStr;
+        }
+        return { ...rec, startDate };
+      });
+    }
+  }
+
+  // Migration: v8 -> v9 (user profile name)
+  if (fromVersion < 9) {
+    migrated.schemaVersion = 9;
+    if (!migrated.userName) migrated.userName = '';
+  }
+
   return migrated;
 }
 
@@ -3153,6 +3492,7 @@ function saveData() {
       savingsGoals: state.savingsGoals,
       earnedMilestones: state.earnedMilestones || {},
       currency: state.currency,
+      userName: state.userName || '',
       lastSaved: Date.now(),
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -3229,6 +3569,56 @@ function updateAmountSymbols() {
   });
 }
 
+/* ============ THEME ============ */
+function initTheme() {
+  const saved = localStorage.getItem('theme_preference')
+    || localStorage.getItem('ledger_theme')   // migrate old key
+    || 'system';
+  _applyThemePref(saved);
+  updateThemeIcon(saved);
+  updateThemeColor();
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    const pref = localStorage.getItem('theme_preference') || 'system';
+    if (pref === 'system') { _applyThemePref('system'); updateThemeColor(); }
+  });
+}
+
+function _applyThemePref(pref) {
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const useLight = pref === 'light' || (pref === 'system' && !prefersDark);
+  if (useLight) document.documentElement.setAttribute('data-theme', 'light');
+  else          document.documentElement.removeAttribute('data-theme');
+}
+
+function toggleTheme() {
+  const cur = localStorage.getItem('theme_preference')
+    || localStorage.getItem('ledger_theme')
+    || 'system';
+  const next = cur === 'dark' ? 'light' : cur === 'light' ? 'system' : 'dark';
+  localStorage.setItem('theme_preference', next);
+  _applyThemePref(next);
+  updateThemeIcon(next);
+  updateThemeColor();
+}
+
+function updateThemeIcon(pref) {
+  const btn = document.getElementById('themeToggleBtn');
+  if (!btn) return;
+  const p = pref || localStorage.getItem('theme_preference') || 'system';
+  const SUN     = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+  const MOON    = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`;
+  const MONITOR = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
+  if (p === 'light')     { btn.innerHTML = SUN;     btn.title = 'Light theme'; }
+  else if (p === 'dark') { btn.innerHTML = MOON;    btn.title = 'Dark theme'; }
+  else                   { btn.innerHTML = MONITOR; btn.title = 'System theme'; }
+}
+
+function updateThemeColor() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', isLight ? '#f4f3ee' : '#0a0a0f');
+}
+
 /* ============ NAVIGATION ============ */
 function goPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -3241,10 +3631,8 @@ function goPage(name) {
   if (name === 'loans') renderLoans();
   if (name === 'compass') renderCompass();
   if (name === 'decisions') renderDecisions();
-  if (name === 'income-sources') renderIncomeSources();
-  if (name === 'recurring-expenses') renderRecExps();
   if (name === 'savings') renderSavingsPage();
-  if (name === 'settings') { updateStorageInfo(); updateIncomeSourcesCount(); updateRecExpCount(); updateSavingsCount(); updateSnapshotsCount(); }
+  if (name === 'profile') { renderIncomeSources(); renderRecExps(); updateSavingsCount(); renderProfileHeader(); updateProfileFooter(); }
   window.scrollTo(0, 0);
 }
 
@@ -3266,10 +3654,53 @@ function renderAll() {
   document.getElementById('versionTag').textContent = 'v' + APP_VERSION;
   const versionDisplay = document.getElementById('versionDisplay');
   if (versionDisplay) versionDisplay.textContent = 'v' + APP_VERSION;
-  updateIncomeSourcesCount();
-  updateRecExpCount();
   updateSavingsCount();
+  renderProfileHeader();
   renderBackupWarnBanner();
+}
+
+function renderProfileHeader() {
+  const name = state.userName || '';
+  const avatarEl = document.getElementById('profileAvatar');
+  const nameEl = document.getElementById('profileName');
+  const versionEl = document.getElementById('profileVersion');
+  if (avatarEl) avatarEl.textContent = getUserInitials(name);
+  if (nameEl) nameEl.textContent = name || 'Set your name';
+  if (versionEl) versionEl.textContent = APP_VERSION;
+}
+
+function getUserInitials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function openNameModal() {
+  document.getElementById('inpUserName').value = state.userName || '';
+  document.getElementById('nameModal').classList.add('open');
+}
+
+function saveUserName() {
+  const name = (document.getElementById('inpUserName').value || '').trim().slice(0, 50);
+  state.userName = name;
+  saveData();
+  renderProfileHeader();
+  closeModal('nameModal');
+}
+
+function updateProfileFooter() {
+  const el = document.getElementById('lastBackup');
+  if (!el) return;
+  const lastExp = localStorage.getItem('ledger_last_export');
+  if (lastExp) {
+    const days = Math.floor((Date.now() - parseInt(lastExp)) / 86400000);
+    el.textContent = days === 0 ? 'Last backup: today' : `Last backup: ${days}d ago`;
+  } else {
+    el.textContent = 'No backups yet — export regularly';
+    el.style.color = 'var(--warning)';
+  }
 }
 
 function updateSavingsCount() {
@@ -3284,20 +3715,6 @@ function updateSavingsCount() {
   }
 }
 
-function updateRecExpCount() {
-  const el = document.getElementById('recurringExpensesCount');
-  if (!el) return;
-  const n = state.recurringExpenses.length;
-  const active = state.recurringExpenses.filter(r => r.active).length;
-  el.textContent = n === 0 ? 'None set up' : `${active} active / ${n}`;
-}
-
-function updateIncomeSourcesCount() {
-  const el = document.getElementById('incomeSourcesCount');
-  if (!el) return;
-  const n = state.incomeSources.length;
-  el.textContent = n === 0 ? 'Not set up' : n === 1 ? '1 source' : n + ' sources';
-}
 
 function renderHome() {
   let income = 0, expense = 0;
@@ -3337,11 +3754,11 @@ function renderTransactions() {
   else if (state.filter === 'expense') list = list.filter(t => t.type === 'expense');
   else if (state.filter === 'week') {
     const wk = new Date(); wk.setDate(wk.getDate() - 7);
-    const wkISO = wk.toISOString().slice(0,10);
+    const wkISO = isoOf(wk);
     list = list.filter(t => t.date >= wkISO);
   } else if (state.filter === 'month') {
     const m = new Date(); m.setDate(1);
-    const mISO = m.toISOString().slice(0,10);
+    const mISO = isoOf(m);
     list = list.filter(t => t.date >= mISO);
   }
   list.sort((a,b) => b.date.localeCompare(a.date) || (b.createdAt||0) - (a.createdAt||0));
@@ -3394,7 +3811,7 @@ function emptyState(title, sub) {
 function renderStats() {
   const now = new Date();
   const mStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const mStartISO = mStart.toISOString().slice(0,10);
+  const mStartISO = isoOf(mStart);
   
   let mIn = 0, mOut = 0;
   state.transactions.forEach(t => {
@@ -3409,7 +3826,7 @@ function renderStats() {
   mn.style.color = net >= 0 ? 'var(--income)' : 'var(--expense)';
   
   const d30 = new Date(); d30.setDate(d30.getDate() - 30);
-  const d30ISO = d30.toISOString().slice(0,10);
+  const d30ISO = isoOf(d30);
   let last30 = 0;
   state.transactions.forEach(t => {
     if (t.date >= d30ISO && t.type === 'expense') last30 += t.amount;
@@ -3609,7 +4026,7 @@ function renderWeekChart() {
     const d = new Date();
     d.setDate(d.getDate() - i);
     days.push({
-      iso: d.toISOString().slice(0,10),
+      iso: isoOf(d),
       label: d.toLocaleDateString('en-US', { weekday: 'narrow' }),
       income: 0, expense: 0,
     });
@@ -3635,7 +4052,7 @@ function renderWeekChart() {
 
 function renderCategoryBreakdown() {
   const now = new Date();
-  const mStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const mStart = isoOf(new Date(now.getFullYear(), now.getMonth(), 1));
   const totals = {};
   let grandTotal = 0;
   state.transactions.forEach(t => {
@@ -3672,7 +4089,7 @@ function renderCategoryBreakdown() {
 function renderBudgets() {
   const list = document.getElementById('budgetList');
   const now = new Date();
-  const mStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const mStart = isoOf(new Date(now.getFullYear(), now.getMonth(), 1));
   const spent = {};
   state.transactions.forEach(t => {
     if (t.type === 'expense' && t.date >= mStart) {
@@ -4212,10 +4629,55 @@ function saveTransaction() {
   renderAll();
 }
 
+function refreshAutoLogSourceState(autoLogId, deletedDate) {
+  if (!autoLogId) return;
+
+  const incMatch = autoLogId.match(/^auto_inc_(.+)_\d{4}-\d{2}-\d{2}$/);
+  if (incMatch) {
+    const src = state.incomeSources.find(s => s.id === incMatch[1]);
+    if (!src) return;
+    const dates = state.transactions
+      .filter(t => t.autoLogId && t.autoLogId.startsWith('auto_inc_' + src.id + '_'))
+      .map(t => t.date)
+      .sort();
+    const latest = dates[dates.length - 1] || null;
+    src.lastAutoLogDate = latest;
+    if (latest && src.cycle !== 'irregular') {
+      src.nextPay = computeNextPayDate({ ...src, nextPay: advanceRecurringDate(latest, src.cycle) });
+    } else if (deletedDate) {
+      src.nextPay = deletedDate;
+    } else if (src.nextPay) {
+      src.nextPay = computeNextPayDate(src) || src.nextPay;
+    }
+    return;
+  }
+
+  const expMatch = autoLogId.match(/^auto_exp_(.+)_\d{4}-\d{2}-\d{2}$/);
+  if (expMatch) {
+    const rec = state.recurringExpenses.find(r => r.id === expMatch[1]);
+    if (!rec) return;
+    const dates = state.transactions
+      .filter(t => t.autoLogId && t.autoLogId.startsWith('auto_exp_' + rec.id + '_'))
+      .map(t => t.date)
+      .sort();
+    const latest = dates[dates.length - 1] || null;
+    rec.lastAutoLogDate = latest;
+    if (latest) {
+      rec.nextDue = computeNextDueDate({ ...rec, nextDue: advanceRecurringDate(latest, rec.cycle) });
+    } else if (deletedDate) {
+      rec.nextDue = deletedDate;
+    } else if (rec.nextDue) {
+      rec.nextDue = computeNextDueDate(rec) || rec.nextDue;
+    }
+  }
+}
+
 function deleteCurrentTransaction() {
   if (!state.editingId) return;
   if (!confirm('Delete this transaction?')) return;
+  const deleted = state.transactions.find(t => t.id === state.editingId);
   state.transactions = state.transactions.filter(t => t.id !== state.editingId);
+  if (deleted && deleted.autoLogId) refreshAutoLogSourceState(deleted.autoLogId, deleted.date);
   saveData();
   closeModal('addModal');
   renderAll();
@@ -4404,30 +4866,6 @@ function importData(event) {
   reader.readAsText(file);
 }
 
-function updateStorageInfo() {
-  try {
-    const size = new Blob([localStorage.getItem(STORAGE_KEY) || '']).size;
-    const kb = (size / 1024).toFixed(1);
-    document.getElementById('storageInfo').textContent = `${kb} KB`;
-    const lastExp = localStorage.getItem('ledger_last_export');
-    if (lastExp) {
-      const days = Math.floor((Date.now() - parseInt(lastExp)) / 86400000);
-      document.getElementById('lastBackup').textContent = days === 0 ? 'Last backup: today' : `Last backup: ${days}d ago`;
-    } else {
-      document.getElementById('lastBackup').textContent = 'No backups yet — export regularly';
-      document.getElementById('lastBackup').style.color = 'var(--warning)';
-    }
-  } catch (e) {}
-}
-
-function showStorageInfo() {
-  const size = new Blob([localStorage.getItem(STORAGE_KEY) || '']).size;
-  const kb = (size / 1024).toFixed(2);
-  const txCount = state.transactions.length;
-  const loanCount = state.loans.length;
-  const budgetCount = Object.keys(state.budgets).length;
-  alert(`Storage: ${kb} KB used\n\nTransactions: ${txCount}\nLoans: ${loanCount}\nBudgets: ${budgetCount}\n\nSchema: v${SCHEMA_VERSION}\nApp: v${APP_VERSION}\n\nAll data is on this device only.`);
-}
 
 function confirmClearAll() {
   if (!confirm('Delete ALL transactions, loans, and budgets? This cannot be undone.')) return;
@@ -4601,23 +5039,25 @@ function renderIncomeSources() {
       irregular: 'Irregular',
     }[src.cycle] || src.cycle;
     
+    const isUpcoming = src.startDate && src.startDate > todayISO();
     let nextPayStr = '';
     if (src.cycle !== 'irregular' && src.nextPay) {
       const np = computeNextPayDate(src);
       const days = Math.ceil((new Date(np + 'T00:00:00') - new Date(todayISO() + 'T00:00:00')) / 86400000);
       if (days === 0) nextPayStr = 'Today';
       else if (days === 1) nextPayStr = 'Tomorrow';
-      else if (days > 0) nextPayStr = `In ${days} days`;
+      else if (days > 0) nextPayStr = isUpcoming ? `First pay in ${days} days` : `In ${days} days`;
       else nextPayStr = `${Math.abs(days)}d ago — update`;
     }
-    
+
     return `
       <div class="income-src-card" onclick="editIncomeSource('${src.id}')">
         <div class="income-src-head">
           <span class="income-src-name">${escapeHtml(src.name)}${src.autoLog ? ' <span class="tx-auto-badge">auto</span>' : ''}</span>
           <span class="income-src-amount">+${fmt(src.amount)}</span>
         </div>
-        <div class="income-src-meta">${cycleLabel}${nextPayStr ? ' · Next: ' + nextPayStr : ''}</div>
+        <div class="income-src-meta">${cycleLabel}${nextPayStr ? ' · ' + nextPayStr : ''}</div>
+        ${isUpcoming ? `<div class="income-src-meta" style="margin-top:3px;color:var(--text-muted);font-size:11px;">Starts ${src.startDate}</div>` : ''}
         ${src.note ? `<div class="income-src-meta" style="margin-top:4px;">${escapeHtml(src.note)}</div>` : ''}
       </div>
     `;
@@ -4631,16 +5071,21 @@ function computeNextPayDate(src) {
   const today = new Date(todayISO() + 'T00:00:00');
   let next = new Date(src.nextPay + 'T00:00:00');
   if (next >= today) return src.nextPay;
-  
-  // Roll forward to future date
+
+  const origDay = next.getDate();
   if (src.cycle === 'weekly') {
     while (next < today) next.setDate(next.getDate() + 7);
   } else if (src.cycle === 'fortnightly') {
     while (next < today) next.setDate(next.getDate() + 14);
   } else if (src.cycle === 'monthly') {
-    while (next < today) next.setMonth(next.getMonth() + 1);
+    while (next < today) {
+      next.setDate(1);
+      next.setMonth(next.getMonth() + 1);
+      const last = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+      next.setDate(Math.min(origDay, last));
+    }
   }
-  return next.toISOString().slice(0,10);
+  return `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}-${String(next.getDate()).padStart(2,'0')}`;
 }
 
 function openIncomeSrcModal() {
@@ -4711,10 +5156,14 @@ function saveIncomeSource() {
   if (state.editingIncSrcId) {
     const idx = state.incomeSources.findIndex(s => s.id === state.editingIncSrcId);
     if (idx >= 0) {
+      const prev = state.incomeSources[idx];
+      const scheduleChanged = prev.nextPay !== nextPay || prev.cycle !== state.selectedCycle;
       state.incomeSources[idx] = {
-        ...state.incomeSources[idx],
+        ...prev,
         name, amount, cycle: state.selectedCycle, nextPay, note,
         autoLog: state.incSrcAutoLogOn,
+        lastAutoLogDate: scheduleChanged ? null : prev.lastAutoLogDate,
+        startDate: scheduleChanged ? (nextPay || todayISO()) : prev.startDate,
       };
     }
     showToast('Updated');
@@ -4724,6 +5173,7 @@ function saveIncomeSource() {
       name, amount, cycle: state.selectedCycle, nextPay, note,
       autoLog: state.incSrcAutoLogOn,
       lastAutoLogDate: null,
+      startDate: nextPay || todayISO(),
       createdAt: Date.now(),
     });
     showToast('Income source added');
@@ -4731,10 +5181,10 @@ function saveIncomeSource() {
   
   saveData();
   closeModal('incomeSrcModal');
-  renderIncomeSources();
-  renderCompass();
   // Run auto-log immediately in case the new source is already due
   runAutoLog();
+  renderIncomeSources();
+  renderCompass();
 }
 
 function deleteCurrentIncomeSource() {
@@ -4800,7 +5250,7 @@ function median(arr) {
 // (median + outlier trim = stable estimate immune to one-off purchases)
 function getAvgDailyExpense() {
   const d60 = new Date(); d60.setDate(d60.getDate() - 60);
-  const d60ISO = d60.toISOString().slice(0,10);
+  const d60ISO = isoOf(d60);
   
   // Bucket variable expenses by date
   const byDay = {};
@@ -4844,7 +5294,7 @@ function getMonthlyIncomeEstimate() {
     const irregularSources = state.incomeSources.filter(s => s.cycle === 'irregular');
     if (irregularSources.length > 0) {
       const d90 = new Date(); d90.setDate(d90.getDate() - 90);
-      const d90ISO = d90.toISOString().slice(0,10);
+      const d90ISO = isoOf(d90);
       let irr = 0;
       state.transactions.forEach(t => {
         if (t.type === 'income' && t.date >= d90ISO) irr += t.amount;
@@ -4856,7 +5306,7 @@ function getMonthlyIncomeEstimate() {
   
   // Fallback: average from last 90 days of income transactions
   const d90 = new Date(); d90.setDate(d90.getDate() - 90);
-  const d90ISO = d90.toISOString().slice(0,10);
+  const d90ISO = isoOf(d90);
   let total = 0;
   state.transactions.forEach(t => {
     if (t.type === 'income' && t.date >= d90ISO) total += t.amount;
@@ -5301,7 +5751,7 @@ function addDays(date, days) {
 }
 
 function isoOf(date) {
-  return date.toISOString().slice(0, 10);
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 }
 
 // Compute upcoming bills due in next N days
@@ -5342,44 +5792,77 @@ function getUpcomingBills(daysAhead = 56) {
 function computeWeeklyPlan() {
   const today = new Date(todayISO() + 'T00:00:00');
   const thisWeekStart = getWeekStart(today);
-  
-  // v2.5.5 FIX: Look back to start of THIS week, forward 60 days.
-  // This captures pay events that already arrived earlier this week
-  // (e.g., Woolies paid Monday, app opened Thursday — Mon pay still counts).
-  // We use projected (recurring) events because the user may not have
-  // manually logged the pay yet.
-  const daysSinceWeekStart = Math.ceil((today - thisWeekStart) / 86400000);
-  const incomeEvents = getUpcomingPayEvents(60, daysSinceWeekStart);
-  
+  const todayStr = todayISO();
+  const weekStartStr = isoOf(thisWeekStart);
+
+  // Forward-only scheduled income (no walkback — past days handled via transactions)
+  const incomeEvents = getUpcomingPayEvents(60);
+
   // Get upcoming bills for next 60 days
   const bills = getUpcomingBills(60);
-  
+
   // Compute average variable spend per week (median-based)
   const avgDaily = getAvgDailyExpense();
   const variableWeekly = avgDaily * 7;
-  
+
+  // Snapshot balance once — used for set-aside pool and week objects
+  const currentBalance = getCurrentBalance();
+
+  // Already-arrived income this week: actual transactions, not phantom projections.
+  // This is the "actual data trumps estimates" anchor. Captures variable pay (extra
+  // shifts, tips, short week) correctly because it reads what's actually been logged.
+  const pastWeekTxns = state.transactions
+    .filter(t => t.type === 'income' && t.date >= weekStartStr && t.date <= todayStr);
+  const pastWeekIncome = pastWeekTxns.reduce((s, t) => s + t.amount, 0);
+
+  // Build set of source IDs already paid this week to prevent double-counting.
+  // Matches auto-logged via autoLogId prefix and manual transactions by name.
+  const paidSourceIds = new Set();
+  const _srcByName = {};
+  state.incomeSources.forEach(src => { _srcByName[src.name.toLowerCase().trim()] = String(src.id); });
+  pastWeekTxns.forEach(t => {
+    if (t.autoLogId && t.autoLogId.startsWith('auto_inc_')) {
+      paidSourceIds.add(t.autoLogId.slice('auto_inc_'.length).replace(/_\d{4}-\d{2}-\d{2}$/, ''));
+    } else if (t.description) {
+      const sid = _srcByName[t.description.toLowerCase().trim()];
+      if (sid) paidSourceIds.add(sid);
+    }
+  });
+
   // Track how much has been "saved up" for each bill so far
   const billSavedSoFar = {};
   bills.forEach(b => { billSavedSoFar[b.id + b.date] = 0; });
-  
+
   const weeks = [];
   for (let w = 0; w < 4; w++) {
     const weekStart = addDays(thisWeekStart, w * 7);
     const weekEnd = addDays(weekStart, 6);
-    
-    // Income arriving this week
-    const weekIncome = incomeEvents
-      .filter(e => e.date >= isoOf(weekStart) && e.date <= isoOf(weekEnd))
-      .reduce((s,e) => s + e.amount, 0);
+    const weekStartISO = isoOf(weekStart);
+    const weekEndISO = isoOf(weekEnd);
+
+    // Week 0 (this week): actual past + scheduled remaining.
+    // Future weeks: scheduled events only (no transactions exist yet).
+    let weekIncome;
+    if (w === 0) {
+      const futureScheduled = incomeEvents
+        .filter(e => e.date > todayStr && e.date <= weekEndISO && !paidSourceIds.has(String(e.srcId)))
+        .reduce((s, e) => s + e.amount, 0);
+      weekIncome = pastWeekIncome + futureScheduled;
+    } else {
+      weekIncome = incomeEvents
+        .filter(e => e.date >= weekStartISO && e.date <= weekEndISO)
+        .reduce((s, e) => s + e.amount, 0);
+    }
     
     // Bills due THIS week (must be paid this week)
     const weekBillsDue = bills
       .filter(b => b.date >= isoOf(weekStart) && b.date <= isoOf(weekEnd));
     const weekBillsDueAmount = weekBillsDue.reduce((s,b) => s + b.amount, 0);
     
-    // v2.5.4 ADAPTIVE: how much CAN we save from this week's income?
-    // = income - bills due this week (never negative)
-    const incomeAvailableForSetAside = Math.max(0, weekIncome - weekBillsDueAmount);
+    // Pool from which set-aside is drawn — income minus bills and spending allowance
+    const incomeAvailableForSetAside = Math.max(0, weekIncome - weekBillsDueAmount - variableWeekly);
+    // Cap set-aside at 60% of pool so 40% always flows to savings
+    const setAsideCap = incomeAvailableForSetAside * 0.6;
     
     // Compute "ideal" set-aside per bill (target if we had unlimited cash)
     const idealBreakdown = [];
@@ -5407,23 +5890,18 @@ function computeWeeklyPlan() {
       });
     });
     
-    // v2.5.5 BUG FIX: when income is 0 OR less than bills, set-aside MUST be 0.
-    // Previously this branch was using ideal portions anyway. Now strict.
     let actualSetAside = 0;
     const setAsideBreakdown = [];
-    const isHeavyWeek = totalIdealSetAside > incomeAvailableForSetAside && weekIncome > 0;
+    const isHeavyWeek = totalIdealSetAside > setAsideCap && weekIncome > 0;
     
     idealBreakdown.forEach(item => {
       let actualPortion;
-      if (incomeAvailableForSetAside === 0) {
-        // No money left after bills — can't save anything this week
+      if (setAsideCap === 0) {
         actualPortion = 0;
-      } else if (totalIdealSetAside <= incomeAvailableForSetAside) {
-        // Can afford ideal
+      } else if (totalIdealSetAside <= setAsideCap) {
         actualPortion = Math.min(item.idealPortion, item.stillNeeded);
       } else {
-        // Heavy week — scale down proportionally to what's available
-        const scale = incomeAvailableForSetAside / totalIdealSetAside;
+        const scale = setAsideCap / totalIdealSetAside;
         actualPortion = item.idealPortion * scale;
       }
       
@@ -5441,8 +5919,9 @@ function computeWeeklyPlan() {
       });
     });
     
-    // Free spend after bills + actual (possibly scaled) set-aside
-    const freeToSpend = weekIncome - weekBillsDueAmount - actualSetAside - variableWeekly;
+    // Savings = what's left from income after bills, spending allowance, and set-aside
+    const savingsAmount = Math.max(0, weekIncome - weekBillsDueAmount - variableWeekly - actualSetAside);
+    const freeToSpend = savingsAmount;
     
     const noIncomeThisWeek = weekIncome === 0;
     const nextIncomeEvent = incomeEvents.find(e => e.date > isoOf(weekEnd));
@@ -5459,7 +5938,10 @@ function computeWeeklyPlan() {
       isHeavyWeek,
       setAsideBreakdown,
       variableSpend: variableWeekly,
+      spendingAllowance: variableWeekly,
       freeToSpend,
+      savingsAmount,
+      currentBalance: w === 0 ? currentBalance : null,
       isNow: w === 0,
       noIncomeThisWeek,
       nextIncomeEvent: nextIncomeEvent || null,
@@ -6091,7 +6573,7 @@ function computeSmartAffordability(amount) {
     
     for (let day = 1; day <= 180; day++) {
       simDate.setDate(simDate.getDate() + 1);
-      const isoDate = simDate.toISOString().slice(0, 10);
+      const isoDate = isoOf(simDate);
       
       // Daily spend
       simBal -= avgDaily;
@@ -6116,7 +6598,7 @@ function computeSmartAffordability(amount) {
       // Realistic wait — use weeks (universal, not confused by multiple jobs)
       const targetDate = new Date(todayISO() + 'T00:00:00');
       targetDate.setDate(targetDate.getDate() + foundDay);
-      const targetISO = targetDate.toISOString().slice(0, 10);
+      const targetISO = isoOf(targetDate);
       const weeks = Math.round(foundDay / 7);
       // Plain phrasing scaled to actual wait length
       let weekText;
@@ -6261,12 +6743,13 @@ function getUpcomingPayEvents(daysAhead = 30, daysBack = 0) {
   
   state.incomeSources.forEach(src => {
     if (src.cycle === 'irregular' || !src.nextPay) return;
-    
-    // v2.5.5: Start iteration from earlier so past-this-week events are captured
-    // For recurring sources, walk backward from nextPay to find any that already happened
+
+    // Don't emit events before this source's startDate
+    const srcStart = src.startDate ? new Date(src.startDate + 'T00:00:00') : null;
+
     let next = new Date(computeNextPayDate(src) + 'T00:00:00');
-    
-    // Walk backward to lookback boundary
+
+    // Walk backward to lookback boundary (but never before startDate)
     if (daysBack > 0) {
       const cycleDays = src.cycle === 'weekly' ? 7
         : src.cycle === 'fortnightly' ? 14
@@ -6280,18 +6763,23 @@ function getUpcomingPayEvents(daysAhead = 30, daysBack = 0) {
           else if (src.cycle === 'monthly') prev.setMonth(prev.getMonth() - 1);
           else break;
           if (prev < lookback) break;
+          if (srcStart && prev < srcStart) break; // stop before source existed
           next = prev;
         }
       }
     }
-    
+
     while (next <= horizon) {
       if (next >= lookback) {
-        events.push({
-          date: next.toISOString().slice(0,10),
-          amount: src.amount,
-          name: src.name,
-        });
+        // Only emit events on or after startDate
+        if (!srcStart || next >= srcStart) {
+          events.push({
+            date: isoOf(next),
+            srcId: src.id,
+            amount: src.amount,
+            name: src.name,
+          });
+        }
       }
       if (src.cycle === 'weekly') next.setDate(next.getDate() + 7);
       else if (src.cycle === 'fortnightly') next.setDate(next.getDate() + 14);
@@ -6335,7 +6823,7 @@ function getUpcomingLoanPayments(daysAhead = 30) {
     while (nextDate <= horizon) {
       if (nextDate >= today) {
         events.push({
-          date: nextDate.toISOString().slice(0,10),
+          date: isoOf(nextDate),
           amount: avgAmt,
           name: loan.name + ' payment',
         });
@@ -6359,7 +6847,7 @@ function forecastBalance(daysAhead = 30) {
   for (let i = 1; i <= daysAhead; i++) {
     const d = new Date(today + 'T00:00:00');
     d.setDate(d.getDate() + i);
-    const iso = d.toISOString().slice(0,10);
+    const iso = isoOf(d);
     
     // Daily spending
     bal -= avgDailyOut;
@@ -6431,6 +6919,8 @@ function renderWeeklyPlanToday(weeks, el) {
   const billsDueThisWeek = Math.round(thisWeek.billsDueAmount);
   const income = Math.round(thisWeek.income);
   const currentBalance = Math.round(getCurrentBalance());
+  const spendingAllowance = Math.round(thisWeek.spendingAllowance || 0);
+  const savingsAmount = Math.max(0, Math.round(thisWeek.savingsAmount || 0));
   const isHeavyWeek = thisWeek.isHeavyWeek;
   const horizonCanCatchUp = weeks.horizonCanCatchUp;
   
@@ -6442,66 +6932,55 @@ function renderWeeklyPlanToday(weeks, el) {
   let heroLine, planLines, savingsSuggestion, whyLine, headlineColor;
   
   if (income > 0) {
-    // === HAS INCOME THIS WEEK ===
     heroLine = `You're earning ${fmt(income)} this week`;
     planLines = [];
-    
+
     if (billsDueThisWeek > 0) {
       planLines.push(`Pay <strong>${fmt(billsDueThisWeek)}</strong> in bills`);
     }
-    
+    if (spendingAllowance > 0) {
+      planLines.push(`Spend up to <strong>${fmt(spendingAllowance)}</strong> this week`);
+    }
+    if (setAside > 0) {
+      planLines.push(`Set aside <strong>${fmt(setAside)}</strong> for upcoming bills`);
+    }
+    if (savingsAmount > 0) {
+      planLines.push(`Save up to <strong style="color:var(--accent);">${fmt(savingsAmount)}</strong> toward goals`);
+    }
+
+    // Balance buffer note — reference biggest upcoming bill by amount
+    const biggestUpcoming = thisWeek.setAsideBreakdown.length > 0
+      ? [...thisWeek.setAsideBreakdown].sort((a,b) => b.amount - a.amount)[0]
+      : null;
+    if (biggestUpcoming && currentBalance >= biggestUpcoming.amount * 0.5) {
+      savingsSuggestion = `Your ${fmt(currentBalance)} balance has you halfway covered for the ${fmt(biggestUpcoming.amount)} ${escapeHtml(biggestUpcoming.name)} in ${biggestUpcoming.daysUntil} days.`;
+    }
+
     if (isHeavyWeek) {
-      // Income can't cover both bills and ideal set-aside
-      // Show what we CAN save this week
-      if (setAside > 0) {
-        planLines.push(`Save <strong>${fmt(setAside)}</strong> toward upcoming bills (what's left after bills)`);
-      } else {
-        planLines.push(`Skip set-aside this week — bills take all of pay`);
-      }
-      headlineColor = 'var(--accent)';  // not warning — this is normal
-      
-      // Encouraging tone — savings catch up next week
+      headlineColor = 'var(--accent)';
+      let catchUpNote;
       if (horizonCanCatchUp) {
-        // Find first lighter week
-        const lightWeek = weeks.slice(1).find(w => w.income > 0 && w.income - w.billsDueAmount > 200);
-        if (lightWeek) {
-          const lightStart = new Date(lightWeek.weekStart + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long' });
-          savingsSuggestion = `💪 Bills first this week — savings catch up next week. Light bills coming up means you'll be back on the plan by ${lightStart}.`;
-        } else {
-          savingsSuggestion = `💪 Bills first this week — savings catch up across the next few weeks.`;
-        }
+        const lightWeek = weeks.slice(1).find(w => w.income > 0 && !w.isHeavyWeek);
+        catchUpNote = lightWeek
+          ? `Bills are heavier this week — set-aside catches up from ${new Date(lightWeek.weekStart + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long' })}.`
+          : `Bills are heavier this week — set-aside catches up across the next few weeks.`;
       } else {
-        // Horizon can't catch up — only NOW suggest balance
         const shortage = Math.round(idealSetAside - setAside);
-        if (currentBalance >= shortage) {
-          savingsSuggestion = `⚠ Bills are heavy across all 4 weeks. If you can, dip <strong>${fmt(shortage)}</strong> from your balance (${fmt(currentBalance)} available) to stay on plan.`;
-        } else {
-          savingsSuggestion = `⚠ Bills exceed 4-week income. Consider pushing a non-urgent bill or temporarily cutting variable spend.`;
-        }
+        catchUpNote = currentBalance >= shortage
+          ? `Bills are heavy across all 4 weeks. You could dip <strong>${fmt(shortage)}</strong> from your balance (${fmt(currentBalance)} available) to stay on plan.`
+          : `Bills are heavy across all 4 weeks. Consider pushing a non-urgent bill or trimming variable spend temporarily.`;
       }
+      savingsSuggestion = catchUpNote + (savingsSuggestion ? '<br>' + savingsSuggestion : '');
+    } else if (savingsAmount >= 200) {
+      headlineColor = 'var(--income)';
     } else {
-      // Comfortable week
-      if (setAside > 0) {
-        planLines.push(`Set aside <strong>${fmt(setAside)}</strong> for upcoming bills`);
-      }
-      const totalNeeded = billsDueThisWeek + setAside;
-      const remaining = income - totalNeeded;
-      
-      if (remaining >= 50) {
-        const saveSuggest = Math.round(remaining * 0.5);
-        savingsSuggestion = `💰 You can put <strong style="color:var(--accent);">${fmt(saveSuggest)}</strong> in savings, keep <strong>${fmt(remaining - saveSuggest)}</strong> for spending`;
-      } else if (remaining > 0) {
-        savingsSuggestion = `💰 Skip savings this week — keep the <strong>${fmt(remaining)}</strong> as buffer for spending`;
-      } else {
-        savingsSuggestion = `💰 Skip savings this week — plan is balanced`;
-      }
       headlineColor = 'var(--text)';
-      
-      if (billsDueThisWeek === 0 && setAside === 0) {
-        heroLine = `Easy week — ${fmt(income)} all yours`;
-        planLines = [`No bills due, nothing to set aside`];
-        headlineColor = 'var(--income)';
-      }
+    }
+
+    if (billsDueThisWeek === 0 && setAside === 0) {
+      heroLine = `Easy week — ${fmt(income)} all yours`;
+      planLines = [`No bills due, nothing to set aside`];
+      headlineColor = 'var(--income)';
     }
   } else {
     // === NO INCOME THIS WEEK === (use balance as working capital)
@@ -6628,10 +7107,22 @@ function renderWeeklyPlanToday(weeks, el) {
             <div class="wp-summary-value" style="color:var(--expense);">−${fmt(billsDueThisWeek)}</div>
           </div>
         ` : ''}
+        ${spendingAllowance > 0 ? `
+          <div class="wp-summary-cell">
+            <div class="wp-summary-label">💸 Spending</div>
+            <div class="wp-summary-value" style="color:var(--text-dim);">up to ${fmt(spendingAllowance)}</div>
+          </div>
+        ` : ''}
         ${setAside > 0 ? `
           <div class="wp-summary-cell">
             <div class="wp-summary-label">🔒 Set aside</div>
             <div class="wp-summary-value" style="color:#a855f7;">−${fmt(setAside)}</div>
+          </div>
+        ` : ''}
+        ${savingsAmount > 0 ? `
+          <div class="wp-summary-cell">
+            <div class="wp-summary-label">📈 Save up to</div>
+            <div class="wp-summary-value" style="color:var(--accent);">+${fmt(savingsAmount)}</div>
           </div>
         ` : ''}
       </div>
@@ -6818,7 +7309,6 @@ function renderCompass() {
   renderLoanStrategy();
   renderHealthScore();
   renderForecast();
-  renderRatios();
   renderSmartInsights();
 }
 
@@ -6919,7 +7409,7 @@ function renderExpectedMonthly() {
   if (monthlyIn === 0 && monthlyFixed === 0) {
     el.innerHTML = `
       <div style="color:var(--text-dim);font-size:13px;line-height:1.6;padding:8px 0;">
-        Set up your <strong style="color:var(--accent);" onclick="goPage('income-sources')">income sources</strong> and <strong style="color:var(--accent);" onclick="goPage('recurring-expenses')">regular bills</strong> in Settings to see your monthly picture.
+        Set up your <strong style="color:var(--accent);" onclick="goPage('profile')">income sources</strong> and <strong style="color:var(--accent);" onclick="goPage('profile')">regular bills</strong> in Profile to see your monthly picture.
       </div>
     `;
     return;
@@ -7128,7 +7618,7 @@ function computeHealthScore() {
   
   // Factor 1: Savings rate (this month)
   const now = new Date();
-  const mStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const mStart = isoOf(new Date(now.getFullYear(), now.getMonth(), 1));
   let mIn = 0, mOut = 0;
   state.transactions.forEach(t => {
     if (t.date >= mStart) {
@@ -7306,66 +7796,6 @@ function renderForecast() {
   conf.innerHTML = warning + `<div class="confidence">${confText}</div>`;
 }
 
-function renderRatios() {
-  // 50/30/20: needs / wants / savings
-  // Map categories to buckets
-  const NEEDS = ['food', 'transport', 'bills', 'health', 'home', 'loan_pay'];
-  const WANTS = ['shopping', 'fun', 'edu', 'travel', 'gym', 'subs'];
-  // Everything else expense = wants by default
-  // Savings = income - all expense
-  
-  const now = new Date();
-  const mStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
-  
-  let income = 0, needs = 0, wants = 0;
-  state.transactions.forEach(t => {
-    if (t.date < mStart) return;
-    if (t.type === 'income') { income += t.amount; }
-    else {
-      if (NEEDS.includes(t.category)) needs += t.amount;
-      else wants += t.amount;
-    }
-  });
-  
-  const total = income || (needs + wants) || 1;
-  const savings = Math.max(0, income - needs - wants);
-  const needsPct = (needs / total) * 100;
-  const wantsPct = (wants / total) * 100;
-  const savingsPct = (savings / total) * 100;
-  
-  document.getElementById('ratioBars').innerHTML = `
-    <div class="ratio-row">
-      <div class="ratio-head">
-        <span class="ratio-name">Needs</span>
-        <span class="ratio-vals">${needsPct.toFixed(0)}% · ${fmt(needs)} <span style="color:var(--text-muted);">/ 50%</span></span>
-      </div>
-      <div class="ratio-bar-wrap">
-        <div class="ratio-bar-target" style="left:50%;"></div>
-        <div class="ratio-bar-fill needs" style="width:${Math.min(100, needsPct)}%;"></div>
-      </div>
-    </div>
-    <div class="ratio-row">
-      <div class="ratio-head">
-        <span class="ratio-name">Wants</span>
-        <span class="ratio-vals">${wantsPct.toFixed(0)}% · ${fmt(wants)} <span style="color:var(--text-muted);">/ 30%</span></span>
-      </div>
-      <div class="ratio-bar-wrap">
-        <div class="ratio-bar-target" style="left:30%;"></div>
-        <div class="ratio-bar-fill wants" style="width:${Math.min(100, wantsPct)}%;"></div>
-      </div>
-    </div>
-    <div class="ratio-row">
-      <div class="ratio-head">
-        <span class="ratio-name">Savings</span>
-        <span class="ratio-vals">${savingsPct.toFixed(0)}% · ${fmt(savings)} <span style="color:var(--text-muted);">/ 20%</span></span>
-      </div>
-      <div class="ratio-bar-wrap">
-        <div class="ratio-bar-target" style="left:20%;"></div>
-        <div class="ratio-bar-fill savings" style="width:${Math.min(100, savingsPct)}%;"></div>
-      </div>
-    </div>
-  `;
-}
 
 function renderSmartInsights() {
   const list = document.getElementById('smartInsights');
@@ -7409,7 +7839,7 @@ function renderSmartInsights() {
   
   // 2. Biggest category
   const now = new Date();
-  const mStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const mStart = isoOf(new Date(now.getFullYear(), now.getMonth(), 1));
   const catTotals = {};
   state.transactions.forEach(t => {
     if (t.type === 'expense' && t.date >= mStart) {
@@ -7788,7 +8218,7 @@ function renderSavingsPage() {
   
   // Recent deposits trend (last 30 days)
   const d30 = new Date(); d30.setDate(d30.getDate() - 30);
-  const d30ISO = d30.toISOString().slice(0,10);
+  const d30ISO = isoOf(d30);
   let recentDeposits = 0;
   state.savings.forEach(s => {
     if (s.date >= d30ISO && s.type === 'deposit') recentDeposits += s.amount;
@@ -7980,6 +8410,8 @@ function renderRecExps() {
     const cuts = r.active ? findSmartCutsForExpense(r) : null;
     const hasCuts = cuts && cuts.tips && cuts.tips.length > 0;
     
+    const recIsUpcoming = r.startDate && r.startDate > todayISO();
+
     return `
       <div class="rec-exp-card ${r.active ? '' : 'inactive'}">
         <div onclick="editRecExp('${r.id}')">
@@ -7988,6 +8420,7 @@ function renderRecExps() {
             <span class="rec-exp-amount">−${fmt(r.amount)}</span>
           </div>
           <div class="rec-exp-meta">${cycleLabel}${nextStr ? ' · ' + nextStr : ''}</div>
+          ${recIsUpcoming ? `<div class="rec-exp-meta" style="margin-top:3px;color:var(--text-muted);font-size:11px;">Starts ${r.startDate}</div>` : ''}
         </div>
         ${hasCuts ? `
           <div class="save-here-row" onclick="toggleSaveHere('${r.id}', event)">
@@ -8012,24 +8445,37 @@ function computeNextDueDate(rec) {
   const today = new Date(todayISO() + 'T00:00:00');
   let next = new Date(rec.nextDue + 'T00:00:00');
   if (next >= today) return rec.nextDue;
-  
+
+  const origDay = next.getDate();
   while (next < today) {
-    if (rec.cycle === 'weekly') next.setDate(next.getDate() + 7);
+    if (rec.cycle === 'weekly')           next.setDate(next.getDate() + 7);
     else if (rec.cycle === 'fortnightly') next.setDate(next.getDate() + 14);
-    else if (rec.cycle === 'monthly') next.setMonth(next.getMonth() + 1);
-    else if (rec.cycle === 'yearly') next.setFullYear(next.getFullYear() + 1);
+    else if (rec.cycle === 'monthly') {
+      next.setDate(1);
+      next.setMonth(next.getMonth() + 1);
+      const last = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+      next.setDate(Math.min(origDay, last));
+    }
+    else if (rec.cycle === 'yearly')      next.setFullYear(next.getFullYear() + 1);
     else break;
   }
-  return next.toISOString().slice(0,10);
+  return `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}-${String(next.getDate()).padStart(2,'0')}`;
 }
 
 function advanceRecurringDate(dateISO, cycle) {
   const d = new Date(dateISO + 'T00:00:00');
-  if (cycle === 'weekly') d.setDate(d.getDate() + 7);
+  if (cycle === 'weekly')           d.setDate(d.getDate() + 7);
   else if (cycle === 'fortnightly') d.setDate(d.getDate() + 14);
-  else if (cycle === 'monthly') d.setMonth(d.getMonth() + 1);
-  else if (cycle === 'yearly') d.setFullYear(d.getFullYear() + 1);
-  return d.toISOString().slice(0,10);
+  else if (cycle === 'monthly') {
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + 1);
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, lastDay)); // clamp: Jan 31 → Feb 28, Mar 31 → Apr 30
+  }
+  else if (cycle === 'yearly')      d.setFullYear(d.getFullYear() + 1);
+  // Use local date parts — toISOString() returns UTC which shifts date back in UTC+10/+11
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 function openRecExpModal() {
@@ -8117,11 +8563,15 @@ function saveRecExp() {
   if (state.editingRecExpId) {
     const idx = state.recurringExpenses.findIndex(r => r.id === state.editingRecExpId);
     if (idx >= 0) {
+      const prev = state.recurringExpenses[idx];
+      const scheduleChanged = prev.nextDue !== nextDue || prev.cycle !== state.selectedRecCycle;
       state.recurringExpenses[idx] = {
-        ...state.recurringExpenses[idx],
+        ...prev,
         name, amount, category: state.selectedCategory,
         cycle: state.selectedRecCycle, nextDue, note,
         active: state.recExpActiveOn,
+        lastAutoLogDate: scheduleChanged ? null : prev.lastAutoLogDate,
+        startDate: scheduleChanged ? (nextDue || todayISO()) : prev.startDate,
       };
     }
     showToast('Updated');
@@ -8132,6 +8582,7 @@ function saveRecExp() {
       cycle: state.selectedRecCycle, nextDue, note,
       active: state.recExpActiveOn,
       lastAutoLogDate: null,
+      startDate: nextDue || todayISO(),
       createdAt: Date.now(),
     });
     showToast('Recurring expense added');
@@ -8139,8 +8590,8 @@ function saveRecExp() {
   
   saveData();
   closeModal('recExpModal');
-  renderRecExps();
   runAutoLog();
+  renderRecExps();
 }
 
 function deleteCurrentRecExp() {
@@ -8161,15 +8612,15 @@ function runAutoLog() {
   const today = todayISO();
   const todayDate = new Date(today + 'T00:00:00');
   const created = [];
+  let advancedAny = false;
   
   // --- Income sources with autoLog enabled ---
   state.incomeSources.forEach(src => {
     if (!src.autoLog || src.cycle === 'irregular' || !src.nextPay) return;
     
-    // Walk forward from nextPay (or lastAutoLogDate+1) through today
-    let checkDate = src.lastAutoLogDate 
-      ? advanceRecurringDate(src.lastAutoLogDate, src.cycle)
-      : src.nextPay;
+    // nextPay is the source of truth. lastAutoLogDate is only history.
+    let checkDate = src.nextPay;
+    let latestLoggedDate = null;
     
     // Safety: cap iterations
     let iterations = 0;
@@ -8194,15 +8645,16 @@ function runAutoLog() {
           });
           created.push({ name: src.name, amount: src.amount, type: 'income', date: checkDate });
         }
-        src.lastAutoLogDate = checkDate;
+        latestLoggedDate = checkDate;
       }
       checkDate = advanceRecurringDate(checkDate, src.cycle);
       iterations++;
     }
     
-    // Update nextPay forward
-    if (src.lastAutoLogDate) {
-      src.nextPay = advanceRecurringDate(src.lastAutoLogDate, src.cycle);
+    if (latestLoggedDate) {
+      src.lastAutoLogDate = latestLoggedDate;
+      src.nextPay = checkDate;
+      advancedAny = true;
     }
   });
   
@@ -8210,9 +8662,8 @@ function runAutoLog() {
   state.recurringExpenses.forEach(rec => {
     if (!rec.active || !rec.nextDue) return;
     
-    let checkDate = rec.lastAutoLogDate 
-      ? advanceRecurringDate(rec.lastAutoLogDate, rec.cycle)
-      : rec.nextDue;
+    let checkDate = rec.nextDue;
+    let latestLoggedDate = null;
     
     let iterations = 0;
     while (checkDate <= today && iterations < 100) {
@@ -8235,22 +8686,26 @@ function runAutoLog() {
           });
           created.push({ name: rec.name, amount: rec.amount, type: 'expense', date: checkDate });
         }
-        rec.lastAutoLogDate = checkDate;
+        latestLoggedDate = checkDate;
       }
       checkDate = advanceRecurringDate(checkDate, rec.cycle);
       iterations++;
     }
     
-    if (rec.lastAutoLogDate) {
-      rec.nextDue = advanceRecurringDate(rec.lastAutoLogDate, rec.cycle);
+    if (latestLoggedDate) {
+      rec.lastAutoLogDate = latestLoggedDate;
+      rec.nextDue = checkDate;
+      advancedAny = true;
     }
   });
   
-  if (created.length > 0) {
+  if (created.length > 0 || advancedAny) {
     saveData();
-    state.recentAutoLogged = created;
     renderAll();
-    renderAutoLogBanner();
+    if (created.length > 0) {
+      state.recentAutoLogged = created;
+      renderAutoLogBanner();
+    }
   }
   
   return created;
@@ -8402,68 +8857,6 @@ function dismissRecovery() {
   if (banner) banner.remove();
 }
 
-function showSnapshotsModal() {
-  const snapKeys = Object.keys(localStorage)
-    .filter(k => k.startsWith(AUTO_SNAPSHOT_PREFIX))
-    .sort((a, b) => b.localeCompare(a));
-  
-  if (snapKeys.length === 0) {
-    alert('No internal snapshots yet.\n\nThe app automatically takes a daily snapshot of your data (kept for 7 days). These appear here after your first day of use.\n\nFor real backups, use "Export Data (JSON)" and save the file to Files or iCloud Drive.');
-    return;
-  }
-  
-  let msg = `Internal Snapshots (${snapKeys.length} kept)\n\nThese are automatic daily backups inside the app. They survive app updates but NOT being removed from home screen.\n\nAvailable snapshots:\n\n`;
-  snapKeys.forEach(k => {
-    const date = k.replace(AUTO_SNAPSHOT_PREFIX, '');
-    try {
-      const data = JSON.parse(localStorage.getItem(k));
-      const txCount = (data.transactions || []).length;
-      msg += `• ${date} — ${txCount} transactions\n`;
-    } catch (e) {
-      msg += `• ${date} — (corrupted)\n`;
-    }
-  });
-  msg += `\nTo restore from a snapshot, type the date (YYYY-MM-DD) and press OK. Cancel to exit.`;
-  
-  const input = prompt(msg);
-  if (!input) return;
-  
-  const targetKey = AUTO_SNAPSHOT_PREFIX + input.trim();
-  if (!localStorage.getItem(targetKey)) {
-    showToast('Snapshot not found', '⚠');
-    return;
-  }
-  
-  if (!confirm(`Restore from ${input}? Your current data will be backed up first.`)) return;
-  
-  try {
-    // Back up current state first
-    localStorage.setItem(BACKUP_PREFIX + Date.now() + '_pre_snapshot_restore', localStorage.getItem(STORAGE_KEY) || '{}');
-    
-    const data = JSON.parse(localStorage.getItem(targetKey));
-    const migrated = runMigrations(data);
-    state.transactions = migrated.transactions || [];
-    state.budgets = migrated.budgets || {};
-    state.loans = migrated.loans || [];
-    state.customCategories = migrated.customCategories || { income: [], expense: [] };
-    state.incomeSources = migrated.incomeSources || [];
-    state.decisions = migrated.decisions || [];
-    state.recurringExpenses = migrated.recurringExpenses || [];
-    state.currency = migrated.currency || 'AUD';
-    saveData();
-    renderAll();
-    showToast('Restored from ' + input);
-  } catch (e) {
-    showToast('Restore failed', '⚠');
-  }
-}
-
-function updateSnapshotsCount() {
-  const el = document.getElementById('snapshotsCount');
-  if (!el) return;
-  const n = Object.keys(localStorage).filter(k => k.startsWith(AUTO_SNAPSHOT_PREFIX)).length;
-  el.textContent = n === 0 ? 'None yet' : `${n} kept`;
-}
 
 /* ============================================================
    v2.1: BACKUP REMINDER BANNER
@@ -8614,9 +9007,9 @@ const TOUR_STEPS = [
   },
   {
     title: 'See every transaction',
-    body: 'The <strong>Activity</strong> tab shows every transaction with filters and search. Tap any entry to edit it.',
-    target: '.nav-item[data-page="activity"]',
-    page: 'home',  // stay on home, just point at the nav
+    body: 'Tap your <strong>Current Balance</strong> to open all transactions — with filters and search. Tap any entry to edit it.',
+    target: '#page-home .hero',
+    page: 'home',
   },
   {
     title: 'Your weekly plan',
@@ -8632,8 +9025,8 @@ const TOUR_STEPS = [
   },
   {
     title: 'Set up your income first',
-    body: 'Tap the <strong>⚙ settings gear</strong> (top right) → <strong>Income Sources</strong> to add your jobs/paychecks. Recurring expenses live there too — once set, the app does the rest. <br><br>You\'re ready. Have fun! 💪',
-    target: '.icon-btn[onclick*="settings"]',
+    body: 'Tap the <strong>Profile tab</strong> (bottom right) to add your income sources and recurring expenses. Once set, the app does the rest. <br><br>You\'re ready. Have fun! 💪',
+    target: '.nav-item[data-page="profile"]',
     page: 'home',
     isLast: true,
   },
@@ -8645,7 +9038,6 @@ let tourActive = false;
 function startTour() {
   currentTourStep = 0;
   tourActive = true;
-  document.getElementById('tourStepTotal').textContent = TOUR_STEPS.length;
   document.getElementById('tourOverlay').style.display = 'block';
   showTourStep(0);
 }
@@ -8659,8 +9051,13 @@ function showTourStep(idx) {
   const step = TOUR_STEPS[idx];
   currentTourStep = idx;
   
-  // Update step number
-  document.getElementById('tourStepNum').textContent = idx + 1;
+  // Render dot progress indicators
+  const dotsEl = document.getElementById('tourDots');
+  dotsEl.innerHTML = TOUR_STEPS.map((_, i) => {
+    const cls = i < idx ? 'done' : i === idx ? 'active' : '';
+    return `<span class="tour-dot ${cls}"></span>`;
+  }).join('');
+
   document.getElementById('tourTitle').textContent = step.title;
   document.getElementById('tourBody').innerHTML = step.body;
   
@@ -8810,7 +9207,7 @@ function maybeStartTourOnFirstLaunch() {
 
 // Manually trigger from Settings
 function restartTour() {
-  // Settings is a page, navigate back to home first
+  // Navigate to home before starting the tour
   goPage('home');
   // Reset the completed flag so the tour can show
   localStorage.removeItem('tour_completed');
@@ -8861,10 +9258,11 @@ function showFirstLaunchWarningIfNeeded() {
 
 
 function init() {
+  initTheme();          // apply saved theme before first render
   // v2.5.1: First, check if we need to cache-bust the URL
   // This runs BEFORE everything else to ensure we have the latest HTML
   autoCacheBust();  // may redirect — if it does, the rest doesn't matter
-  
+
   ensureSavingsCategory();  // v2.4: register savings category
   loadData();
   takeAutoSnapshot();      // Snapshot AFTER load (preserves loaded state)
