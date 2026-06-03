@@ -333,15 +333,22 @@ function reportHtml(summary, metadata) {
   fs.writeFileSync(REPORT_HTML, reportHtml(summary, metadata));
 
   browser = await chromium.launch({ headless: true });
+  let reportPdf = REPORT_PDF;
   try {
     const reportPage = await browser.newPage();
     await reportPage.goto('file:///' + REPORT_HTML.replace(/\\/g, '/'), { waitUntil: 'load' });
-    await reportPage.pdf({ path: REPORT_PDF, format: 'A4', printBackground: true });
+    try {
+      await reportPage.pdf({ path: reportPdf, format: 'A4', printBackground: true });
+    } catch (error) {
+      if (!error || error.code !== 'EBUSY') throw error;
+      reportPdf = path.join(OUT_DIR, `Ledger_Compass_Setup_Wizard_QA_Report_${Date.now()}.pdf`);
+      await reportPage.pdf({ path: reportPdf, format: 'A4', printBackground: true });
+    }
   } finally {
     await browser.close();
   }
 
-  console.log(JSON.stringify({ summary, reports: { json: REPORT_JSON, html: REPORT_HTML, pdf: REPORT_PDF }, consoleErrors }, null, 2));
+  console.log(JSON.stringify({ summary, reports: { json: REPORT_JSON, html: REPORT_HTML, pdf: reportPdf }, consoleErrors }, null, 2));
   process.exit(summary.fail === 0 ? 0 : 1);
 })().catch(error => {
   console.error(error);

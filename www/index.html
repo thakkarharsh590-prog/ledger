@@ -3,7 +3,7 @@
   ============================================================
   LEDGER — Personal Finance App
   ============================================================
-  Owner:        Harsh (Melbourne, AU)
+  Owner:        Ledger Compass
   Version:      2.8.5
   Last edited:  2026-05-28
   Storage:      localStorage (device-local, never sent to cloud)
@@ -662,15 +662,50 @@
   }
   .empty {
     text-align: center;
-    padding: 60px 20px;
+    padding: 34px 18px;
     color: var(--text-dim);
+    background: var(--bg-card);
+    border: 1px dashed var(--border);
+    border-radius: 16px;
+    margin: 8px 0;
   }
   .empty-icon {
-    font-size: 40px;
-    margin-bottom: 12px;
-    opacity: 0.5;
+    width: 44px;
+    height: 44px;
+    margin: 0 auto 14px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    color: var(--accent);
+    background: rgba(201,255,61,0.10);
+    border: 1px solid rgba(201,255,61,0.18);
   }
-  .empty p { font-size: 14px; line-height: 1.5; }
+  .empty-icon .category-glyph {
+    width: 23px;
+    height: 23px;
+  }
+  .empty h3 {
+    margin: 0 0 6px;
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.25;
+    letter-spacing: 0;
+  }
+  .empty p {
+    margin: 0 auto;
+    max-width: 290px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .empty-action {
+    margin-top: 16px;
+    width: auto;
+    min-height: 44px;
+    padding: 0 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 
   /* Stats Page */
   .stat-card {
@@ -3035,7 +3070,7 @@
     <div class="modal-sub">Shown on your profile</div>
     <div class="field">
       <label>Name</label>
-      <input type="text" id="inpUserName" placeholder="e.g. Harsh Thakkar" maxlength="50">
+      <input type="text" id="inpUserName" placeholder="e.g. Alex Morgan" maxlength="50">
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal('nameModal')">Cancel</button>
@@ -4497,7 +4532,11 @@ function renderHome() {
     .slice(0, 5);
   document.getElementById('recentList').innerHTML = recent.length 
     ? renderTxList(recent) 
-    : emptyState('No transactions yet', 'Tap + Income or + Expense to start');
+    : emptyState('Start with your first transaction', 'Income and expenses will appear here as a timeline once you add them.', {
+      icon: 'wallet',
+      actionLabel: 'Add income',
+      action: "openAddModal('income')",
+    });
 }
 
 function renderTransactions() {
@@ -4516,7 +4555,11 @@ function renderTransactions() {
   list.sort((a,b) => b.date.localeCompare(a.date) || (b.createdAt||0) - (a.createdAt||0));
   document.getElementById('allList').innerHTML = list.length
     ? renderTxList(list, true)
-    : emptyState('No transactions', 'Try a different filter or add some');
+    : emptyState('Nothing matches this filter', 'Transactions that match the selected view will appear here.', {
+      icon: 'receipt',
+      actionLabel: 'Add transaction',
+      action: "openAddModal('expense')",
+    });
 }
 
 function renderTxList(txs, grouped = false) {
@@ -4552,10 +4595,16 @@ function renderTxItem(t) {
   `;
 }
 
-function emptyState(title, sub) {
+function emptyState(title, sub, opts = {}) {
+  const icon = opts.icon || 'sparkles';
+  const action = opts.actionLabel && opts.action
+    ? `<button class="btn-primary empty-action" type="button" onclick="${opts.action}">${escapeHtml(opts.actionLabel)}</button>`
+    : '';
   return `<div class="empty">
-    <div class="empty-icon">◌</div>
-    <p><strong>${title}</strong><br>${sub}</p>
+    <div class="empty-icon">${categoryIconSvg(icon, title)}</div>
+    <h3>${escapeHtml(title)}</h3>
+    <p>${sub}</p>
+    ${action}
   </div>`;
 }
 
@@ -4834,7 +4883,11 @@ function renderCategoryBreakdown() {
         </div>
       `;
     }).join('');
-  document.getElementById('categoryBreakdown').innerHTML = rows || emptyState('No expenses this month', 'Add expenses to see breakdown');
+  document.getElementById('categoryBreakdown').innerHTML = rows || emptyState('No spending breakdown yet', 'Once you log expenses, this shows which categories are taking the most money this month.', {
+    icon: 'receipt',
+    actionLabel: 'Add expense',
+    action: "openAddModal('expense')",
+  });
 }
 
 /* ============ BUDGETS ============ */
@@ -4850,7 +4903,11 @@ function renderBudgets() {
   });
   const entries = Object.entries(state.budgets);
   if (entries.length === 0) {
-    list.innerHTML = emptyState('No budgets yet', 'Set monthly spending limits to stay on track');
+    list.innerHTML = emptyState('No budgets yet', 'Budgets turn categories like food, transport, and subscriptions into monthly guardrails.', {
+      icon: 'tag',
+      actionLabel: 'Create budget',
+      action: 'openBudgetModal()',
+    });
     return;
   }
   list.innerHTML = entries.map(([cid, limit]) => {
@@ -4903,9 +4960,17 @@ function renderLoans() {
     summary.innerHTML = '';
     if (strategyCard && strategyContent) {
       strategyCard.style.display = 'block';
-      strategyContent.innerHTML = emptyState('No payoff plan yet', 'Add a loan to see the smartest payoff order');
+      strategyContent.innerHTML = emptyState('No payoff plan yet', 'Add a loan and Ledger Compass will suggest the smartest order to attack debt.', {
+        icon: 'credit-card',
+        actionLabel: 'Add loan',
+        action: 'openLoanModal()',
+      });
     }
-    list.innerHTML = emptyState('No loans tracked', 'Add a loan to track your payoff progress');
+    list.innerHTML = emptyState('No loans tracked', 'Track balances, payments, and progress toward clearing what you owe.', {
+      icon: 'credit-card',
+      actionLabel: 'Add first loan',
+      action: 'openLoanModal()',
+    });
     return;
   }
   
@@ -5015,7 +5080,11 @@ function openLoanDetail(loanId) {
         <button class="payment-delete" onclick="deletePayment('${loan.id}','${p.id}', event)">×</button>
       </div>
     </div>
-  `).join('') : '<div class="empty" style="padding:24px;"><p>No payments yet</p></div>';
+  `).join('') : emptyState('No payments logged yet', 'Loan payments you record will appear here, including extra payments and notes.', {
+    icon: 'credit-card',
+    actionLabel: 'Log payment',
+    action: `openPaymentModal('${loan.id}')`,
+  });
   
   document.getElementById('loanDetailContent').innerHTML = `
     <div class="hero" style="margin-top:0;">
@@ -5763,7 +5832,11 @@ function renderIncomeSources() {
   const list = document.getElementById('incomeSrcList');
   if (!list) return;
   if (state.incomeSources.length === 0) {
-    list.innerHTML = emptyState('No income sources', 'Add your job(s) to enable cash flow forecasts');
+    list.innerHTML = emptyState('No income sources yet', 'Add a paycheck or regular income source so forecasts and weekly plans know what is coming in.', {
+      icon: 'wallet',
+      actionLabel: 'Add income source',
+      action: 'openIncomeSrcModal()',
+    });
     return;
   }
   
@@ -7654,11 +7727,11 @@ function renderWeeklyPlan() {
   const hasIncome = state.incomeSources.some(s => s.cycle !== 'irregular');
   
   if (!hasIncome) {
-    el.innerHTML = `
-      <div style="color:var(--text-dim);font-size:13px;line-height:1.6;padding:10px 0;">
-        Set up your income sources in Settings to see your weekly plan.
-      </div>
-    `;
+    el.innerHTML = emptyState('Your weekly plan starts with income', 'Add your pay cycle and this area will show what to set aside, what bills are coming, and what is free to spend.', {
+      icon: 'wallet',
+      actionLabel: 'Add income source',
+      action: 'openIncomeSrcModal()',
+    });
     return;
   }
   
@@ -8188,11 +8261,11 @@ function renderExpectedMonthly() {
   const leftover = monthlyIn - monthlyFixed - monthlyVar;
   
   if (monthlyIn === 0 && monthlyFixed === 0) {
-    el.innerHTML = `
-      <div style="color:var(--text-dim);font-size:13px;line-height:1.6;padding:8px 0;">
-        Set up your <strong style="color:var(--accent);" onclick="goPage('profile')">income sources</strong> and <strong style="color:var(--accent);" onclick="goPage('profile')">regular bills</strong> in Profile to see your monthly picture.
-      </div>
-    `;
+    el.innerHTML = emptyState('Build your monthly picture', 'Income sources and regular bills will turn this into a clear view of money in, money out, and what is spare.', {
+      icon: 'trend-up',
+      actionLabel: 'Set up Profile',
+      action: "goPage('profile')",
+    });
     return;
   }
   
@@ -8238,11 +8311,11 @@ function renderSafeSave() {
   const result = computeSafeWeeklySave();
   
   if (!result.hasEnoughData) {
-    el.innerHTML = `
-      <div style="color:var(--text-dim);font-size:13px;line-height:1.6;padding:8px 0;">
-        Add your income in Settings → Income Sources to see what you can save each week.
-      </div>
-    `;
+    el.innerHTML = emptyState('No safe-save estimate yet', 'Add income and regular bills so Ledger Compass can suggest a weekly saving amount that still leaves room for life.', {
+      icon: 'wallet',
+      actionLabel: 'Add income source',
+      action: 'openIncomeSrcModal()',
+    });
     return;
   }
   
@@ -8506,7 +8579,11 @@ function renderForecast() {
   
   const dataDays = getDataDays();
   if (dataDays < 7) {
-    chart.innerHTML = '<div class="empty" style="padding:20px;"><p>Need 7+ days of data to forecast</p></div>';
+    chart.innerHTML = emptyState('Forecast appears after a week', 'Log a few days of income and spending, then this chart will project your next 30 days.', {
+      icon: 'trend-up',
+      actionLabel: 'Add transaction',
+      action: "openAddModal('expense')",
+    });
     legend.innerHTML = '';
     conf.innerHTML = '';
     return;
@@ -8583,7 +8660,11 @@ function renderSmartInsights() {
   const insights = [];
   
   if (state.transactions.length < 10) {
-    list.innerHTML = emptyState('Not enough data', 'Insights appear after 10+ transactions');
+    list.innerHTML = emptyState('Insights need a little history', 'After about 10 transactions, this area highlights spending patterns, risks, and useful next moves.', {
+      icon: 'trend-up',
+      actionLabel: 'Add transaction',
+      action: "openAddModal('expense')",
+    });
     return;
   }
   
@@ -8756,7 +8837,11 @@ function saveDecision(action) {
 function renderDecisions() {
   const list = document.getElementById('decisionList');
   if (state.decisions.length === 0) {
-    list.innerHTML = emptyState('No decisions yet', 'Run "Can I afford this?" to start building your journal');
+    list.innerHTML = emptyState('No decisions saved yet', 'Affordability checks you choose to save will appear here, so you can see what you bought, skipped, and why.', {
+      icon: 'tag',
+      actionLabel: 'Run affordability check',
+      action: 'openAffordabilityModal()',
+    });
     return;
   }
   const sorted = [...state.decisions].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
@@ -9014,11 +9099,11 @@ function renderSavingsPage() {
   // Goals
   const goalsList = document.getElementById('goalsList');
   if (state.savingsGoals.length === 0) {
-    goalsList.innerHTML = `
-      <div style="text-align:center;padding:20px;color:var(--text-dim);font-size:13px;background:var(--bg-card);border-radius:12px;border:1px dashed var(--border);">
-        No goals yet. Tap "+ New goal" to set one.
-      </div>
-    `;
+    goalsList.innerHTML = emptyState('No goals yet', 'Goals give your savings a destination, like an emergency fund, trip, deposit, or big purchase.', {
+      icon: 'wallet',
+      actionLabel: 'Add first goal',
+      action: 'openGoalModal()',
+    });
   } else {
     goalsList.innerHTML = state.savingsGoals.map(g => {
       const saved = getSavingsForGoal(g.id);
@@ -9085,11 +9170,11 @@ function renderSavingsPage() {
   const sorted = [...state.savings].sort((a,b) => b.date.localeCompare(a.date) || (b.createdAt||0) - (a.createdAt||0));
   
   if (sorted.length === 0) {
-    history.innerHTML = `
-      <div style="text-align:center;padding:20px;color:var(--text-dim);font-size:13px;background:var(--bg-card);border-radius:12px;border:1px dashed var(--border);">
-        No savings logged yet. Tap "+ Log" to add a deposit or withdrawal.
-      </div>
-    `;
+    history.innerHTML = emptyState('No savings activity yet', 'Deposits and withdrawals will appear here so your goals show real progress over time.', {
+      icon: 'wallet',
+      actionLabel: 'Log savings',
+      action: 'openSavingsModal()',
+    });
     return;
   }
   
@@ -9129,7 +9214,11 @@ function renderRecExps() {
   const list = document.getElementById('recExpList');
   if (!list) return;
   if (state.recurringExpenses.length === 0) {
-    list.innerHTML = emptyState('No recurring expenses', 'Add rent, subs, gym etc. to auto-log');
+    list.innerHTML = emptyState('No recurring expenses yet', 'Add rent, subscriptions, repayments, or fixed bills so Compass can reserve money before they hit.', {
+      icon: 'receipt',
+      actionLabel: 'Add recurring bill',
+      action: 'openRecExpModal()',
+    });
     return;
   }
   
@@ -10063,7 +10152,7 @@ const SetupWizardController = {
       </div>
       <div class="field">
         <label for="setupName">Name optional</label>
-        <input type="text" id="setupName" maxlength="50" value="${escapeHtml(draft.userName)}" placeholder="e.g. Harsh" oninput="SetupWizardController.updateField('userName', this.value)">
+        <input type="text" id="setupName" maxlength="50" value="${escapeHtml(draft.userName)}" placeholder="e.g. Alex" oninput="SetupWizardController.updateField('userName', this.value)">
       </div>
     `;
     if (step === 1) return `

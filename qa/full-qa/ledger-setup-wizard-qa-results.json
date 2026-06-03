@@ -3,53 +3,53 @@
     "total": 7,
     "pass": 7,
     "fail": 0,
-    "durationMs": 20677
+    "durationMs": 24870
   },
   "metadata": {
-    "generatedAt": "2026-06-03T12:21:57.646Z",
-    "url": "http://127.0.0.1:56050/www/index.html?v=setup-qa-1780489296981"
+    "generatedAt": "2026-06-03T12:53:04.145Z",
+    "url": "http://127.0.0.1:54816/www/index.html?v=setup-qa-1780491159287"
   },
   "results": [
     {
       "name": "Fresh empty install opens setup wizard automatically",
       "status": "PASS",
-      "duration": 2031,
+      "duration": 2637,
       "details": ""
     },
     {
       "name": "Validation blocks blank balance with inline error",
       "status": "PASS",
-      "duration": 1878,
+      "duration": 1936,
       "details": ""
     },
     {
       "name": "User completes 5-step wizard and real finance data persists",
       "status": "PASS",
-      "duration": 5095,
+      "duration": 6136,
       "details": ""
     },
     {
       "name": "Existing users with data are not interrupted",
       "status": "PASS",
-      "duration": 2344,
+      "duration": 2399,
       "details": ""
     },
     {
       "name": "Skip flow persists and does not loop after reload",
       "status": "PASS",
-      "duration": 3319,
+      "duration": 3858,
       "details": ""
     },
     {
       "name": "Profile can manually reopen setup wizard",
       "status": "PASS",
-      "duration": 2969,
+      "duration": 3864,
       "details": ""
     },
     {
       "name": "Setup wizard has dialog semantics, labels, focus trap, and no horizontal scroll",
       "status": "PASS",
-      "duration": 1819,
+      "duration": 2018,
       "details": ""
     }
   ],
