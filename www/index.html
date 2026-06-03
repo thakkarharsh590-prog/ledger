@@ -343,6 +343,18 @@
     overscroll-behavior-y: contain;
   }
 
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   body {
     min-height: 100vh;
     min-height: 100dvh;
@@ -625,9 +637,9 @@
     width: 42px; height: 42px;
     border-radius: 13px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 19px;
     flex-shrink: 0;
   }
+  .tx-icon .category-glyph { width: 22px; height: 22px; }
   .tx-main { flex: 1; min-width: 0; }
   .tx-title {
     font-size: 14px;
@@ -755,8 +767,8 @@
     width: 36px; height: 36px;
     border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
   }
+  .cat-icon .category-glyph { width: 19px; height: 19px; }
   .cat-info { flex: 1; }
   .cat-name { font-size: 14px; font-weight: 500; }
   .cat-bar-wrap {
@@ -1134,7 +1146,22 @@
     border-color: var(--accent);
     background: var(--accent-subtle);
   }
-  .cat-pick .emoji { font-size: 20px; }
+  .category-glyph {
+    width: 21px;
+    height: 21px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: currentColor;
+    flex-shrink: 0;
+  }
+  .category-glyph svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    stroke: currentColor;
+  }
+  .cat-pick .category-glyph { width: 22px; height: 22px; }
   .cat-pick .name { font-size: 10px; color: var(--text-dim); text-align: center; line-height: 1.1; }
   .cat-pick.selected .name { color: var(--text); }
   .cat-pick.add-new { 
@@ -1142,7 +1169,7 @@
     border-color: var(--text-muted);
     color: var(--text-muted);
   }
-  .cat-pick.add-new .emoji { font-size: 24px; }
+  .cat-pick.add-new .category-glyph { width: 24px; height: 24px; }
 
   /* Buttons */
   .btn-primary {
@@ -1647,7 +1674,6 @@
     margin-bottom: 8px;
   }
   .insight-icon {
-    font-size: 18px;
     flex-shrink: 0;
     width: 32px;
     height: 32px;
@@ -1656,7 +1682,9 @@
     justify-content: center;
     background: var(--bg-card);
     border-radius: 8px;
+    color: var(--accent);
   }
+  .insight-icon .category-glyph { width: 18px; height: 18px; }
   .insight-body {
     flex: 1;
     font-size: 13px;
@@ -3068,10 +3096,6 @@
       <label>Name</label>
       <input type="text" id="inpCatName" placeholder="e.g. Pet Care" maxlength="20">
     </div>
-    <div class="field">
-      <label>Emoji</label>
-      <input type="text" id="inpCatEmoji" placeholder="🐾" maxlength="2">
-    </div>
     <button class="btn-primary" onclick="saveCustomCat()">Add Category</button>
     <button class="btn-secondary" onclick="closeModal('catModal')">Cancel</button>
   </div>
@@ -3456,28 +3480,52 @@ function refreshA11y(root = document) {
 /* ============ DEFAULT CATEGORIES ============ */
 const DEFAULT_CATEGORIES = {
   income: [
-    { id: 'salary', name: 'Salary', emoji: '💼', color: '#4ade80', builtin: true },
-    { id: 'freelance', name: 'Freelance', emoji: '💻', color: '#60a5fa', builtin: true },
-    { id: 'gift', name: 'Gift', emoji: '🎁', color: '#f472b6', builtin: true },
-    { id: 'invest', name: 'Investment', emoji: '📈', color: '#a78bfa', builtin: true },
-    { id: 'refund', name: 'Refund', emoji: '↩️', color: '#fbbf24', builtin: true },
-    { id: 'other_in', name: 'Other', emoji: '💰', color: '#94a3b8', builtin: true },
+    { id: 'salary', name: 'Salary', icon: 'briefcase', color: '#4ade80', builtin: true },
+    { id: 'freelance', name: 'Freelance', icon: 'laptop', color: '#60a5fa', builtin: true },
+    { id: 'gift', name: 'Gift', icon: 'gift', color: '#f472b6', builtin: true },
+    { id: 'invest', name: 'Investment', icon: 'trend-up', color: '#a78bfa', builtin: true },
+    { id: 'refund', name: 'Refund', icon: 'rotate-ccw', color: '#fbbf24', builtin: true },
+    { id: 'other_in', name: 'Other', icon: 'wallet', color: '#94a3b8', builtin: true },
   ],
   expense: [
-    { id: 'food', name: 'Food', emoji: '🍔', color: '#fb923c', builtin: true },
-    { id: 'transport', name: 'Transport', emoji: '🚗', color: '#60a5fa', builtin: true },
-    { id: 'shopping', name: 'Shopping', emoji: '🛍️', color: '#f472b6', builtin: true },
-    { id: 'bills', name: 'Bills', emoji: '🧾', color: '#fbbf24', builtin: true },
-    { id: 'health', name: 'Health', emoji: '💊', color: '#4ade80', builtin: true },
-    { id: 'fun', name: 'Fun', emoji: '🎮', color: '#a78bfa', builtin: true },
-    { id: 'home', name: 'Home', emoji: '🏠', color: '#06b6d4', builtin: true },
-    { id: 'edu', name: 'Education', emoji: '📚', color: '#ec4899', builtin: true },
-    { id: 'travel', name: 'Travel', emoji: '✈️', color: '#14b8a6', builtin: true },
-    { id: 'gym', name: 'Fitness', emoji: '💪', color: '#84cc16', builtin: true },
-    { id: 'subs', name: 'Subs', emoji: '📺', color: '#f43f5e', builtin: true },
-    { id: 'loan_pay', name: 'Loan', emoji: '💳', color: '#fb7185', builtin: true },
-    { id: 'other_ex', name: 'Other', emoji: '📦', color: '#94a3b8', builtin: true },
+    { id: 'food', name: 'Food', icon: 'utensils', color: '#fb923c', builtin: true },
+    { id: 'transport', name: 'Transport', icon: 'car', color: '#60a5fa', builtin: true },
+    { id: 'shopping', name: 'Shopping', icon: 'shopping-bag', color: '#f472b6', builtin: true },
+    { id: 'bills', name: 'Bills', icon: 'receipt', color: '#fbbf24', builtin: true },
+    { id: 'health', name: 'Health', icon: 'heart-pulse', color: '#4ade80', builtin: true },
+    { id: 'fun', name: 'Fun', icon: 'ticket', color: '#a78bfa', builtin: true },
+    { id: 'home', name: 'Home', icon: 'home', color: '#06b6d4', builtin: true },
+    { id: 'edu', name: 'Education', icon: 'book-open', color: '#ec4899', builtin: true },
+    { id: 'travel', name: 'Travel', icon: 'plane', color: '#14b8a6', builtin: true },
+    { id: 'gym', name: 'Fitness', icon: 'dumbbell', color: '#84cc16', builtin: true },
+    { id: 'subs', name: 'Subs', icon: 'play-square', color: '#f43f5e', builtin: true },
+    { id: 'loan_pay', name: 'Loan', icon: 'credit-card', color: '#fb7185', builtin: true },
+    { id: 'other_ex', name: 'Other', icon: 'package', color: '#94a3b8', builtin: true },
   ]
+};
+
+const CATEGORY_ICON_PATHS = {
+  briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/>',
+  laptop: '<rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 19h20"/>',
+  gift: '<rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13"/><path d="M3 12h18"/><path d="M7.5 8A2.5 2.5 0 1 1 12 5.8"/><path d="M16.5 8A2.5 2.5 0 1 0 12 5.8"/>',
+  'trend-up': '<path d="M3 17l6-6 4 4 7-8"/><path d="M14 7h6v6"/>',
+  'rotate-ccw': '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6"/>',
+  wallet: '<path d="M4 7h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h13"/><path d="M16 12h4v4h-4a2 2 0 0 1 0-4z"/>',
+  utensils: '<path d="M4 3v8"/><path d="M8 3v8"/><path d="M4 7h4"/><path d="M6 11v10"/><path d="M17 3v18"/><path d="M14 3h6v8a3 3 0 0 1-3 3"/>',
+  car: '<path d="M5 13l2-5a3 3 0 0 1 3-2h4a3 3 0 0 1 3 2l2 5"/><rect x="3" y="11" width="18" height="7" rx="2"/><path d="M7 18v2"/><path d="M17 18v2"/><path d="M7 14h.01"/><path d="M17 14h.01"/>',
+  'shopping-bag': '<path d="M6 8h12l1 13H5L6 8z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
+  receipt: '<path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h4"/>',
+  'heart-pulse': '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/><path d="M3 12h4l2-3 3 6 2-3h7"/>',
+  ticket: '<path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7z"/><path d="M13 5v14"/>',
+  home: '<path d="M3 10.5L12 3l9 7.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>',
+  'book-open': '<path d="M4 5a3 3 0 0 1 3-2h13v16H7a3 3 0 0 0-3 2V5z"/><path d="M4 5v16"/><path d="M12 3v16"/>',
+  plane: '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>',
+  dumbbell: '<path d="M6 6v12"/><path d="M18 6v12"/><path d="M3 9v6"/><path d="M21 9v6"/><path d="M6 12h12"/>',
+  'play-square': '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M10 8l6 4-6 4V8z"/>',
+  'credit-card': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/>',
+  package: '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+  tag: '<path d="M20 13l-7 7-10-10V3h7l10 10z"/><path d="M7 7h.01"/>',
+  plus: '<path d="M12 5v14"/><path d="M5 12h14"/>'
 };
 
 const CURRENCIES = [
@@ -3733,6 +3781,16 @@ function getCategories(type) {
 function getCat(catId, type) {
   const all = getCategories(type);
   return all.find(c => c.id === catId) || all[all.length-1];
+}
+
+function categoryIconSvg(iconName, label) {
+  const paths = CATEGORY_ICON_PATHS[iconName] || CATEGORY_ICON_PATHS.tag;
+  const safeLabel = escapeHtml(label || 'Category');
+  return `<span class="category-glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">${paths}</svg></span><span class="sr-only">${safeLabel}</span>`;
+}
+
+function categoryIcon(cat) {
+  return categoryIconSvg(cat?.icon || 'tag', cat?.name || 'Category');
 }
 
 function getCurrencySymbol() {
@@ -4238,7 +4296,7 @@ function renderTxItem(t) {
   const oneTimeBadge = t.oneTime ? '<span class="tx-auto-badge" style="background:rgba(167,139,250,0.15);color:#a78bfa;">one-time</span>' : '';
   return `
     <div class="tx" onclick="openEditModal('${t.id}')">
-      <div class="tx-icon" style="background:${cat.color}22;">${cat.emoji}</div>
+      <div class="tx-icon" style="background:${cat.color}22;color:${cat.color};">${categoryIcon(cat)}</div>
       <div class="tx-main">
         <div class="tx-title">${escapeHtml(t.description || cat.name)}${autoBadge}${oneTimeBadge}</div>
         <div class="tx-meta">${cat.name}${t.note ? ' · ' + escapeHtml(t.note) : ''}</div>
@@ -4516,7 +4574,7 @@ function renderCategoryBreakdown() {
       const pct = grandTotal > 0 ? (amt/grandTotal)*100 : 0;
       return `
         <div class="cat-row">
-          <div class="cat-icon" style="background:${cat.color}22;">${cat.emoji}</div>
+          <div class="cat-icon" style="background:${cat.color}22;color:${cat.color};">${categoryIcon(cat)}</div>
           <div class="cat-info">
             <div style="display:flex;justify-content:space-between;align-items:center;">
               <span class="cat-name">${cat.name}</span>
@@ -4559,7 +4617,7 @@ function renderBudgets() {
       <div class="budget-card" onclick="editBudget('${cid}')">
         <div class="budget-head">
           <div class="budget-name">
-            <span style="font-size:18px;">${cat.emoji}</span>${cat.name}
+            <span style="color:${cat.color};">${categoryIcon(cat)}</span>${cat.name}
           </div>
           <div class="budget-amount" style="color:${over ? 'var(--expense)' : 'var(--text)'}">
             ${fmt(used)} / ${fmt(limit)}
@@ -5013,12 +5071,12 @@ function renderCatPicker() {
   const html = cats.map(c => `
     <div class="cat-pick ${state.selectedCategory === c.id ? 'selected' : ''}" 
          onclick="selectCategory('${c.id}')">
-      <div class="emoji">${c.emoji}</div>
+      <div style="color:${c.color};">${categoryIcon(c)}</div>
       <div class="name">${escapeHtml(c.name)}</div>
     </div>
   `).join('') + `
     <div class="cat-pick add-new" onclick="openCustomCatModal()">
-      <div class="emoji">+</div>
+      <div>${categoryIconSvg('plus', 'New category')}</div>
       <div class="name">New</div>
     </div>
   `;
@@ -5032,18 +5090,16 @@ function selectCategory(id) {
 
 function openCustomCatModal() {
   document.getElementById('inpCatName').value = '';
-  document.getElementById('inpCatEmoji').value = '';
   openModal('catModal', '#inpCatName');
 }
 
 function saveCustomCat() {
   const name = document.getElementById('inpCatName').value.trim();
-  const emoji = document.getElementById('inpCatEmoji').value.trim() || '🏷️';
   if (!name) { showToast('Enter a name', '⚠'); return; }
   
   const type = state.currentType;
   const id = 'cust_' + name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now().toString(36);
-  const newCat = { id, name, emoji, color: '#94a3b8', builtin: false };
+  const newCat = { id, name, icon: 'tag', color: '#94a3b8', builtin: false };
   
   if (!state.customCategories[type]) state.customCategories[type] = [];
   state.customCategories[type].push(newCat);
@@ -5169,12 +5225,12 @@ function renderBudgetCatPicker() {
   const html = cats.map(c => `
     <div class="cat-pick ${state.selectedCategory === c.id ? 'selected' : ''}" 
          onclick="selectBudgetCat('${c.id}')">
-      <div class="emoji">${c.emoji}</div>
+      <div style="color:${c.color};">${categoryIcon(c)}</div>
       <div class="name">${escapeHtml(c.name)}</div>
     </div>
   `).join('') + `
     <div class="cat-pick add-new" onclick="openCustomCatModal()">
-      <div class="emoji">+</div>
+      <div>${categoryIconSvg('plus', 'New category')}</div>
       <div class="name">New</div>
     </div>
   `;
@@ -8330,7 +8386,7 @@ function renderSmartInsights() {
     const [cid, amt] = sorted[0];
     const cat = getCat(cid, 'expense');
     insights.push({
-      icon: cat.emoji,
+      icon: categoryIcon(cat),
       text: `<strong>Top category this month:</strong> ${cat.name} at ${fmt(amt)}`
     });
   }
@@ -8814,11 +8870,11 @@ function renderSavingsPage() {
 function ensureSavingsCategory() {
   const exists = (DEFAULT_CATEGORIES.expense || []).find(c => c.id === 'savings');
   if (!exists) {
-    DEFAULT_CATEGORIES.expense.push({ id: 'savings', name: 'Savings', emoji: '💰', color: '#c9ff3d' });
+    DEFAULT_CATEGORIES.expense.push({ id: 'savings', name: 'Savings', icon: 'wallet', color: '#c9ff3d' });
   }
   const existsIn = (DEFAULT_CATEGORIES.income || []).find(c => c.id === 'savings');
   if (!existsIn) {
-    DEFAULT_CATEGORIES.income.push({ id: 'savings', name: 'Savings withdrawal', emoji: '💰', color: '#c9ff3d' });
+    DEFAULT_CATEGORIES.income.push({ id: 'savings', name: 'Savings withdrawal', icon: 'wallet', color: '#c9ff3d' });
   }
 }
 
@@ -8895,7 +8951,7 @@ function renderRecExps() {
       <div class="rec-exp-card ${r.active ? '' : 'inactive'}">
         <div onclick="editRecExp('${r.id}')">
           <div class="rec-exp-head">
-            <span class="rec-exp-name">${cat.emoji} ${escapeHtml(r.name)}</span>
+            <span class="rec-exp-name"><span style="color:${cat.color};">${categoryIcon(cat)}</span> ${escapeHtml(r.name)}</span>
             <span class="rec-exp-amount">−${fmt(r.amount)}</span>
           </div>
           <div class="rec-exp-meta">${cycleLabel}${nextStr ? ' · ' + nextStr : ''}</div>
@@ -9011,7 +9067,7 @@ function renderRecExpCatPicker() {
   const html = cats.map(c => `
     <div class="cat-pick ${state.selectedCategory === c.id ? 'selected' : ''}" 
          onclick="selectRecExpCat('${c.id}')">
-      <div class="emoji">${c.emoji}</div>
+      <div style="color:${c.color};">${categoryIcon(c)}</div>
       <div class="name">${escapeHtml(c.name)}</div>
     </div>
   `).join('');

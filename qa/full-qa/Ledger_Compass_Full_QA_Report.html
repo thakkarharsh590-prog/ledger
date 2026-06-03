@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Ledger Compass Full QA Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #111827; margin: 32px; line-height: 1.45; }
+    h1, h2 { margin: 0 0 12px; }
+    .meta, .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 18px 0 24px; }
+    .box { border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; background: #f9fafb; }
+    .passText { color: #047857; font-weight: 700; }
+    .failText { color: #b91c1c; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
+    th, td { border: 1px solid #d1d5db; padding: 8px; vertical-align: top; }
+    th { background: #f3f4f6; text-align: left; }
+    tr.pass td:first-child { color: #047857; font-weight: 700; }
+    tr.fail td:first-child { color: #b91c1c; font-weight: 700; }
+    pre { white-space: pre-wrap; margin: 0; font-family: Consolas, monospace; font-size: 11px; }
+    figure { break-inside: avoid; margin: 18px 0; }
+    img { max-width: 340px; border: 1px solid #d1d5db; border-radius: 8px; }
+    figcaption { font-size: 12px; color: #4b5563; margin-top: 6px; }
+    .page-break { page-break-before: always; }
+  </style>
+</head>
+<body>
+  <h1>Ledger Compass Full QA Report</h1>
+  <p>Generated 2026-06-03T09:36:19.033Z after the SVG category icon and mobile accessibility changes.</p>
+  <div class="summary">
+    <div class="box"><strong>Total</strong><br>16</div>
+    <div class="box"><strong>Passed</strong><br><span class="passText">16</span></div>
+    <div class="box"><strong>Failed</strong><br><span class="passText">0</span></div>
+    <div class="box"><strong>Duration</strong><br>14819 ms</div>
+  </div>
+  <div class="meta">
+    <div class="box"><strong>Viewport</strong><br>390 x 844 mobile</div>
+    <div class="box"><strong>Browser</strong><br>Chromium via Playwright</div>
+    <div class="box"><strong>URL</strong><br>http://127.0.0.1:58903/www/index.html?v=full-qa-1780479364229</div>
+    <div class="box"><strong>Console errors</strong><br>0</div>
+  </div>
+  <h2>Test Results</h2>
+  <table>
+    <thead><tr><th>Status</th><th>Test</th><th>Time</th><th>Details</th></tr></thead>
+    <tbody>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>App boots on mobile without blank screen</td>
+      <td>1738 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Viewport, focus ring, live region, and reduced motion are present</td>
+      <td>147 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Seeded finance data renders across Home, Insights, Loans, Compass, Profile</td>
+      <td>2079 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Finance category surfaces use SVG icons instead of emoji text</td>
+      <td>981 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Transaction add/edit, filters, and search work</td>
+      <td>1724 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Modal semantics, labels, focus trap, and Escape close work</td>
+      <td>292 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Navigation exposes aria-current and no horizontal scroll on all primary tabs</td>
+      <td>1637 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Budgets and category breakdown render data and accessible custom controls</td>
+      <td>120 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Loan detail and payment flow work</td>
+      <td>1748 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Savings and goals render without category emoji dependency</td>
+      <td>594 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Profile grouped sections render and collapse preference saves</td>
+      <td>517 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Compass affordability flow and smart insights render</td>
+      <td>1372 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Theme toggle cycles and preserves readable contrast tokens</td>
+      <td>228 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Recurring date logic handles invalid and monthly edge cases</td>
+      <td>3 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>Auto-log catch-up creates income and recurring expense entries safely</td>
+      <td>30 ms</td>
+      <td><pre></pre></td>
+    </tr>
+    <tr class="pass">
+      <td>PASS</td>
+      <td>No browser console or page errors during QA journey</td>
+      <td>0 ms</td>
+      <td><pre></pre></td>
+    </tr></tbody>
+  </table>
+  <div class="page-break"></div>
+  <h2>Screenshots</h2>
+  
+    <figure>
+      <img src="01-home-empty.png" alt="01-home-empty screenshot">
+      <figcaption>01-home-empty</figcaption>
+    </figure>
+    <figure>
+      <img src="02-profile-fixture.png" alt="02-profile-fixture screenshot">
+      <figcaption>02-profile-fixture</figcaption>
+    </figure>
+    <figure>
+      <img src="03-savings.png" alt="03-savings screenshot">
+      <figcaption>03-savings</figcaption>
+    </figure>
+    <figure>
+      <img src="04-compass.png" alt="04-compass screenshot">
+      <figcaption>04-compass</figcaption>
+    </figure>
+</body>
+</html>
