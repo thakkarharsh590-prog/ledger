@@ -19,6 +19,7 @@ async function check(name, fn) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
   await context.addInitScript(() => {
     localStorage.setItem('tour_completed', 'skipped');
+    localStorage.setItem('ledger_setup_status_v1', JSON.stringify({ status: 'skipped', at: Date.now(), version: 'qa' }));
     localStorage.setItem('ledger_install_dismissed', '1');
     localStorage.setItem('first_launch_warning_shown', 'yes');
     localStorage.removeItem('ledger_data_v1');

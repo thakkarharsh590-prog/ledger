@@ -1,0 +1,71 @@
+{
+  "summary": {
+    "total": 7,
+    "pass": 7,
+    "fail": 0,
+    "durationMs": 20677
+  },
+  "metadata": {
+    "generatedAt": "2026-06-03T12:21:57.646Z",
+    "url": "http://127.0.0.1:56050/www/index.html?v=setup-qa-1780489296981"
+  },
+  "results": [
+    {
+      "name": "Fresh empty install opens setup wizard automatically",
+      "status": "PASS",
+      "duration": 2031,
+      "details": ""
+    },
+    {
+      "name": "Validation blocks blank balance with inline error",
+      "status": "PASS",
+      "duration": 1878,
+      "details": ""
+    },
+    {
+      "name": "User completes 5-step wizard and real finance data persists",
+      "status": "PASS",
+      "duration": 5095,
+      "details": ""
+    },
+    {
+      "name": "Existing users with data are not interrupted",
+      "status": "PASS",
+      "duration": 2344,
+      "details": ""
+    },
+    {
+      "name": "Skip flow persists and does not loop after reload",
+      "status": "PASS",
+      "duration": 3319,
+      "details": ""
+    },
+    {
+      "name": "Profile can manually reopen setup wizard",
+      "status": "PASS",
+      "duration": 2969,
+      "details": ""
+    },
+    {
+      "name": "Setup wizard has dialog semantics, labels, focus trap, and no horizontal scroll",
+      "status": "PASS",
+      "duration": 1819,
+      "details": ""
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "setup-01-fresh-wizard",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\full-qa\\setup-01-fresh-wizard.png"
+    },
+    {
+      "name": "setup-02-completed-compass",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\full-qa\\setup-02-completed-compass.png"
+    },
+    {
+      "name": "setup-03-profile-rerun",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\full-qa\\setup-03-profile-rerun.png"
+    }
+  ],
+  "consoleErrors": []
+}

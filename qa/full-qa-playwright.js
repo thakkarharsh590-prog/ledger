@@ -229,6 +229,7 @@ function reportHtml(summary, metadata) {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
     await context.addInitScript(() => {
       localStorage.setItem('tour_completed', 'skipped');
+      localStorage.setItem('ledger_setup_status_v1', JSON.stringify({ status: 'skipped', at: Date.now(), version: 'qa' }));
       localStorage.setItem('ledger_install_dismissed', '1');
       localStorage.setItem('first_launch_warning_shown', 'yes');
       localStorage.removeItem('ledger_data_v1');
@@ -478,10 +479,17 @@ function reportHtml(summary, metadata) {
   const reportBrowser = await chromium.launch({ headless: true });
   const reportPage = await reportBrowser.newPage();
   await reportPage.goto('file:///' + REPORT_HTML.replace(/\\/g, '/'), { waitUntil: 'load' });
-  await reportPage.pdf({ path: REPORT_PDF, format: 'A4', printBackground: true, margin: { top: '14mm', bottom: '14mm', left: '12mm', right: '12mm' } });
+  let reportPdf = REPORT_PDF;
+  try {
+    await reportPage.pdf({ path: reportPdf, format: 'A4', printBackground: true, margin: { top: '14mm', bottom: '14mm', left: '12mm', right: '12mm' } });
+  } catch (error) {
+    if (!error || error.code !== 'EBUSY') throw error;
+    reportPdf = path.join(OUT_DIR, `Ledger_Compass_Full_QA_Report_${Date.now()}.pdf`);
+    await reportPage.pdf({ path: reportPdf, format: 'A4', printBackground: true, margin: { top: '14mm', bottom: '14mm', left: '12mm', right: '12mm' } });
+  }
   await reportBrowser.close();
 
-  console.log(JSON.stringify({ summary, reportPdf: REPORT_PDF, reportHtml: REPORT_HTML, reportJson: REPORT_JSON }, null, 2));
+  console.log(JSON.stringify({ summary, reportPdf, reportHtml: REPORT_HTML, reportJson: REPORT_JSON }, null, 2));
   process.exit(summary.fail ? 1 : 0);
 })().catch(error => {
   console.error(error);

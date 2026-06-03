@@ -2032,6 +2032,217 @@
                   0 0 0 99999px rgba(0,0,0,0.75);
     }
   }
+
+  /* First-run setup wizard */
+  .setup-wizard {
+    position: fixed;
+    inset: 0;
+    z-index: 2200;
+    background: rgba(5, 5, 8, 0.82);
+    backdrop-filter: blur(18px);
+    padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  .setup-shell {
+    width: min(100%, 560px);
+    min-height: min(760px, calc(100dvh - 36px));
+    margin: 0 auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 20px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.45);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .setup-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .setup-kicker {
+    font-size: 12px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .setup-top h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    line-height: 1.12;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0;
+  }
+  .setup-close {
+    flex: 0 0 auto;
+    font-size: 22px;
+    line-height: 1;
+  }
+  .setup-progress {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+  }
+  .setup-progress span {
+    display: block;
+    width: 20%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #4ade80);
+    border-radius: inherit;
+    transition: width 180ms ease;
+  }
+  .setup-sub {
+    color: var(--text-dim);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .setup-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .setup-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+  }
+  .setup-panel h2 {
+    font-size: 18px;
+    margin: 0 0 8px;
+    letter-spacing: 0;
+  }
+  .setup-panel p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .setup-field-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .setup-cycle-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .setup-cycle-btn {
+    min-height: 48px;
+    padding: 10px 8px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .setup-cycle-btn.active {
+    color: var(--text);
+    border-color: var(--accent);
+    background: rgba(201,255,61,0.10);
+  }
+  .setup-bill-list {
+    display: grid;
+    gap: 10px;
+  }
+  .setup-bill-row {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    background: rgba(255,255,255,0.03);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+  }
+  .setup-bill-name {
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .setup-bill-meta {
+    margin-top: 3px;
+    color: var(--text-dim);
+    font-size: 12px;
+  }
+  .setup-remove-btn {
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,107,107,0.32);
+    color: var(--expense);
+    background: rgba(255,107,107,0.08);
+    font-size: 20px;
+    cursor: pointer;
+  }
+  .setup-summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .setup-summary-card {
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+  }
+  .setup-summary-label {
+    color: var(--text-dim);
+    font-size: 12px;
+    margin-bottom: 5px;
+  }
+  .setup-summary-value {
+    color: var(--text);
+    font-family: 'Geist Mono', monospace;
+    font-size: 15px;
+  }
+  .setup-error {
+    border: 1px solid rgba(255,107,107,0.34);
+    background: rgba(255,107,107,0.10);
+    color: var(--expense);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .setup-actions {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: 10px;
+    align-items: center;
+  }
+  .setup-actions .btn-primary,
+  .setup-actions .btn-secondary {
+    margin: 0;
+    min-height: 48px;
+  }
+  @media (max-width: 430px) {
+    .setup-wizard {
+      padding: 0;
+      background: var(--bg);
+    }
+    .setup-shell {
+      min-height: 100dvh;
+      border-radius: 0;
+      border-left: 0;
+      border-right: 0;
+      padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+      box-shadow: none;
+    }
+    .setup-top h1 { font-size: 25px; }
+    .setup-summary-grid { grid-template-columns: 1fr; }
+    .setup-actions { grid-template-columns: 1fr 1fr; }
+    .setup-actions #setupNextBtn { grid-column: 1 / -1; }
+  }
   
   /* v2.5.1: version banner that flashes on launch */
   .version-banner {
@@ -2509,6 +2720,28 @@
     <div class="tour-controls">
       <button class="tour-btn tour-btn-skip" onclick="endTour(false)">Skip</button>
       <button id="tourNext" class="tour-btn tour-btn-next" onclick="nextTourStep()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP WIZARD OVERLAY -->
+<div id="setupWizard" class="setup-wizard" style="display:none;" aria-hidden="true">
+  <div class="setup-shell" role="dialog" aria-modal="true" aria-labelledby="setupTitle" aria-describedby="setupSub" tabindex="-1">
+    <div class="setup-top">
+      <div>
+        <div class="setup-kicker" id="setupStepLabel">Step 1 of 5</div>
+        <h1 id="setupTitle">Set up Ledger Compass</h1>
+      </div>
+      <button class="icon-btn setup-close" type="button" onclick="SetupWizardController.skip()" aria-label="Skip setup">×</button>
+    </div>
+    <div class="setup-progress" aria-hidden="true"><span id="setupProgressFill"></span></div>
+    <div class="setup-sub" id="setupSub">Answer a few questions so your plan starts with real numbers.</div>
+    <div class="setup-content" id="setupContent"></div>
+    <div class="setup-error" id="setupError" role="alert" style="display:none;"></div>
+    <div class="setup-actions">
+      <button class="btn-secondary" type="button" id="setupBackBtn" onclick="SetupWizardController.back()">Back</button>
+      <button class="btn-secondary" type="button" id="setupSkipBtn" onclick="SetupWizardController.skip()">Skip</button>
+      <button class="btn-primary" type="button" id="setupNextBtn" onclick="SetupWizardController.next()">Start setup</button>
     </div>
   </div>
 </div>
@@ -3323,6 +3556,7 @@ const SCHEMA_VERSION = 9;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
 const UI_PREFS_KEY = 'ledger_ui_prefs_v1';
+const SETUP_STATUS_KEY = 'ledger_setup_status_v1';
 const AUTO_SNAPSHOT_PREFIX = 'ledger_snap_';
 const MAX_AUTO_SNAPSHOTS = 7;
 let lastModalTrigger = null;
@@ -3415,6 +3649,11 @@ function closeModal(id) {
 }
 
 function closeTopModal() {
+  const setup = document.getElementById('setupWizard');
+  if (setup && setup.style.display !== 'none') {
+    SetupWizardController.skip();
+    return;
+  }
   const openModals = Array.from(document.querySelectorAll('.modal-backdrop.open'));
   const top = openModals[openModals.length - 1];
   if (top) closeModal(top.id);
@@ -3426,7 +3665,10 @@ function trapModalFocus(e) {
     return;
   }
   if (e.key !== 'Tab') return;
-  const modalBackdrop = document.querySelector('.modal-backdrop.open');
+  const setup = document.getElementById('setupWizard');
+  const modalBackdrop = setup && setup.style.display !== 'none'
+    ? setup
+    : document.querySelector('.modal-backdrop.open');
   if (!modalBackdrop) return;
   const focusables = getFocusableElements(modalBackdrop);
   if (!focusables.length) return;
@@ -3986,7 +4228,7 @@ function defaultUiPrefs() {
       incomeSources: state.incomeSources.length > 0,
       recurringExpenses: state.recurringExpenses.length > 0,
       goals: true,
-      settings: true,
+      settings: false,
       dataBackup: true,
       dangerZone: true,
     }
@@ -4123,6 +4365,10 @@ function renderProfile() {
       `
         <div class="setting-row" onclick="restartTour()">
           <span class="setting-label">Show welcome tour</span>
+          <span class="setting-value">→</span>
+        </div>
+        <div class="setting-row" onclick="restartSetupWizard()">
+          <span class="setting-label">Run setup wizard</span>
           <span class="setting-value">→</span>
         </div>
         <div class="setting-row" onclick="openCurrencyModal()">
@@ -9533,6 +9779,409 @@ function flashVersionBanner() {
 }
 
 /* ============================================================
+   v2.9: FIRST-RUN SETUP WIZARD
+   ============================================================ */
+
+const SetupCompletion = {
+  get() {
+    try {
+      return JSON.parse(localStorage.getItem(SETUP_STATUS_KEY) || 'null');
+    } catch (e) {
+      return null;
+    }
+  },
+  set(status) {
+    try {
+      localStorage.setItem(SETUP_STATUS_KEY, JSON.stringify({
+        status,
+        at: Date.now(),
+        version: APP_VERSION,
+      }));
+    } catch (e) {
+      console.warn('Could not save setup status', e);
+    }
+  },
+  isDone() {
+    const saved = this.get();
+    return !!saved && (saved.status === 'completed' || saved.status === 'skipped' || saved.status === 'auto-skipped');
+  },
+  shouldAutoStart() {
+    if (this.isDone()) return false;
+    return state.transactions.length === 0
+      && state.incomeSources.length === 0
+      && state.recurringExpenses.length === 0
+      && state.loans.length === 0
+      && state.savings.length === 0;
+  }
+};
+
+const SetupWizardState = {
+  step: 0,
+  draft: null,
+  futureISO(days) {
+    const d = parseISODateLocal(todayISO()) || new Date();
+    d.setDate(d.getDate() + days);
+    return isoOf(d);
+  },
+  createDraft() {
+    return {
+      userName: state.userName || '',
+      openingBalance: '',
+      incomeName: '',
+      incomeAmount: '',
+      incomeCycle: 'fortnightly',
+      nextPay: todayISO(),
+      bills: [],
+      billDraft: {
+        name: '',
+        amount: '',
+        category: 'home',
+        cycle: 'monthly',
+        nextDue: this.futureISO(7),
+      },
+    };
+  },
+  reset() {
+    this.step = 0;
+    this.draft = this.createDraft();
+  }
+};
+
+const SetupDataMapper = {
+  apply(draft) {
+    const now = Date.now();
+    const today = todayISO();
+    const openingBalance = parseFloat(draft.openingBalance);
+    const incomeAmount = parseFloat(draft.incomeAmount);
+    const cleanName = (draft.userName || '').trim();
+
+    if (cleanName) state.userName = cleanName.slice(0, 50);
+
+    if (Number.isFinite(openingBalance) && openingBalance !== 0) {
+      state.transactions.push({
+        id: uid('setup_opening'),
+        type: openingBalance >= 0 ? 'income' : 'expense',
+        amount: Math.abs(openingBalance),
+        description: 'Opening balance',
+        category: openingBalance >= 0 ? 'other_in' : 'other_ex',
+        date: today,
+        note: 'Created during setup',
+        oneTime: true,
+        createdAt: now,
+        setupCreated: true,
+      });
+    }
+
+    if ((draft.incomeName || '').trim() && Number.isFinite(incomeAmount) && incomeAmount > 0) {
+      state.incomeSources.push({
+        id: uid('inc'),
+        name: draft.incomeName.trim().slice(0, 80),
+        amount: incomeAmount,
+        cycle: draft.incomeCycle || 'fortnightly',
+        nextPay: draft.nextPay || today,
+        note: 'Created during setup',
+        autoLog: false,
+        lastAutoLogDate: null,
+        startDate: draft.nextPay || today,
+        createdAt: now,
+        setupCreated: true,
+      });
+    }
+
+    draft.bills.forEach(bill => {
+      const amount = parseFloat(bill.amount);
+      if (!(bill.name || '').trim() || !Number.isFinite(amount) || amount <= 0) return;
+      state.recurringExpenses.push({
+        id: uid('rec'),
+        name: bill.name.trim().slice(0, 80),
+        amount,
+        category: bill.category || 'home',
+        cycle: bill.cycle || 'monthly',
+        nextDue: bill.nextDue || today,
+        note: 'Created during setup',
+        active: true,
+        lastAutoLogDate: null,
+        startDate: bill.nextDue || today,
+        createdAt: now,
+        setupCreated: true,
+      });
+    });
+  }
+};
+
+const SetupWizardController = {
+  manual: false,
+  open({ manual = false } = {}) {
+    SetupWizardState.reset();
+    this.manual = manual;
+    const overlay = document.getElementById('setupWizard');
+    if (!overlay) return;
+    overlay.style.display = 'block';
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    this.render();
+    setTimeout(() => overlay.querySelector('.setup-shell')?.focus(), 50);
+  },
+  close() {
+    const overlay = document.getElementById('setupWizard');
+    if (!overlay) return;
+    overlay.style.display = 'none';
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  },
+  updateField(field, value) {
+    SetupWizardState.draft[field] = value;
+  },
+  updateBillField(field, value) {
+    SetupWizardState.draft.billDraft[field] = value;
+  },
+  selectIncomeCycle(cycle) {
+    SetupWizardState.draft.incomeCycle = cycle;
+    this.render();
+  },
+  selectBillCycle(cycle) {
+    SetupWizardState.draft.billDraft.cycle = cycle;
+    this.render();
+  },
+  addBill() {
+    const bill = { ...SetupWizardState.draft.billDraft };
+    const amount = parseFloat(bill.amount);
+    if (!(bill.name || '').trim()) return this.showError('Enter a bill name first.');
+    if (!Number.isFinite(amount) || amount <= 0) return this.showError('Enter a valid bill amount.');
+    if (!bill.nextDue) return this.showError('Pick the next due date.');
+    SetupWizardState.draft.bills.push({
+      ...bill,
+      name: bill.name.trim(),
+      amount,
+    });
+    SetupWizardState.draft.billDraft = {
+      name: '',
+      amount: '',
+      category: 'home',
+      cycle: 'monthly',
+      nextDue: SetupWizardState.futureISO(7),
+    };
+    this.render();
+  },
+  removeBill(index) {
+    SetupWizardState.draft.bills.splice(index, 1);
+    this.render();
+  },
+  validateStep() {
+    const draft = SetupWizardState.draft;
+    if (SetupWizardState.step === 1) {
+      const openingBalance = parseFloat(draft.openingBalance);
+      if (!Number.isFinite(openingBalance)) return 'Enter your current balance. Use 0 if you are starting from zero.';
+    }
+    if (SetupWizardState.step === 2) {
+      const amount = parseFloat(draft.incomeAmount);
+      if (!(draft.incomeName || '').trim()) return 'Enter your main income source.';
+      if (!Number.isFinite(amount) || amount <= 0) return 'Enter your income amount per pay.';
+      if (draft.incomeCycle !== 'irregular' && !draft.nextPay) return 'Pick your next pay date.';
+    }
+    return '';
+  },
+  next() {
+    const error = this.validateStep();
+    if (error) return this.showError(error);
+    if (SetupWizardState.step < 4) {
+      SetupWizardState.step += 1;
+      this.render();
+      return;
+    }
+    this.finish();
+  },
+  back() {
+    if (SetupWizardState.step > 0) {
+      SetupWizardState.step -= 1;
+      this.render();
+    }
+  },
+  skip() {
+    SetupCompletion.set('skipped');
+    localStorage.setItem('tour_completed', 'skipped');
+    this.close();
+    showToast('Setup skipped');
+  },
+  finish() {
+    const error = this.validateStep();
+    if (error) return this.showError(error);
+    SetupDataMapper.apply(SetupWizardState.draft);
+    SetupCompletion.set('completed');
+    localStorage.setItem('tour_completed', 'setup-completed');
+    saveData();
+    this.close();
+    runAutoLog();
+    renderAll();
+    goPage('compass');
+    showToast('Setup complete');
+  },
+  showError(message) {
+    const errorEl = document.getElementById('setupError');
+    if (!errorEl) return;
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+  },
+  clearError() {
+    const errorEl = document.getElementById('setupError');
+    if (!errorEl) return;
+    errorEl.textContent = '';
+    errorEl.style.display = 'none';
+  },
+  render() {
+    const draft = SetupWizardState.draft || SetupWizardState.createDraft();
+    SetupWizardState.draft = draft;
+    const step = SetupWizardState.step;
+    const titles = [
+      ['Set up Ledger Compass', 'Answer a few questions so your plan starts with real numbers.'],
+      ['What is your balance?', 'Use the money available across bank and cash accounts right now.'],
+      ['When do you get paid?', 'Your pay cycle powers forecasts, set-aside math, and weekly plans.'],
+      ['Add fixed bills', 'Rent, subscriptions, repayments, and regular bills make Compass useful.'],
+      ['Your first plan is ready', 'Review the starting picture before Ledger Compass builds your plan.'],
+    ];
+    document.getElementById('setupStepLabel').textContent = `Step ${step + 1} of 5`;
+    document.getElementById('setupTitle').textContent = titles[step][0];
+    document.getElementById('setupSub').textContent = titles[step][1];
+    document.getElementById('setupProgressFill').style.width = `${((step + 1) / 5) * 100}%`;
+    document.getElementById('setupBackBtn').style.visibility = step === 0 ? 'hidden' : 'visible';
+    document.getElementById('setupSkipBtn').style.display = step === 4 ? 'none' : 'block';
+    document.getElementById('setupNextBtn').textContent = step === 0 ? 'Start setup' : step === 4 ? 'Finish setup' : 'Continue';
+    document.getElementById('setupContent').innerHTML = this.stepHtml(step, draft);
+    this.clearError();
+    refreshA11y(document.getElementById('setupWizard'));
+  },
+  cycleButtons(current, handlerName, cycles) {
+    return `<div class="setup-cycle-grid">${cycles.map(c => `
+      <button type="button" class="setup-cycle-btn ${current === c.id ? 'active' : ''}" aria-pressed="${current === c.id}" onclick="${handlerName}('${c.id}')">${c.label}</button>
+    `).join('')}</div>`;
+  },
+  stepHtml(step, draft) {
+    if (step === 0) return `
+      <div class="setup-panel">
+        <h2>Start with your real money picture</h2>
+        <p>Ledger Compass works best when it knows your balance, pay cycle, and regular bills. This takes about two minutes and stays on this device.</p>
+      </div>
+      <div class="field">
+        <label for="setupName">Name optional</label>
+        <input type="text" id="setupName" maxlength="50" value="${escapeHtml(draft.userName)}" placeholder="e.g. Harsh" oninput="SetupWizardController.updateField('userName', this.value)">
+      </div>
+    `;
+    if (step === 1) return `
+      <div class="field">
+        <label for="setupBalance">Current balance</label>
+        <div class="amount-input-wrap">
+          <input type="number" inputmode="decimal" id="setupBalance" class="amount-input" step="0.01" value="${escapeHtml(draft.openingBalance)}" placeholder="0.00" oninput="SetupWizardController.updateField('openingBalance', this.value)">
+        </div>
+      </div>
+      <div class="setup-panel"><p>This creates one opening balance entry so Home and Compass no longer start empty.</p></div>
+    `;
+    if (step === 2) return `
+      <div class="setup-field-grid">
+        <div class="field">
+          <label for="setupIncomeName">Income source</label>
+          <input type="text" id="setupIncomeName" value="${escapeHtml(draft.incomeName)}" placeholder="e.g. Salary, Freelance" oninput="SetupWizardController.updateField('incomeName', this.value)">
+        </div>
+        <div class="field">
+          <label for="setupIncomeAmount">Amount per pay</label>
+          <div class="amount-input-wrap">
+            <input type="number" inputmode="decimal" id="setupIncomeAmount" class="amount-input" step="0.01" value="${escapeHtml(draft.incomeAmount)}" placeholder="0.00" oninput="SetupWizardController.updateField('incomeAmount', this.value)">
+          </div>
+        </div>
+        <div class="field">
+          <label>Pay cycle</label>
+          ${this.cycleButtons(draft.incomeCycle, 'SetupWizardController.selectIncomeCycle', [
+            { id: 'weekly', label: 'Weekly' },
+            { id: 'fortnightly', label: 'Fortnightly' },
+            { id: 'monthly', label: 'Monthly' },
+          ])}
+        </div>
+        <div class="field">
+          <label for="setupNextPay">Next pay date</label>
+          <input type="date" id="setupNextPay" value="${escapeHtml(draft.nextPay)}" oninput="SetupWizardController.updateField('nextPay', this.value)">
+        </div>
+      </div>
+    `;
+    if (step === 3) {
+      const bill = draft.billDraft;
+      const billsHtml = draft.bills.length ? `<div class="setup-bill-list">${draft.bills.map((b, i) => `
+        <div class="setup-bill-row">
+          <div>
+            <div class="setup-bill-name">${escapeHtml(b.name)}</div>
+            <div class="setup-bill-meta">${fmt(b.amount)} · ${escapeHtml(b.cycle)} · due ${escapeHtml(b.nextDue)}</div>
+          </div>
+          <button type="button" class="setup-remove-btn" onclick="SetupWizardController.removeBill(${i})" aria-label="Remove ${escapeHtml(b.name)}">×</button>
+        </div>
+      `).join('')}</div>` : `<div class="setup-panel"><p>No fixed bills added yet. You can continue without bills if that is accurate.</p></div>`;
+      return `
+        ${billsHtml}
+        <div class="setup-panel">
+          <div class="setup-field-grid">
+            <div class="field">
+              <label for="setupBillName">Bill name</label>
+              <input type="text" id="setupBillName" value="${escapeHtml(bill.name)}" placeholder="e.g. Rent, Phone, Gym" oninput="SetupWizardController.updateBillField('name', this.value)">
+            </div>
+            <div class="field">
+              <label for="setupBillAmount">Amount</label>
+              <div class="amount-input-wrap">
+                <input type="number" inputmode="decimal" id="setupBillAmount" class="amount-input" step="0.01" value="${escapeHtml(bill.amount)}" placeholder="0.00" oninput="SetupWizardController.updateBillField('amount', this.value)">
+              </div>
+            </div>
+            <div class="field">
+              <label for="setupBillCategory">Category</label>
+              <select id="setupBillCategory" onchange="SetupWizardController.updateBillField('category', this.value)">
+                ${getCategories('expense').map(c => `<option value="${escapeHtml(c.id)}" ${bill.category === c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <label>Frequency</label>
+              ${this.cycleButtons(bill.cycle, 'SetupWizardController.selectBillCycle', [
+                { id: 'weekly', label: 'Weekly' },
+                { id: 'fortnightly', label: 'Fortnightly' },
+                { id: 'monthly', label: 'Monthly' },
+              ])}
+            </div>
+            <div class="field">
+              <label for="setupBillDue">Next due date</label>
+              <input type="date" id="setupBillDue" value="${escapeHtml(bill.nextDue)}" oninput="SetupWizardController.updateBillField('nextDue', this.value)">
+            </div>
+            <button class="btn-secondary" type="button" onclick="SetupWizardController.addBill()">Add bill</button>
+          </div>
+        </div>
+      `;
+    }
+    const opening = parseFloat(draft.openingBalance) || 0;
+    const income = parseFloat(draft.incomeAmount) || 0;
+    const weeklyIncome = cycleToWeekly(income, draft.incomeCycle);
+    const monthlyBills = draft.bills.reduce((sum, bill) => sum + cycleToMonthly(parseFloat(bill.amount) || 0, bill.cycle), 0);
+    return `
+      <div class="setup-summary-grid">
+        <div class="setup-summary-card"><div class="setup-summary-label">Starting balance</div><div class="setup-summary-value">${fmt(opening)}</div></div>
+        <div class="setup-summary-card"><div class="setup-summary-label">Income</div><div class="setup-summary-value">${fmt(weeklyIncome)}/week</div></div>
+        <div class="setup-summary-card"><div class="setup-summary-label">Fixed bills</div><div class="setup-summary-value">${fmt(monthlyBills)}/month</div></div>
+        <div class="setup-summary-card"><div class="setup-summary-label">Bills added</div><div class="setup-summary-value">${draft.bills.length}</div></div>
+      </div>
+      <div class="setup-panel"><p>Finishing will save this setup, refresh your forecast, and open Compass with your first weekly plan.</p></div>
+    `;
+  }
+};
+
+function shouldStartSetupWizard() {
+  return SetupCompletion.shouldAutoStart();
+}
+
+function maybeStartSetupWizardOnFirstLaunch() {
+  if (!shouldStartSetupWizard()) return false;
+  setTimeout(() => {
+    if (shouldStartSetupWizard()) SetupWizardController.open();
+  }, 700);
+  return true;
+}
+
+function restartSetupWizard() {
+  SetupWizardController.open({ manual: true });
+}
+
+/* ============================================================
    v2.6.1: WELCOME TOUR ENGINE
    ============================================================ */
 
@@ -9739,6 +10388,7 @@ function endTour(completed) {
 }
 
 function maybeStartTourOnFirstLaunch() {
+  if (shouldStartSetupWizard()) return; // Setup is the first-run experience for empty installs.
   const tourDone = localStorage.getItem('tour_completed');
   if (tourDone) return;  // Already completed or skipped
   
@@ -9838,9 +10488,11 @@ function init() {
   initA11y();
   showInstallBannerIfNeeded();
   checkRecoveryMode();     // Offer restore if storage is empty but backups exist
-  showFirstLaunchWarningIfNeeded();
-  flashVersionBanner();    // v2.5.1: 2-second flash showing current version
-  maybeStartTourOnFirstLaunch();  // v2.6.1: welcome tour for new users
+  const shouldStartSetup = shouldStartSetupWizard();
+  if (!shouldStartSetup) showFirstLaunchWarningIfNeeded();
+  if (!shouldStartSetup) flashVersionBanner();    // v2.5.1: 2-second flash showing current version
+  const setupStarted = shouldStartSetup && maybeStartSetupWizardOnFirstLaunch();
+  if (!setupStarted) maybeStartTourOnFirstLaunch();  // Replayable help for users past setup
   
   // Re-render every minute so "Today/Yesterday" stays accurate
   setInterval(() => { 
