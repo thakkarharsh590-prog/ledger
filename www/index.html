@@ -147,7 +147,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Ledger Compass">
@@ -182,7 +182,7 @@
     /* Text */
     --text: #E8E8ED;
     --text-dim: #9A9AA5;
-    --text-muted: #5A5A65;
+    --text-muted: #81818D;
 
     /* Accent */
     --accent: #C9FF3D;
@@ -229,12 +229,12 @@
     /* Text */
     --text: #0A0A0F;
     --text-dim: #6B6B73;
-    --text-muted: #9A9AA5;
+    --text-muted: #6B6B73;
 
     /* Accent */
-    --accent: #8FB820;
-    --accent-dim: #6E8F18;
-    --accent-on-accent: #0A0A0F;
+    --accent: #5F7F12;
+    --accent-dim: #49630E;
+    --accent-on-accent: #FFFFFF;
 
     /* Semantic colours */
     --income: #16A34A;
@@ -410,6 +410,28 @@
     font-size: 16px;
   }
   .icon-btn:active { transform: scale(0.94); background: var(--bg-card-hover); }
+
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  summary:focus-visible,
+  .link:focus-visible,
+  .pill:focus-visible,
+  .nav-item:focus-visible,
+  .cat-pick:focus-visible,
+  .tx:focus-visible,
+  .setting-row:focus-visible,
+  .budget-card:focus-visible,
+  .loan-card:focus-visible,
+  .hero:focus-visible,
+  .switch:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 6px var(--accent-subtle);
+  }
 
   /* Pages */
   .page { display: none; padding: 16px 20px 20px; animation: fadeIn .3s ease; }
@@ -1064,7 +1086,9 @@
     appearance: none;
   }
   .field input:focus, .field select:focus, .field textarea:focus {
-    outline: none;
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 6px var(--accent-subtle);
     border-color: var(--accent);
   }
   .amount-input-wrap { position: relative; }
@@ -1275,6 +1299,23 @@
   .nav-item.active { color: var(--accent); }
   .nav-item.active::before { transform: translateX(-50%) scaleX(1); }
   .nav-icon { width: 22px; height: 22px; display: block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+    .page,
+    .modal,
+    .modal-backdrop.open {
+      animation: none !important;
+      transform: none !important;
+    }
+  }
 
   /* Filter Pills */
   .filter-pills {
@@ -2455,7 +2496,7 @@
     <span class="version-tag" id="versionTag">v2.8.5</span>
   </div>
   <div class="topbar-actions">
-    <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme">
+    <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme" aria-label="Dark theme">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
       </svg>
@@ -2469,7 +2510,7 @@
   <div id="backupWarnBanner"></div>
   <div id="installBanner"></div>
   
-  <div class="hero" onclick="goPage('transactions')" style="cursor:pointer;">
+  <div class="hero" role="button" tabindex="0" aria-label="View all activity" onclick="goPage('transactions')" style="cursor:pointer;">
     <div class="hero-label">Current Balance</div>
     <div class="hero-amount"><span class="hero-currency" id="currencySymbol">A$</span><span id="balance">0.00</span></div>
     <div class="hero-sub" id="balanceSub">All time</div>
@@ -3205,11 +3246,11 @@
 </div>
 
 <!-- TOAST -->
-<div class="toast" id="toast"><span id="toastIcon">✓</span><span id="toastMsg">Saved</span></div>
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"><span id="toastIcon">✓</span><span id="toastMsg">Saved</span></div>
 
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
-  <button class="nav-item active" data-page="home" onclick="goPage('home')">
+  <button class="nav-item active" data-page="home" onclick="goPage('home')" aria-current="page">
     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
       <polyline points="9,22 9,12 15,12 15,22"/>
@@ -3260,6 +3301,157 @@ const BACKUP_PREFIX = 'ledger_backup_';
 const UI_PREFS_KEY = 'ledger_ui_prefs_v1';
 const AUTO_SNAPSHOT_PREFIX = 'ledger_snap_';
 const MAX_AUTO_SNAPSHOTS = 7;
+let lastModalTrigger = null;
+
+const CLICKABLE_A11Y_SELECTOR = [
+  '.hero[onclick]',
+  '.link[onclick]',
+  '.pill',
+  '.toggle-opt',
+  '.switch[onclick]',
+  '.cat-pick[onclick]',
+  '.setting-row[onclick]',
+  '.tx[onclick]',
+  '.budget-card[onclick]',
+  '.loan-card[onclick]',
+  '.income-src-card[onclick]',
+  '.rec-exp-card [onclick]',
+  '.profile-avatar[onclick]',
+  '.profile-edit-btn[onclick]',
+  '.auto-log-banner[onclick]',
+  '.backup-warn[onclick]',
+  '.install-banner-text[onclick]',
+  '.save-here-row[onclick]',
+  '.payment-delete[onclick]'
+].join(',');
+
+function onA11yButtonKey(e) {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  e.preventDefault();
+  e.currentTarget.click();
+}
+
+function enhanceClickableA11y(root = document) {
+  root.querySelectorAll(CLICKABLE_A11Y_SELECTOR).forEach(el => {
+    if (el.tagName === 'BUTTON' || el.tagName === 'A') return;
+    if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    if (!el.dataset.a11yKeybound) {
+      el.addEventListener('keydown', onA11yButtonKey);
+      el.dataset.a11yKeybound = '1';
+    }
+  });
+
+  root.querySelectorAll('.toggle-opt, .pill, .cat-pick, .switch').forEach(el => {
+    const isActive = el.classList.contains('active') || el.classList.contains('selected') || el.classList.contains('on');
+    el.setAttribute('aria-pressed', String(isActive));
+  });
+}
+
+function linkFormLabels(root = document) {
+  root.querySelectorAll('.field label:not([for])').forEach((label, index) => {
+    const field = label.closest('.field');
+    const control = field && field.querySelector('input, select, textarea');
+    if (!control) return;
+    if (!control.id) control.id = `ledger-field-${index}`;
+    label.setAttribute('for', control.id);
+  });
+}
+
+function getFocusableElements(container) {
+  return Array.from(container.querySelectorAll([
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled]):not([type="hidden"])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])',
+    '[role="button"]'
+  ].join(','))).filter(el => el.offsetParent !== null || el === document.activeElement);
+}
+
+function openModal(id, focusSelector) {
+  const modalBackdrop = document.getElementById(id);
+  if (!modalBackdrop) return;
+  lastModalTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  modalBackdrop.classList.add('open');
+  modalBackdrop.setAttribute('aria-hidden', 'false');
+  const target = focusSelector ? modalBackdrop.querySelector(focusSelector) : null;
+  const fallback = getFocusableElements(modalBackdrop)[0] || modalBackdrop.querySelector('.modal');
+  setTimeout(() => (target || fallback)?.focus?.(), 50);
+}
+
+function closeModal(id) {
+  const modalBackdrop = document.getElementById(id);
+  if (!modalBackdrop) return;
+  modalBackdrop.classList.remove('open');
+  modalBackdrop.setAttribute('aria-hidden', 'true');
+  if (lastModalTrigger && document.contains(lastModalTrigger)) lastModalTrigger.focus();
+  lastModalTrigger = null;
+}
+
+function closeTopModal() {
+  const openModals = Array.from(document.querySelectorAll('.modal-backdrop.open'));
+  const top = openModals[openModals.length - 1];
+  if (top) closeModal(top.id);
+}
+
+function trapModalFocus(e) {
+  if (e.key === 'Escape') {
+    closeTopModal();
+    return;
+  }
+  if (e.key !== 'Tab') return;
+  const modalBackdrop = document.querySelector('.modal-backdrop.open');
+  if (!modalBackdrop) return;
+  const focusables = getFocusableElements(modalBackdrop);
+  if (!focusables.length) return;
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
+function enhanceModals(root = document) {
+  root.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+    const modal = backdrop.querySelector('.modal');
+    if (!modal) return;
+    backdrop.setAttribute('aria-hidden', backdrop.classList.contains('open') ? 'false' : 'true');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('tabindex', '-1');
+    const title = modal.querySelector('.modal-title');
+    if (title) {
+      if (!title.id) title.id = `${backdrop.id}-title`;
+      modal.setAttribute('aria-labelledby', title.id);
+    }
+    const sub = modal.querySelector('.modal-sub');
+    if (sub) {
+      if (!sub.id) sub.id = `${backdrop.id}-description`;
+      modal.setAttribute('aria-describedby', sub.id);
+    }
+  });
+}
+
+function syncNavA11y(activePage) {
+  document.querySelectorAll('.nav-item').forEach(item => {
+    const isActive = item.dataset.page === activePage;
+    item.classList.toggle('active', isActive);
+    if (isActive) item.setAttribute('aria-current', 'page');
+    else item.removeAttribute('aria-current');
+  });
+}
+
+function refreshA11y(root = document) {
+  linkFormLabels(root);
+  enhanceModals(root);
+  enhanceClickableA11y(root);
+}
 
 /* ============ DEFAULT CATEGORIES ============ */
 const DEFAULT_CATEGORIES = {
@@ -3669,9 +3861,9 @@ function updateThemeIcon(pref) {
   const SUN     = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
   const MOON    = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`;
   const MONITOR = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
-  if (p === 'light')     { btn.innerHTML = SUN;     btn.title = 'Light theme'; }
-  else if (p === 'dark') { btn.innerHTML = MOON;    btn.title = 'Dark theme'; }
-  else                   { btn.innerHTML = MONITOR; btn.title = 'System theme'; }
+  if (p === 'light')     { btn.innerHTML = SUN;     btn.title = 'Light theme'; btn.setAttribute('aria-label', 'Light theme'); }
+  else if (p === 'dark') { btn.innerHTML = MOON;    btn.title = 'Dark theme'; btn.setAttribute('aria-label', 'Dark theme'); }
+  else                   { btn.innerHTML = MONITOR; btn.title = 'System theme'; btn.setAttribute('aria-label', 'System theme'); }
 }
 
 function updateThemeColor() {
@@ -3685,9 +3877,7 @@ function goPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const page = document.getElementById('page-' + name);
   if (page) page.classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n => {
-    n.classList.toggle('active', n.dataset.page === name);
-  });
+  syncNavA11y(name);
   if (name === 'stats') { renderStats(); renderBudgets(); }
   if (name === 'loans') renderLoans();
   if (name === 'compass') renderCompass();
@@ -3719,6 +3909,7 @@ function renderAll() {
   updateSavingsCount();
   renderProfileHeader();
   renderBackupWarnBanner();
+  refreshA11y();
 }
 
 function renderProfileHeader() {
@@ -3936,7 +4127,7 @@ function getUserInitials(name) {
 
 function openNameModal() {
   document.getElementById('inpUserName').value = state.userName || '';
-  document.getElementById('nameModal').classList.add('open');
+  openModal('nameModal', '#inpUserName');
 }
 
 function saveUserName() {
@@ -4576,8 +4767,7 @@ function openLoanModal() {
   document.getElementById('rateReviewWarning').style.display = 'none';
   document.getElementById('deleteLoanBtn').style.display = 'none';
   updateLoanDeductSwitch();
-  document.getElementById('loanModal').classList.add('open');
-  setTimeout(() => document.getElementById('inpLoanName').focus(), 350);
+  openModal('loanModal', '#inpLoanName');
 }
 
 function editLoan(loanId) {
@@ -4597,7 +4787,7 @@ function editLoan(loanId) {
   document.getElementById('rateReviewWarning').style.display = loan.needsRateReview ? 'block' : 'none';
   document.getElementById('deleteLoanBtn').style.display = 'block';
   updateLoanDeductSwitch();
-  document.getElementById('loanModal').classList.add('open');
+  openModal('loanModal', '#inpLoanName');
 }
 
 function onRateChange() {
@@ -4684,8 +4874,7 @@ function openPaymentModal(loanId) {
   document.getElementById('inpPayAmount').value = '';
   document.getElementById('inpPayDate').value = todayISO();
   document.getElementById('inpPayNote').value = '';
-  document.getElementById('paymentModal').classList.add('open');
-  setTimeout(() => document.getElementById('inpPayAmount').focus(), 350);
+  openModal('paymentModal', '#inpPayAmount');
 }
 
 function savePayment() {
@@ -4773,8 +4962,7 @@ function openAddModal(type) {
   document.getElementById('oneTimeSwitch').classList.remove('on');
   updateTypeToggle();
   renderCatPicker();
-  document.getElementById('addModal').classList.add('open');
-  setTimeout(() => document.getElementById('inpAmount').focus(), 350);
+  openModal('addModal', '#inpAmount');
 }
 
 function openEditModal(id) {
@@ -4796,7 +4984,7 @@ function openEditModal(id) {
   document.getElementById('oneTimeSwitch').classList.toggle('on', state.oneTimeOn);
   updateTypeToggle();
   renderCatPicker();
-  document.getElementById('addModal').classList.add('open');
+  openModal('addModal', '#inpAmount');
 }
 
 function toggleOneTime() {
@@ -4845,8 +5033,7 @@ function selectCategory(id) {
 function openCustomCatModal() {
   document.getElementById('inpCatName').value = '';
   document.getElementById('inpCatEmoji').value = '';
-  document.getElementById('catModal').classList.add('open');
-  setTimeout(() => document.getElementById('inpCatName').focus(), 350);
+  openModal('catModal', '#inpCatName');
 }
 
 function saveCustomCat() {
@@ -4961,10 +5148,6 @@ function deleteCurrentTransaction() {
   showToast('Deleted', '×');
 }
 
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
-
 function closeModalOnBg(e, id) {
   if (e.target.id === id) closeModal(id);
 }
@@ -4978,7 +5161,7 @@ function openBudgetModal() {
   document.getElementById('inpBudget').value = state.budgets[state.selectedCategory] || '';
   state.currentType = 'expense';
   renderBudgetCatPicker();
-  document.getElementById('budgetModal').classList.add('open');
+  openModal('budgetModal', '#inpBudget');
 }
 
 function renderBudgetCatPicker() {
@@ -5033,7 +5216,7 @@ function openCurrencyModal() {
       <span class="setting-value">${c.symbol} ${state.currency === c.code ? '✓' : ''}</span>
     </div>
   `).join('');
-  document.getElementById('currencyModal').classList.add('open');
+  openModal('currencyModal');
 }
 
 function setCurrency(code) {
@@ -5048,8 +5231,7 @@ function setCurrency(code) {
 function openSearchModal() {
   document.getElementById('searchInp').value = '';
   document.getElementById('searchResults').innerHTML = '';
-  document.getElementById('searchModal').classList.add('open');
-  setTimeout(() => document.getElementById('searchInp').focus(), 300);
+  openModal('searchModal', '#searchInp');
 }
 
 function runSearch() {
@@ -5379,8 +5561,7 @@ function openIncomeSrcModal() {
   document.getElementById('deleteIncSrcBtn').style.display = 'none';
   updateCyclePicker();
   updateIncSrcAutoLogSwitch();
-  document.getElementById('incomeSrcModal').classList.add('open');
-  setTimeout(() => document.getElementById('inpIncSrcName').focus(), 350);
+  openModal('incomeSrcModal', '#inpIncSrcName');
 }
 
 function editIncomeSource(id) {
@@ -5397,7 +5578,7 @@ function editIncomeSource(id) {
   document.getElementById('deleteIncSrcBtn').style.display = 'block';
   updateCyclePicker();
   updateIncSrcAutoLogSwitch();
-  document.getElementById('incomeSrcModal').classList.add('open');
+  openModal('incomeSrcModal', '#inpIncSrcName');
 }
 
 function toggleIncSrcAutoLog() {
@@ -8211,8 +8392,7 @@ function openAffordabilityModal() {
   document.getElementById('inpAffordWhat').value = '';
   document.getElementById('affordInputView').style.display = 'block';
   document.getElementById('affordResultView').style.display = 'none';
-  document.getElementById('affordModal').classList.add('open');
-  setTimeout(() => document.getElementById('inpAffordAmount').focus(), 350);
+  openModal('affordModal', '#inpAffordAmount');
 }
 
 function runAffordabilityCheck() {
@@ -8354,8 +8534,7 @@ function openSavingsModal(savId) {
   
   updateSavingsTypeToggle();
   updateSavingsAffectsBalanceSwitch();
-  document.getElementById('savingsModal').classList.add('open');
-  setTimeout(() => document.getElementById('inpSavingsAmount').focus(), 350);
+  openModal('savingsModal', '#inpSavingsAmount');
 }
 
 function setSavingsType(type) {
@@ -8466,7 +8645,7 @@ function openGoalModal(goalId) {
     document.getElementById('inpGoalDeadline').value = '';
   }
   
-  document.getElementById('goalModal').classList.add('open');
+  openModal('goalModal', '#inpGoalName');
 }
 
 function saveGoal() {
@@ -8793,8 +8972,7 @@ function openRecExpModal() {
   updateRecCyclePicker();
   renderRecExpCatPicker();
   document.getElementById('recExpActiveSwitch').classList.add('on');
-  document.getElementById('recExpModal').classList.add('open');
-  setTimeout(() => document.getElementById('inpRecExpName').focus(), 350);
+  openModal('recExpModal', '#inpRecExpName');
 }
 
 function editRecExp(id) {
@@ -8814,7 +8992,7 @@ function editRecExp(id) {
   updateRecCyclePicker();
   renderRecExpCatPicker();
   document.getElementById('recExpActiveSwitch').classList.toggle('on', state.recExpActiveOn);
-  document.getElementById('recExpModal').classList.add('open');
+  openModal('recExpModal', '#inpRecExpName');
 }
 
 function selectRecCycle(cycle) {
@@ -9573,6 +9751,21 @@ function showFirstLaunchWarningIfNeeded() {
 }
 
 
+function initA11y() {
+  document.addEventListener('keydown', trapModalFocus);
+  refreshA11y();
+  const observer = new MutationObserver(mutations => {
+    const needsRefresh = mutations.some(m => m.type === 'childList' || m.attributeName === 'class');
+    if (needsRefresh) requestAnimationFrame(() => refreshA11y());
+  });
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class']
+  });
+}
+
 function init() {
   initTheme();          // apply saved theme before first render
   // v2.5.1: First, check if we need to cache-bust the URL
@@ -9586,6 +9779,7 @@ function init() {
   setupManifest();
   runAutoLog();            // Generate any due transactions
   renderAll();
+  initA11y();
   showInstallBannerIfNeeded();
   checkRecoveryMode();     // Offer restore if storage is empty but backups exist
   showFirstLaunchWarningIfNeeded();
