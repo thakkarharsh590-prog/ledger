@@ -4,12 +4,19 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        Harsh (Melbourne, AU)
-  Version:      2.8.4
+  Version:      2.8.5
   Last edited:  2026-05-28
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   9
 
   NAMED: Ledger Compass
+
+  v2.8.5 — LAUNCH UX POLISH (schema v9 unchanged):
+  - Profile reorganized into collapsible setup/settings groups with saved UI preferences
+  - Loan payoff strategy moved from Compass to Loans so Compass stays action-plan focused
+  - Compass now links to Loans when a debt plan is available instead of showing full loan details
+  - Profile summaries added for income sources, recurring expenses, goals, settings, data backup, and danger zone
+  - Visible version labels updated to match APP_VERSION
 
   v2.8.4 — MONTHLY DATE + AUTO-LOG CATCH-UP (schema v9 unchanged):
   - Monthly 29th/30th/31st schedules use startDate as the intended day, so Feb clamps but later months recover
@@ -1336,6 +1343,78 @@
   .setting-label { font-size: 14px; }
   .setting-value { color: var(--text-dim); font-size: 13px; }
 
+  .profile-group {
+    margin-top: 14px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+  .profile-group-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .profile-group-title {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .profile-group-summary {
+    display: block;
+    margin-top: 3px;
+    color: var(--text-dim);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .profile-group-copy {
+    min-width: 0;
+  }
+  .profile-group-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-dim);
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .profile-group-add {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 8px;
+    border-radius: 999px;
+    background: rgba(201,255,61,0.08);
+  }
+  .profile-group-chev {
+    display: inline-block;
+    transition: transform .2s ease;
+  }
+  .profile-group.open .profile-group-chev {
+    transform: rotate(90deg);
+  }
+  .profile-group-body {
+    padding: 0 14px 14px;
+  }
+  .profile-group-body.collapsed {
+    display: none;
+  }
+  .profile-group-note {
+    color: var(--text-dim);
+    font-size: 12px;
+    line-height: 1.55;
+    margin-bottom: 12px;
+  }
+
   /* Install banner */
   .install-banner {
     margin: 12px 0 20px;
@@ -2373,7 +2452,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">Ledger Compass</span>
-    <span class="version-tag" id="versionTag">v2.8.4</span>
+    <span class="version-tag" id="versionTag">v2.8.5</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme">
@@ -2495,6 +2574,11 @@
     <span class="link" onclick="openLoanModal()">+ New</span>
   </div>
   <div id="loansSummary"></div>
+  <div class="compass-card" id="loanStrategyCard" style="display:none;">
+    <div class="compass-card-title">Recommended payoff plan</div>
+    <div class="compass-card-sub">The smartest order to clear your loans</div>
+    <div id="loanStrategyContent"></div>
+  </div>
   <div id="loansList"></div>
 </div>
 
@@ -2547,10 +2631,13 @@
     <div id="safeSaveContent"></div>
   </div>
   
-  <div class="compass-card" id="loanStrategyCard" style="display:none;">
-    <div class="compass-card-title">Loan payoff plan</div>
-    <div class="compass-card-sub">The smartest order to clear your loans</div>
-    <div id="loanStrategyContent"></div>
+  <div class="compass-card" id="compassLoanLinkCard" style="display:none;">
+    <div class="compass-card-title">Debt plan ready</div>
+    <div class="compass-card-sub">Your payoff strategy now lives in Loans</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;">
+      <div id="compassLoanLinkSummary" style="font-size:12px;color:var(--text-dim);line-height:1.5;"></div>
+      <button class="btn-secondary" onclick="goPage('loans')" style="margin:0;width:auto;padding:10px 12px;">View Loans</button>
+    </div>
   </div>
   
   <div class="compass-card">
@@ -2605,74 +2692,10 @@
       <span class="profile-name" id="profileName">Set your name</span>
       <button class="profile-edit-btn" onclick="openNameModal()" title="Edit name">✏</button>
     </div>
-    <div class="profile-version">Ledger Compass v<span id="profileVersion">2.8.4</span></div>
+    <div class="profile-version">Ledger Compass v<span id="profileVersion">2.8.5</span></div>
   </div>
 
-  <div class="section-title">
-    <h2>Income Sources</h2>
-    <span class="link" onclick="openIncomeSrcModal()">+ Add</span>
-  </div>
-  <div style="color:var(--text-dim);font-size:12px;line-height:1.6;margin-bottom:16px;padding:12px 14px;background:var(--bg-card);border-radius:12px;border:1px solid var(--border);">
-    Set up your paychecks for cash flow forecasting. Supports multiple jobs with different pay cycles. Toggle "Auto-log on pay date" to skip manual entry.
-  </div>
-  <div id="incomeSrcList"></div>
-
-  <div class="section-title" style="margin-top:24px;">
-    <h2>Recurring Expenses</h2>
-    <span class="link" onclick="openRecExpModal()">+ Add</span>
-  </div>
-  <div style="color:var(--text-dim);font-size:12px;line-height:1.6;margin-bottom:16px;padding:12px 14px;background:var(--bg-card);border-radius:12px;border:1px solid var(--border);">
-    Set fixed expenses (rent, Netflix, gym) to auto-log on their due dates. Skip the manual entry forever.
-  </div>
-  <div id="recExpList"></div>
-
-  <div class="section-title" style="margin-top:24px;">
-    <h2>Savings & Goals</h2>
-  </div>
-  <div class="setting-row" onclick="goPage('savings')">
-    <span class="setting-label">💰 Savings & Goals</span>
-    <span class="setting-value" id="savingsCount">—</span>
-  </div>
-
-  <div class="section-title" style="margin-top:24px;">
-    <h2>Settings</h2>
-  </div>
-
-  <div class="setting-row" onclick="restartTour()">
-    <span class="setting-label">👋 Show welcome tour</span>
-    <span class="setting-value">→</span>
-  </div>
-
-  <div class="setting-row" onclick="openCurrencyModal()">
-    <span class="setting-label">Currency</span>
-    <span class="setting-value" id="currencyLabel">AUD (A$)</span>
-  </div>
-
-  <div class="setting-row" onclick="exportData()">
-    <span class="setting-label">Export Data (JSON)</span>
-    <span class="setting-value">↓</span>
-  </div>
-
-  <div class="setting-row" onclick="exportCSV()">
-    <span class="setting-label">Export CSV</span>
-    <span class="setting-value">↓</span>
-  </div>
-
-  <div class="setting-row" onclick="document.getElementById('importFile').click()">
-    <span class="setting-label">Import from JSON</span>
-    <span class="setting-value">↑</span>
-  </div>
-  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-
-  <div class="setting-row" onclick="refreshApp()" style="border-color: rgba(201,255,61,0.2);">
-    <span class="setting-label" style="color: var(--accent);">↻ Refresh App (Force Update)</span>
-    <span class="setting-value" id="versionDisplay">v2.8.4</span>
-  </div>
-
-  <div class="setting-row" style="border-color: rgba(255,107,107,0.2);" onclick="confirmClearAll()">
-    <span class="setting-label" style="color: var(--expense);">Clear All Data</span>
-    <span class="setting-value">⚠</span>
-  </div>
+  <div id="profileContent"></div>
 
   <div style="margin-top:24px;text-align:center;color:var(--text-muted);font-size:11px;line-height:1.6;padding-bottom:24px;">
     <div>All data stored on this device</div>
@@ -3230,10 +3253,11 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.8.4';
+const APP_VERSION = '2.8.5';
 const SCHEMA_VERSION = 9;
 const STORAGE_KEY = 'ledger_data_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
+const UI_PREFS_KEY = 'ledger_ui_prefs_v1';
 const AUTO_SNAPSHOT_PREFIX = 'ledger_snap_';
 const MAX_AUTO_SNAPSHOTS = 7;
 
@@ -3669,7 +3693,7 @@ function goPage(name) {
   if (name === 'compass') renderCompass();
   if (name === 'decisions') renderDecisions();
   if (name === 'savings') renderSavingsPage();
-  if (name === 'profile') { renderIncomeSources(); renderRecExps(); updateSavingsCount(); renderProfileHeader(); updateProfileFooter(); }
+  if (name === 'profile') { renderProfileHeader(); renderProfile(); updateProfileFooter(); }
   window.scrollTo(0, 0);
 }
 
@@ -3681,6 +3705,7 @@ function renderAll() {
   renderBudgets();
   renderLoans();
   renderCompass();
+  renderProfile();
   
   const sym = getCurrencySymbol();
   document.getElementById('currencySymbol').textContent = sym;
@@ -3704,6 +3729,201 @@ function renderProfileHeader() {
   if (avatarEl) avatarEl.textContent = getUserInitials(name);
   if (nameEl) nameEl.textContent = name || 'Set your name';
   if (versionEl) versionEl.textContent = APP_VERSION;
+}
+
+function defaultUiPrefs() {
+  return {
+    profileSections: {
+      incomeSources: state.incomeSources.length > 0,
+      recurringExpenses: state.recurringExpenses.length > 0,
+      goals: true,
+      settings: true,
+      dataBackup: true,
+      dangerZone: true,
+    }
+  };
+}
+
+function loadUiPrefs() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(UI_PREFS_KEY) || 'null');
+    const defaults = defaultUiPrefs();
+    return {
+      profileSections: {
+        ...defaults.profileSections,
+        ...(saved && saved.profileSections ? saved.profileSections : {}),
+      }
+    };
+  } catch (e) {
+    return defaultUiPrefs();
+  }
+}
+
+function saveUiPrefs(prefs) {
+  try {
+    localStorage.setItem(UI_PREFS_KEY, JSON.stringify(prefs));
+  } catch (e) {
+    console.warn('Could not save UI preferences', e);
+  }
+}
+
+function isProfileSectionCollapsed(id) {
+  return !!loadUiPrefs().profileSections[id];
+}
+
+function toggleProfileSection(id) {
+  const prefs = loadUiPrefs();
+  prefs.profileSections[id] = !prefs.profileSections[id];
+  saveUiPrefs(prefs);
+  renderProfile();
+}
+
+function profileGroupHtml(id, title, summary, actionHtml, bodyHtml) {
+  const collapsed = isProfileSectionCollapsed(id);
+  return `
+    <section class="profile-group ${collapsed ? '' : 'open'}" id="profileGroup-${id}">
+      <div class="profile-group-head" role="button" tabindex="0" onclick="toggleProfileSection('${id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleProfileSection('${id}');}">
+        <span class="profile-group-copy">
+          <span class="profile-group-title">${title}</span>
+          <span class="profile-group-summary">${summary}</span>
+        </span>
+        <span class="profile-group-right">
+          ${actionHtml || ''}
+          <span class="profile-group-chev">›</span>
+        </span>
+      </div>
+      <div class="profile-group-body ${collapsed ? 'collapsed' : ''}">
+        ${bodyHtml}
+      </div>
+    </section>
+  `;
+}
+
+function stopProfileAction(event, fn) {
+  event.stopPropagation();
+  fn();
+}
+
+function incomeSourcesSummary() {
+  if (state.incomeSources.length === 0) return 'Not set up yet';
+  const weekly = state.incomeSources.reduce((sum, src) => {
+    return src.cycle === 'irregular' ? sum : sum + cycleToWeekly(src.amount || 0, src.cycle);
+  }, 0);
+  return `${state.incomeSources.length} source${state.incomeSources.length === 1 ? '' : 's'} · ${fmt(weekly)}/week`;
+}
+
+function recurringExpensesSummary() {
+  const active = state.recurringExpenses.filter(r => r.active);
+  if (state.recurringExpenses.length === 0) return 'No regular bills yet';
+  const monthly = active.reduce((sum, rec) => sum + cycleToMonthly(rec.amount || 0, rec.cycle), 0);
+  return `${active.length}/${state.recurringExpenses.length} active · ${fmt(monthly)}/month`;
+}
+
+function goalsSummary() {
+  const goals = state.savingsGoals || [];
+  if (goals.length === 0) return 'No goals yet';
+  const totalTarget = goals.reduce((sum, g) => sum + (g.target || 0), 0);
+  return `${goals.length} goal${goals.length === 1 ? '' : 's'} · ${fmt(totalTarget)} target`;
+}
+
+function renderProfile() {
+  const el = document.getElementById('profileContent');
+  if (!el) return;
+  const cur = CURRENCIES.find(c => c.code === state.currency);
+  const currencyText = cur ? `${cur.code} (${cur.symbol})` : 'AUD (A$)';
+  const sectionAdd = (label, fn) => `<span class="profile-group-add" onclick="stopProfileAction(event, ${fn})">${label}</span>`;
+
+  el.innerHTML = `
+    ${profileGroupHtml(
+      'incomeSources',
+      'Income Sources',
+      incomeSourcesSummary(),
+      sectionAdd('+ Add', 'openIncomeSrcModal'),
+      `
+        <div class="profile-group-note">Paychecks power your cash-flow forecast. Auto-log creates income entries on pay day.</div>
+        <div id="incomeSrcList"></div>
+      `
+    )}
+    ${profileGroupHtml(
+      'recurringExpenses',
+      'Recurring Expenses',
+      recurringExpensesSummary(),
+      sectionAdd('+ Add', 'openRecExpModal'),
+      `
+        <div class="profile-group-note">Rent, subscriptions, gym and fixed bills can auto-log on their due dates.</div>
+        <div id="recExpList"></div>
+      `
+    )}
+    ${profileGroupHtml(
+      'goals',
+      'Savings & Goals',
+      goalsSummary(),
+      '',
+      `
+        <div class="setting-row" onclick="goPage('savings')">
+          <span class="setting-label">Savings & Goals</span>
+          <span class="setting-value" id="savingsCount">—</span>
+        </div>
+      `
+    )}
+    ${profileGroupHtml(
+      'settings',
+      'App Settings',
+      `Currency: ${currencyText} · Version v${APP_VERSION}`,
+      '',
+      `
+        <div class="setting-row" onclick="restartTour()">
+          <span class="setting-label">Show welcome tour</span>
+          <span class="setting-value">→</span>
+        </div>
+        <div class="setting-row" onclick="openCurrencyModal()">
+          <span class="setting-label">Currency</span>
+          <span class="setting-value" id="currencyLabel">${currencyText}</span>
+        </div>
+        <div class="setting-row" onclick="refreshApp()" style="border-color: rgba(201,255,61,0.2);">
+          <span class="setting-label" style="color: var(--accent);">Refresh App (Force Update)</span>
+          <span class="setting-value" id="versionDisplay">v${APP_VERSION}</span>
+        </div>
+      `
+    )}
+    ${profileGroupHtml(
+      'dataBackup',
+      'Data & Backup',
+      'Export, import, and keep a copy before big changes',
+      '',
+      `
+        <div class="setting-row" onclick="exportData()">
+          <span class="setting-label">Export Data (JSON)</span>
+          <span class="setting-value">↓</span>
+        </div>
+        <div class="setting-row" onclick="exportCSV()">
+          <span class="setting-label">Export CSV</span>
+          <span class="setting-value">↓</span>
+        </div>
+        <div class="setting-row" onclick="document.getElementById('importFile').click()">
+          <span class="setting-label">Import from JSON</span>
+          <span class="setting-value">↑</span>
+        </div>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+      `
+    )}
+    ${profileGroupHtml(
+      'dangerZone',
+      'Danger Zone',
+      'Destructive actions are tucked away',
+      '',
+      `
+        <div class="setting-row" style="border-color: rgba(255,107,107,0.2);" onclick="confirmClearAll()">
+          <span class="setting-label" style="color: var(--expense);">Clear All Data</span>
+          <span class="setting-value">⚠</span>
+        </div>
+      `
+    )}
+  `;
+
+  renderIncomeSources();
+  renderRecExps();
+  updateSavingsCount();
 }
 
 function getUserInitials(name) {
@@ -4181,9 +4401,15 @@ function getLoanPaid(loan) {
 function renderLoans() {
   const summary = document.getElementById('loansSummary');
   const list = document.getElementById('loansList');
+  const strategyCard = document.getElementById('loanStrategyCard');
+  const strategyContent = document.getElementById('loanStrategyContent');
   
   if (state.loans.length === 0) {
     summary.innerHTML = '';
+    if (strategyCard && strategyContent) {
+      strategyCard.style.display = 'block';
+      strategyContent.innerHTML = emptyState('No payoff plan yet', 'Add a loan to see the smartest payoff order');
+    }
     list.innerHTML = emptyState('No loans tracked', 'Add a loan to track your payoff progress');
     return;
   }
@@ -4195,6 +4421,9 @@ function renderLoans() {
   });
   const remaining = Math.max(0, totalBorrowed - totalPaid);
   const overallPct = totalBorrowed > 0 ? (totalPaid / totalBorrowed) * 100 : 0;
+  const strategy = computeLoanStrategy();
+  const activeLoanCount = state.loans.filter(l => getLoanPaid(l) < l.total).length;
+  const monthlyInterest = strategy ? strategy.totalMonthlyInterest : 0;
   
   summary.innerHTML = `
     <div class="loans-summary">
@@ -4212,9 +4441,18 @@ function renderLoans() {
           <div class="loans-summary-stat-label">Paid</div>
           <div class="loans-summary-stat-val income-text">${fmt(totalPaid)}</div>
         </div>
+        <div class="loans-summary-stat">
+          <div class="loans-summary-stat-label">Active</div>
+          <div class="loans-summary-stat-val">${activeLoanCount}</div>
+        </div>
+        <div class="loans-summary-stat">
+          <div class="loans-summary-stat-label">Interest/mo</div>
+          <div class="loans-summary-stat-val expense-text">${fmt(monthlyInterest)}</div>
+        </div>
       </div>
     </div>
   `;
+  renderLoanStrategy();
   
   const sorted = [...state.loans].sort((a, b) => {
     const ap = getLoanPaid(a) >= a.total ? 1 : 0;
@@ -5039,6 +5277,7 @@ function setupManifest() {
 
 function renderIncomeSources() {
   const list = document.getElementById('incomeSrcList');
+  if (!list) return;
   if (state.incomeSources.length === 0) {
     list.innerHTML = emptyState('No income sources', 'Add your job(s) to enable cash flow forecasts');
     return;
@@ -7349,10 +7588,26 @@ function renderCompass() {
   renderWeeklyPlan();
   renderExpectedMonthly();
   renderSafeSave();
-  renderLoanStrategy();
+  renderCompassLoanLink();
   renderHealthScore();
   renderForecast();
   renderSmartInsights();
+}
+
+function renderCompassLoanLink() {
+  const card = document.getElementById('compassLoanLinkCard');
+  const summary = document.getElementById('compassLoanLinkSummary');
+  if (!card || !summary) return;
+  const result = computeLoanStrategy();
+  if (!result) {
+    card.style.display = 'none';
+    return;
+  }
+  const first = result.ordered && result.ordered[0];
+  card.style.display = 'block';
+  summary.innerHTML = first
+    ? `Focus first: <strong style="color:var(--text);">${escapeHtml(first.name)}</strong> · ${fmt(result.totalDebt)} total debt`
+    : `${fmt(result.totalDebt)} total debt`;
 }
 
 function renderMomentum() {
@@ -8391,6 +8646,7 @@ function ensureSavingsCategory() {
 
 function renderRecExps() {
   const list = document.getElementById('recExpList');
+  if (!list) return;
   if (state.recurringExpenses.length === 0) {
     list.innerHTML = emptyState('No recurring expenses', 'Add rent, subs, gym etc. to auto-log');
     return;
