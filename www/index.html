@@ -1597,6 +1597,159 @@
     line-height: 1;
   }
   
+  .afford-result {
+    display: grid;
+    gap: 12px;
+  }
+  .afford-hero {
+    padding: 18px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+  }
+  .afford-hero.green { border-color: var(--income-border); background: var(--income-subtle); }
+  .afford-hero.yellow { border-color: var(--warning-border); background: var(--warning-subtle); }
+  .afford-hero.red { border-color: var(--expense-border); background: var(--expense-subtle); }
+  .afford-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 9px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--surface-overlay);
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .afford-hero.green .afford-badge { color: var(--income); }
+  .afford-hero.yellow .afford-badge { color: var(--warning); }
+  .afford-hero.red .afford-badge { color: var(--expense); }
+  .afford-title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    line-height: 1.15;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .afford-sub {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.45;
+  }
+  .afford-section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin: 2px 0 8px;
+  }
+  .afford-timeline {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .afford-metric {
+    min-height: 92px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+  }
+  .afford-metric-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .afford-metric-value {
+    font-family: 'Geist Mono', monospace;
+    font-size: 16px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .afford-metric-detail {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.35;
+    margin-top: 5px;
+  }
+  .afford-panel {
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+  }
+  .afford-callout {
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.45;
+  }
+  .afford-callout:first-child { border-top: none; padding-top: 0; }
+  .afford-callout:last-child { padding-bottom: 0; }
+  .afford-callout strong { color: var(--text); font-weight: 600; }
+  .afford-goal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .afford-small-stat {
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--surface-overlay);
+  }
+  .afford-small-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  .afford-small-value {
+    font-family: 'Geist Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .afford-list {
+    display: grid;
+    gap: 8px;
+  }
+  .afford-list-item {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--surface-overlay);
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.45;
+  }
+  .decision-snapshot {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .decision-snapshot span {
+    padding: 7px 8px;
+    border-radius: 8px;
+    background: var(--surface-overlay);
+    font-size: 10px;
+    color: var(--text-dim);
+    line-height: 1.35;
+  }
+  .decision-snapshot strong {
+    display: block;
+    color: var(--text);
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
   .compass-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -7303,8 +7456,293 @@ function estimateInterestSavings(loan, extraMonthly) {
 /* ============================================================
    v2.2: SMART AFFORDABILITY (recurring-aware)
    ============================================================ */
-function computeSmartAffordability(amount) {
-  const bal = getCurrentBalance();
+function dateDiffDays(fromISO, toISO) {
+  const from = parseISODateLocal(fromISO);
+  const to = parseISODateLocal(toISO);
+  if (!from || !to) return null;
+  return Math.ceil((to - from) / 86400000);
+}
+
+function cycleDays(cycle) {
+  if (cycle === 'weekly') return 7;
+  if (cycle === 'fortnightly') return 14;
+  if (cycle === 'monthly') return 30;
+  if (cycle === 'yearly') return 365;
+  return null;
+}
+
+function buildAffordabilityScenario(amount, label = '') {
+  return {
+    amount,
+    label: label || 'This purchase',
+    date: todayISO(),
+    currentBalance: getCurrentBalance(),
+  };
+}
+
+function getRecurringBillEvents(daysAhead = 30) {
+  const events = [];
+  const today = parseISODateLocal(todayISO());
+  const horizon = addDays(today, daysAhead);
+
+  state.recurringExpenses.forEach(rec => {
+    if (!rec.active || !rec.nextDue) return;
+    let nextISO = computeNextDueDate(rec);
+    const anchorDay = rec.cycle === 'monthly' ? monthlyAnchorDay(rec, 'nextDue') : null;
+    while (nextISO) {
+      const next = parseISODateLocal(nextISO);
+      if (!next || next > horizon) break;
+      if (next >= today) {
+        events.push({
+          id: rec.id,
+          name: rec.name,
+          category: rec.category,
+          amount: rec.amount,
+          date: nextISO,
+          type: 'bill',
+        });
+      }
+      nextISO = advanceRecurringDate(nextISO, rec.cycle, anchorDay);
+    }
+  });
+
+  return events.sort((a,b) => a.date.localeCompare(b.date));
+}
+
+function computePayCycleContext(nextPay) {
+  if (!nextPay) {
+    return {
+      hasIncome: state.incomeSources.some(src => src.cycle !== 'irregular'),
+      text: state.incomeSources.length
+        ? 'No upcoming payday is set. Add or update the next pay date for sharper timing advice.'
+        : 'No income source is set yet. This check uses your current balance, bills, and spending only.',
+    };
+  }
+
+  const src = state.incomeSources.find(s => String(s.id) === String(nextPay.srcId));
+  const daysUntil = Math.max(0, dateDiffDays(todayISO(), nextPay.date) ?? 0);
+  const length = cycleDays(src?.cycle) || null;
+  if (!length) {
+    return {
+      hasIncome: true,
+      daysUntilNextPay: daysUntil,
+      text: `${nextPay.name} is due in ${daysUntil} day${daysUntil === 1 ? '' : 's'}.`,
+    };
+  }
+
+  const daysIntoCycle = Math.max(0, Math.min(length, length - daysUntil));
+  const week = Math.max(1, Math.floor(daysIntoCycle / 7) + 1);
+  const exposedDays = Math.max(0, daysUntil);
+  return {
+    hasIncome: true,
+    daysUntilNextPay: daysUntil,
+    daysIntoCycle,
+    cycleDays: length,
+    week,
+    isEarlyCycle: daysIntoCycle <= Math.min(4, Math.ceil(length * 0.35)) && exposedDays >= 7,
+    text: `You are about ${daysIntoCycle} day${daysIntoCycle === 1 ? '' : 's'} into this pay cycle, with ${daysUntil} day${daysUntil === 1 ? '' : 's'} until ${nextPay.name}.`,
+  };
+}
+
+function simulateAffordabilityProjection(scenario, daysAhead = 30) {
+  const today = parseISODateLocal(scenario.date);
+  const payEvents = getUpcomingPayEvents(daysAhead);
+  const billEvents = getRecurringBillEvents(daysAhead);
+  const loanEvents = getUpcomingLoanPayments(daysAhead).map(e => ({ ...e, type: 'loan' }));
+  const avgDaily = getAvgDailyExpense();
+  const dailySpend = Number.isFinite(avgDaily) && avgDaily > 0 ? avgDaily : 0;
+  let balance = scenario.currentBalance - scenario.amount;
+  const points = [{
+    date: scenario.date,
+    balance,
+    events: [{ type: 'purchase', amount: scenario.amount, name: scenario.label }],
+  }];
+
+  for (let i = 1; i <= daysAhead; i++) {
+    const dISO = isoOf(addDays(today, i));
+    const incomes = payEvents.filter(e => e.date === dISO);
+    const bills = billEvents.filter(e => e.date === dISO);
+    const loans = loanEvents.filter(e => e.date === dISO);
+    const incomeTotal = incomes.reduce((s,e) => s + e.amount, 0);
+    const billTotal = bills.reduce((s,e) => s + e.amount, 0);
+    const loanTotal = loans.reduce((s,e) => s + e.amount, 0);
+    balance += incomeTotal - billTotal - loanTotal - dailySpend;
+    points.push({
+      date: dISO,
+      balance,
+      events: [
+        ...incomes.map(e => ({ ...e, type: 'income' })),
+        ...bills,
+        ...loans,
+        ...(dailySpend > 0 ? [{ type: 'daily', amount: dailySpend, name: 'Usual daily spending' }] : []),
+      ],
+    });
+  }
+
+  const nextPay = payEvents.find(e => e.date >= scenario.date) || null;
+  const nextPayPoint = nextPay ? points.find(p => p.date === nextPay.date) : null;
+  const fourteenDayPoint = points.find(p => p.date === isoOf(addDays(today, 14))) || points[points.length - 1];
+  const lowPoint = points.reduce((min, p) => p.balance < min.balance ? p : min, points[0]);
+  const firstNegative = points.find(p => p.balance < 0) || null;
+
+  return {
+    points,
+    todayAfterPurchase: points[0].balance,
+    nextPay,
+    nextPayBalance: nextPayPoint ? nextPayPoint.balance : null,
+    fourteenDayBalance: fourteenDayPoint ? fourteenDayPoint.balance : null,
+    lowPointDate: lowPoint.date,
+    lowPointBalance: lowPoint.balance,
+    firstNegativeDate: firstNegative ? firstNegative.date : null,
+    avgDaily: dailySpend,
+    bills: billEvents,
+    loanEvents,
+    payCycle: computePayCycleContext(nextPay),
+  };
+}
+
+function computeAffordabilityGoalImpact(amount) {
+  const today = parseISODateLocal(todayISO());
+  const goals = (state.savingsGoals || [])
+    .filter(goal => goal.deadline && goal.target > 0)
+    .map(goal => ({ goal, deadline: parseISODateLocal(goal.deadline), pace: computeGoalPace(goal) }))
+    .filter(item => item.deadline && item.deadline > today && item.pace && item.pace.remaining > 0)
+    .sort((a,b) => a.goal.deadline.localeCompare(b.goal.deadline));
+
+  if (!goals.length) return null;
+  const { goal, pace } = goals[0];
+  const weeklyPace = pace.weeklyPace || 0;
+  const delayDays = weeklyPace > 0 ? Math.ceil((amount / weeklyPace) * 7) : null;
+  const newWeeklyPace = pace.weeksLeft > 0 ? (pace.remaining + amount) / pace.weeksLeft : null;
+
+  return {
+    goalId: goal.id,
+    goalName: goal.name,
+    deadline: goal.deadline,
+    remaining: pace.remaining,
+    daysLeft: pace.daysLeft,
+    weeklyPace,
+    delayDays,
+    newWeeklyPace,
+  };
+}
+
+function computeAffordabilityVerdict(scenario, projection, goalImpact) {
+  const reserved = getCurrentReservedAmount();
+  const weeklyFree = computeDailyFreeAllowance()?.weeklyFree ?? null;
+  const monthlyIn = getExpectedMonthlyIncomeRecurring() || getMonthlyIncomeEstimate();
+  const monthlyLeftover = getExpectedMonthlyLeftover();
+  const afterAvailable = scenario.currentBalance - reserved - scenario.amount;
+  const safetyFloor = Math.max(100, projection.avgDaily * 7);
+  const callouts = [];
+  const reasons = [];
+  const alternatives = [];
+
+  reasons.push(`Today after purchase: ${fmtSigned(projection.todayAfterPurchase)}.`);
+  if (projection.nextPay) {
+    reasons.push(`By next pay (${formatDateLabel(projection.nextPay.date)}): ${fmtSigned(projection.nextPayBalance)}.`);
+  } else {
+    reasons.push('No next payday is set, so the check cannot rely on income timing.');
+  }
+  reasons.push(`In 14 days: ${fmtSigned(projection.fourteenDayBalance)}.`);
+  reasons.push(`Lowest projected point: ${fmtSigned(projection.lowPointBalance)} on ${formatDateLabel(projection.lowPointDate)}.`);
+
+  if (projection.firstNegativeDate) {
+    callouts.push({
+      level: 'high',
+      title: 'Future negative balance',
+      text: `This purchase is projected to push the balance below zero on ${formatDateLabel(projection.firstNegativeDate)} after bills and normal spending.`,
+    });
+  }
+  if (reserved > 0 && afterAvailable < 0) {
+    callouts.push({
+      level: 'high',
+      title: 'Bill money gets used',
+      text: `It would consume money reserved for upcoming bills. Reserved now: ${fmt(reserved)}.`,
+    });
+  }
+  const nextPayDate = projection.nextPay?.date || null;
+  const billsBeforePay = projection.bills
+    .filter(b => !nextPayDate || b.date <= nextPayDate)
+    .reduce((sum, b) => sum + b.amount, 0);
+  if (billsBeforePay > 0 && projection.todayAfterPurchase < billsBeforePay && !callouts.some(c => c.title === 'Bill money gets used')) {
+    callouts.push({
+      level: 'high',
+      title: 'Bill money gets used',
+      text: `${fmt(billsBeforePay)} in bills is due before the next pay cushion fully rebuilds.`,
+    });
+  }
+  if (projection.payCycle?.isEarlyCycle) {
+    callouts.push({
+      level: 'medium',
+      title: 'Early in pay cycle',
+      text: `There are still ${projection.payCycle.daysUntilNextPay} days until payday, so the remaining balance has to stretch longer.`,
+    });
+  }
+  if (!projection.payCycle?.hasIncome) {
+    callouts.push({
+      level: 'medium',
+      title: 'No income source',
+      text: 'Add an income source in Profile to unlock sharper next-pay guidance.',
+    });
+  }
+  if (goalImpact?.delayDays && goalImpact.delayDays >= 7) {
+    callouts.push({
+      level: 'medium',
+      title: 'Goal deadline impact',
+      text: `The nearest deadline goal could move back by about ${goalImpact.delayDays} day${goalImpact.delayDays === 1 ? '' : 's'}.`,
+    });
+  }
+
+  let kind = 'buy';
+  if (projection.todayAfterPurchase < 0 || projection.firstNegativeDate) kind = 'avoid';
+  else if (afterAvailable < 0 || projection.lowPointBalance < safetyFloor || projection.payCycle?.isEarlyCycle || (goalImpact?.delayDays || 0) >= 14) kind = 'wait';
+
+  let title;
+  if (kind === 'avoid') {
+    title = projection.firstNegativeDate
+      ? `Avoid for now: you go negative on ${formatDateLabel(projection.firstNegativeDate)}`
+      : `Avoid for now: your balance goes below zero today`;
+  } else if (kind === 'wait') {
+    const days = projection.payCycle?.daysUntilNextPay;
+    title = days !== undefined ? `Wait ${days} day${days === 1 ? '' : 's'} until payday` : 'Wait and build a cushion first';
+  } else {
+    title = 'Buy now looks okay';
+  }
+
+  if (projection.nextPay) {
+    const days = projection.payCycle?.daysUntilNextPay ?? dateDiffDays(scenario.date, projection.nextPay.date);
+    alternatives.push(`Wait ${days} day${days === 1 ? '' : 's'} until ${projection.nextPay.name}; projected next-pay balance is ${fmtSigned(projection.nextPayBalance)}.`);
+  }
+  if (scenario.amount > 200 && projection.nextPay) {
+    const first = Math.ceil(scenario.amount / 2);
+    alternatives.push(`Split it: ${fmt(first)} now and ${fmt(scenario.amount - first)} after payday.`);
+  }
+  const safe = computeSafeWeeklySave();
+  if (safe.hasEnoughData && safe.safeSave > 0) {
+    alternatives.push(`Save for about ${Math.max(1, Math.ceil(scenario.amount / safe.safeSave))} week${Math.ceil(scenario.amount / safe.safeSave) === 1 ? '' : 's'} at your safe rate of ${fmt(safe.safeSave)}/week.`);
+  } else if (!projection.payCycle?.hasIncome) {
+    alternatives.push('Add income and fixed bills first; then rerun this check for a stronger answer.');
+  }
+  if (!alternatives.length) {
+    alternatives.push('Keep the purchase in mind and rerun the check after your next income or bill update.');
+  }
+
+  const zone = kind === 'buy' ? 'green' : kind === 'wait' ? 'yellow' : 'red';
+  return { kind, zone, title, reasons, callouts, alternatives, monthlyLeftover, monthlyIn };
+}
+
+function fmtSigned(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return 'Not set';
+  return `${n < 0 ? '-' : ''}${fmt(n)}`;
+}
+
+function computeSmartAffordability(amount, label = '') {
+  const scenario = buildAffordabilityScenario(amount, label);
+  const projection = simulateAffordabilityProjection(scenario, 30);
+  const goalImpact = computeAffordabilityGoalImpact(amount);
+  const verdict = computeAffordabilityVerdict(scenario, projection, goalImpact);
+  const bal = scenario.currentBalance;
   const monthlyIn = getExpectedMonthlyIncomeRecurring() || getMonthlyIncomeEstimate();
   const monthlyFixed = getExpectedMonthlyFixedExpenses();
   const monthlyVar = getAverageVariableMonthlyExpense();
@@ -7485,7 +7923,20 @@ function computeSmartAffordability(amount) {
     considerations.push(`About ${(amount/avgDaily).toFixed(0)} days of your usual spending`);
   }
   
-  return { zone, title, reasons, strategies, considerations, monthlyLeftover, monthlyIn };
+  return {
+    scenario,
+    projection,
+    goalImpact,
+    verdict,
+    zone: verdict.zone,
+    title: verdict.title,
+    reasons: verdict.reasons,
+    strategies: verdict.alternatives,
+    considerations: verdict.callouts.map(c => `${c.title}: ${c.text}`),
+    legacy: { zone, title, reasons, strategies, considerations, monthlyLeftover, monthlyIn, weekly },
+    monthlyLeftover,
+    monthlyIn,
+  };
 }
 
 /* ============================================================
@@ -8859,6 +9310,175 @@ function renderDecisions() {
       </div>
     </div>
   `).join('');
+}
+
+function renderAffordabilityResult(result, amount, what) {
+  const projection = result.projection;
+  const goal = result.goalImpact;
+  const verdictLabel = result.verdict.kind === 'buy' ? 'Buy' : result.verdict.kind === 'wait' ? 'Wait' : 'Avoid';
+  const purchaseLabel = escapeHtml(what || 'This purchase');
+  const metricColor = n => n < 0 ? 'var(--expense)' : 'var(--text)';
+  const timeline = [
+    {
+      label: 'Today',
+      value: fmtSigned(projection.todayAfterPurchase),
+      detail: 'After buying today',
+      color: metricColor(projection.todayAfterPurchase),
+    },
+    {
+      label: 'Next Pay',
+      value: projection.nextPay ? fmtSigned(projection.nextPayBalance) : 'Not set',
+      detail: projection.nextPay ? `${formatDateLabel(projection.nextPay.date)} from ${escapeHtml(projection.nextPay.name)}` : 'Add income in Profile',
+      color: projection.nextPayBalance !== null ? metricColor(projection.nextPayBalance) : 'var(--text-dim)',
+    },
+    {
+      label: '14 Days',
+      value: fmtSigned(projection.fourteenDayBalance),
+      detail: 'Bills and normal spending included',
+      color: metricColor(projection.fourteenDayBalance),
+    },
+    {
+      label: 'Lowest Point',
+      value: fmtSigned(projection.lowPointBalance),
+      detail: formatDateLabel(projection.lowPointDate),
+      color: metricColor(projection.lowPointBalance),
+    },
+  ];
+
+  return `
+    <div class="afford-result">
+      <div class="afford-hero ${result.zone}">
+        <div class="afford-badge">${verdictLabel}</div>
+        <div class="afford-title">${escapeHtml(result.title)}</div>
+        <div class="afford-sub">${purchaseLabel} &middot; ${fmt(amount)}. ${escapeHtml(projection.payCycle?.text || '')}</div>
+      </div>
+
+      <div>
+        <div class="afford-section-title">If you buy today</div>
+        <div class="afford-timeline">
+          ${timeline.map(item => `
+            <div class="afford-metric">
+              <div class="afford-metric-label">${escapeHtml(item.label)}</div>
+              <div class="afford-metric-value" style="color:${item.color};">${escapeHtml(item.value)}</div>
+              <div class="afford-metric-detail">${item.detail}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      ${result.verdict.callouts.length ? `
+        <div class="afford-panel">
+          <div class="afford-section-title">Risks to notice</div>
+          ${result.verdict.callouts.map(c => `
+            <div class="afford-callout"><strong>${escapeHtml(c.title)}</strong><br>${escapeHtml(c.text)}</div>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      ${goal ? `
+        <div class="afford-panel">
+          <div class="afford-section-title">Goal impact</div>
+          <div class="afford-sub">${escapeHtml(goal.goalName)} is due ${formatDateLabel(goal.deadline)}. This purchase could delay that goal by about ${goal.delayDays || 0} day${goal.delayDays === 1 ? '' : 's'}.</div>
+          <div class="afford-goal-grid">
+            <div class="afford-small-stat">
+              <div class="afford-small-label">Current pace</div>
+              <div class="afford-small-value">${fmt(goal.weeklyPace)}/wk</div>
+            </div>
+            <div class="afford-small-stat">
+              <div class="afford-small-label">Needed after</div>
+              <div class="afford-small-value">${goal.newWeeklyPace !== null ? fmt(goal.newWeeklyPace) + '/wk' : 'Not set'}</div>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="afford-panel">
+        <div class="afford-section-title">Smarter options</div>
+        <div class="afford-list">
+          ${result.verdict.alternatives.map(s => `<div class="afford-list-item">${escapeHtml(s)}</div>`).join('')}
+        </div>
+      </div>
+
+      <div class="afford-sub">Your decision stays yours. This is the cash-flow view before you choose.</div>
+    </div>
+  `;
+}
+
+function runAffordabilityCheck() {
+  const amount = parseFloat(document.getElementById('inpAffordAmount').value);
+  const what = document.getElementById('inpAffordWhat').value.trim();
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'warning'); return; }
+
+  const result = computeSmartAffordability(amount, what);
+  const projection = result.projection;
+  const goal = result.goalImpact;
+  document.getElementById('affordVerdict').innerHTML = renderAffordabilityResult(result, amount, what);
+  document.getElementById('affordInputView').style.display = 'none';
+  document.getElementById('affordResultView').style.display = 'block';
+
+  state.pendingAffordCheck = {
+    amount,
+    what,
+    zone: result.zone,
+    verdict: result.verdict.kind,
+    title: result.title,
+    date: todayISO(),
+    projectionSnapshot: {
+      todayAfterPurchase: projection.todayAfterPurchase,
+      nextPayDate: projection.nextPay?.date || null,
+      nextPayBalance: projection.nextPayBalance,
+      fourteenDayBalance: projection.fourteenDayBalance,
+      lowPointDate: projection.lowPointDate,
+      lowPointBalance: projection.lowPointBalance,
+      firstNegativeDate: projection.firstNegativeDate,
+    },
+    goalImpact: goal ? {
+      goalId: goal.goalId,
+      goalName: goal.goalName,
+      deadline: goal.deadline,
+      delayDays: goal.delayDays,
+      newWeeklyPace: goal.newWeeklyPace,
+    } : null,
+  };
+}
+
+function renderDecisions() {
+  const list = document.getElementById('decisionList');
+  if (state.decisions.length === 0) {
+    list.innerHTML = emptyState('No decisions saved yet', 'Affordability checks you choose to save will appear here, so you can see what you bought, skipped, and why.', {
+      icon: 'tag',
+      actionLabel: 'Run affordability check',
+      action: 'openAffordabilityModal()',
+    });
+    return;
+  }
+
+  const sorted = [...state.decisions].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+  list.innerHTML = sorted.map(d => {
+    const snapshot = d.projectionSnapshot;
+    const legacyTitle = d.zone === 'green' ? 'Green zone' : d.zone === 'yellow' ? 'Yellow zone' : 'Red zone';
+    return `
+      <div class="decision-item">
+        <div class="decision-head">
+          <div>
+            <div class="decision-what">${escapeHtml(d.what || 'Unnamed purchase')} &middot; ${fmt(d.amount)}</div>
+            <div class="decision-meta">${formatDateLabel(d.date)}</div>
+          </div>
+          <span class="decision-verdict-dot ${d.zone}">${d.action === 'yes' ? 'Bought' : 'Skipped'}</span>
+        </div>
+        <div class="decision-outcome">${escapeHtml(d.title || legacyTitle)}</div>
+        ${snapshot ? `
+          <div class="decision-snapshot">
+            <span>Next pay<strong>${snapshot.nextPayBalance !== null && snapshot.nextPayBalance !== undefined ? fmtSigned(snapshot.nextPayBalance) : 'Not set'}</strong></span>
+            <span>14 days<strong>${fmtSigned(snapshot.fourteenDayBalance)}</strong></span>
+            <span>Lowest point<strong>${fmtSigned(snapshot.lowPointBalance)}${snapshot.lowPointDate ? ' - ' + formatDateLabel(snapshot.lowPointDate) : ''}</strong></span>
+            <span>Negative date<strong>${snapshot.firstNegativeDate ? formatDateLabel(snapshot.firstNegativeDate) : 'None projected'}</strong></span>
+            ${d.goalImpact ? `<span>Goal delay<strong>${d.goalImpact.delayDays || 0} day${d.goalImpact.delayDays === 1 ? '' : 's'}</strong></span>` : ''}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
 }
 
 

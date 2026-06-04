@@ -146,7 +146,7 @@ async function setRichFixture(page) {
       name: 'Emergency Fund',
       emoji: '',
       target: 3000,
-      deadline: '',
+      deadline: daysAgo(-90),
       createdAt: Date.now(),
     }];
     saveData();
@@ -386,8 +386,14 @@ function reportHtml(summary, metadata) {
       await page.locator('.compass-cta').click();
       await page.locator('#inpAffordAmount').fill('100');
       await page.locator('#inpAffordWhat').fill('QA purchase');
-      await page.getByRole('button', { name: 'Run Check' }).click();
+      await page.locator('#affordInputView .btn-primary').click();
+      await page.waitForFunction(() => document.getElementById('affordResultView')?.style.display !== 'none');
       await expectVisibleText(page, '#affordModal', 'QA purchase');
+      await expectVisibleText(page, '#affordModal', 'If you buy today');
+      await expectVisibleText(page, '#affordModal', 'Next Pay');
+      await expectVisibleText(page, '#affordModal', '14 Days');
+      await expectVisibleText(page, '#affordModal', 'Lowest Point');
+      await expectVisibleText(page, '#affordModal', 'Goal impact');
       await page.evaluate(() => closeModal('affordModal'));
       await expectText(page, 'Smart Insights');
       await snap(page, '04-compass');

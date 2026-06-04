@@ -1,0 +1,74 @@
+{
+  "summary": {
+    "total": 7,
+    "pass": 7,
+    "fail": 0
+  },
+  "metadata": {
+    "generatedAt": "2026-06-04T06:08:18.826Z",
+    "url": "http://127.0.0.1:56750"
+  },
+  "consoleErrors": [],
+  "results": [
+    {
+      "name": "Affordable purchase shows safe timeline recommendation",
+      "status": "PASS",
+      "duration": 3204,
+      "details": ""
+    },
+    {
+      "name": "Positive today but negative later after recurring bill is blocked",
+      "status": "PASS",
+      "duration": 2623,
+      "details": ""
+    },
+    {
+      "name": "Nearest deadline goal impact is shown with estimated delay",
+      "status": "PASS",
+      "duration": 3384,
+      "details": ""
+    },
+    {
+      "name": "No-goal state omits goal impact card",
+      "status": "PASS",
+      "duration": 2361,
+      "details": ""
+    },
+    {
+      "name": "No-income state gives useful fallback guidance",
+      "status": "PASS",
+      "duration": 2225,
+      "details": ""
+    },
+    {
+      "name": "Saved decision journal includes projection snapshot",
+      "status": "PASS",
+      "duration": 2454,
+      "details": ""
+    },
+    {
+      "name": "Affordability modal is accessible and mobile layout has no horizontal scroll",
+      "status": "PASS",
+      "duration": 2137,
+      "details": ""
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "01-affordable",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\full-qa\\affordability\\01-affordable.png"
+    },
+    {
+      "name": "02-negative-after-bill",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\full-qa\\affordability\\02-negative-after-bill.png"
+    },
+    {
+      "name": "03-goal-impact",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\full-qa\\affordability\\03-goal-impact.png"
+    },
+    {
+      "name": "04-decision-journal",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\full-qa\\affordability\\04-decision-journal.png"
+    }
+  ]
+}
