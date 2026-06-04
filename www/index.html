@@ -5962,7 +5962,7 @@ function base64Url(bytes) {
 }
 
 function normalizeRecoveryKey(value) {
-  return String(value || '').replace(/[^A-Za-z0-9_-]/g, '');
+  return String(value || '').replace(/[\s-]/g, '').replace(/[^A-Za-z0-9_]/g, '');
 }
 
 function formatRecoveryKey(value) {
@@ -5973,7 +5973,7 @@ function formatRecoveryKey(value) {
 function generateRecoveryKey() {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
-  return base64Url(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 async function deriveBackupCryptoKey(recoveryKey, saltBytes) {
