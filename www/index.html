@@ -1246,6 +1246,89 @@
     cursor: pointer;
     margin-top: 8px;
   }
+  .btn-primary:disabled,
+  .btn-secondary:disabled,
+  .btn-danger:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Encrypted backup */
+  .backup-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    margin: 12px 0;
+  }
+  .backup-panel strong {
+    display: block;
+    color: var(--text);
+    font-size: 14px;
+    margin-bottom: 5px;
+  }
+  .backup-panel p {
+    color: var(--text-dim);
+    font-size: 12px;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .recovery-key-box {
+    background: var(--bg);
+    border: 1px solid var(--accent-border);
+    border-radius: 14px;
+    color: var(--accent);
+    font-family: 'Geist Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+    padding: 14px;
+    margin: 12px 0;
+    user-select: all;
+  }
+  .backup-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .backup-preview-stat {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+  }
+  .backup-preview-stat span {
+    display: block;
+    color: var(--text-dim);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  .backup-preview-stat strong {
+    color: var(--text);
+    font-family: 'Geist Mono', monospace;
+    font-size: 16px;
+  }
+  .restore-warning {
+    background: var(--expense-subtle);
+    border: 1px solid var(--expense-border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 12px;
+    margin: 12px 0;
+  }
+  .restore-error {
+    color: var(--expense);
+    font-size: 12px;
+    line-height: 1.45;
+    min-height: 18px;
+    margin-top: 8px;
+  }
 
   /* Toggle */
   .toggle-row {
@@ -3416,6 +3499,54 @@
   </div>
 </div>
 
+<!-- ENCRYPTED BACKUP SETUP MODAL -->
+<div class="modal-backdrop" id="backupKeyModal" onclick="closeModalOnBg(event, 'backupKeyModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Save your recovery key</div>
+    <div class="modal-sub">This key lets you restore Ledger Compass on a new phone.</div>
+    <div id="backupKeyIntro" class="backup-panel">
+      <strong>Your backup is encrypted</strong>
+      <p>Save this recovery key before creating your first encrypted backup. Future backups will reuse this same key automatically.</p>
+    </div>
+    <div class="recovery-key-box" id="recoveryKeyDisplay"></div>
+    <button class="btn-secondary" type="button" onclick="copyRecoveryKey()">Copy recovery key</button>
+    <button class="btn-secondary" type="button" onclick="downloadRecoveryKey()">Save key file</button>
+    <button class="btn-primary" type="button" id="confirmRecoverySavedBtn" onclick="confirmRecoveryKeySaved()" disabled>I saved my recovery key</button>
+    <button class="btn-secondary" type="button" onclick="closeModal('backupKeyModal')">Not now</button>
+  </div>
+</div>
+
+<!-- ENCRYPTED RESTORE MODAL -->
+<div class="modal-backdrop" id="restoreModal" onclick="closeModalOnBg(event, 'restoreModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Restore encrypted backup</div>
+    <div class="modal-sub">Enter the recovery key saved with this backup.</div>
+    <div id="restoreStepKey">
+      <div class="field">
+        <label>Recovery key</label>
+        <textarea id="restoreRecoveryKey" rows="4" placeholder="Paste your recovery key here"></textarea>
+      </div>
+      <button class="btn-primary" type="button" onclick="decryptImportedBackup()">Preview restore</button>
+      <button class="btn-secondary" type="button" onclick="closeRestoreModal()">Cancel</button>
+      <div class="restore-error" id="restoreError" role="alert"></div>
+    </div>
+    <div id="restoreStepPreview" style="display:none;">
+      <div class="backup-panel">
+        <strong>Backup preview</strong>
+        <p id="restorePreviewMeta"></p>
+      </div>
+      <div class="backup-preview-grid" id="restorePreviewCounts"></div>
+      <div class="restore-warning" id="restoreReplaceWarning">
+        Restore will replace everything currently in this app with this backup.
+      </div>
+      <button class="btn-danger" type="button" id="restoreConfirmBtn" onclick="confirmEncryptedRestore()">Replace app data with this backup</button>
+      <button class="btn-secondary" type="button" onclick="closeRestoreModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- LOAN MODAL -->
 <div class="modal-backdrop" id="loanModal" onclick="closeModalOnBg(event, 'loanModal')">
   <div class="modal">
@@ -3747,7 +3878,14 @@ const UI_PREFS_KEY = 'ledger_ui_prefs_v1';
 const SETUP_STATUS_KEY = 'ledger_setup_status_v1';
 const AUTO_SNAPSHOT_PREFIX = 'ledger_snap_';
 const MAX_AUTO_SNAPSHOTS = 7;
+const RECOVERY_KEY_STORAGE_KEY = 'ledger_recovery_key_v1';
+const LAST_ENCRYPTED_BACKUP_KEY = 'ledger_last_encrypted_backup';
+const ENCRYPTED_BACKUP_FORMAT = 'ledger-compass-encrypted-backup';
 let lastModalTrigger = null;
+let pendingGeneratedRecoveryKey = null;
+let recoveryKeyActionTaken = false;
+let pendingRestoreEnvelope = null;
+let pendingRestoreData = null;
 
 const CLICKABLE_A11Y_SELECTOR = [
   '.hero[onclick]',
@@ -4016,20 +4154,7 @@ function loadData() {
     // Run migrations if schema is older
     const migrated = runMigrations(data);
     
-    // Hydrate state
-    state.schemaVersion = migrated.schemaVersion || SCHEMA_VERSION;
-    state.transactions = migrated.transactions || [];
-    state.budgets = migrated.budgets || {};
-    state.loans = migrated.loans || [];
-    state.customCategories = migrated.customCategories || { income: [], expense: [] };
-    state.incomeSources = migrated.incomeSources || [];
-    state.decisions = migrated.decisions || [];
-    state.recurringExpenses = migrated.recurringExpenses || [];
-    state.savings = migrated.savings || [];
-    state.savingsGoals = migrated.savingsGoals || [];
-    state.earnedMilestones = migrated.earnedMilestones || {};
-    state.currency = migrated.currency || 'AUD';
-    state.userName = migrated.userName || '';
+    hydrateStateFromData(migrated);
   } catch (e) {
     console.error('Load error:', e);
     showToast('Load error — using empty data', '⚠');
@@ -4180,27 +4305,57 @@ function runMigrations(data) {
 
 function saveData() {
   try {
-    const payload = {
-      schemaVersion: SCHEMA_VERSION,
-      transactions: state.transactions,
-      budgets: state.budgets,
-      loans: state.loans,
-      customCategories: state.customCategories,
-      incomeSources: state.incomeSources,
-      decisions: state.decisions,
-      recurringExpenses: state.recurringExpenses,
-      savings: state.savings,
-      savingsGoals: state.savingsGoals,
-      earnedMilestones: state.earnedMilestones || {},
-      currency: state.currency,
-      userName: state.userName || '',
-      lastSaved: Date.now(),
-    };
+    const payload = buildAppDataPayload({ lastSaved: Date.now() });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch (e) {
     console.error('Save error:', e);
     showToast('Save failed — storage full?', '⚠');
   }
+}
+
+function buildAppDataPayload(extra = {}) {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    transactions: state.transactions,
+    budgets: state.budgets,
+    loans: state.loans,
+    customCategories: state.customCategories,
+    incomeSources: state.incomeSources,
+    decisions: state.decisions,
+    recurringExpenses: state.recurringExpenses,
+    savings: state.savings,
+    savingsGoals: state.savingsGoals,
+    earnedMilestones: state.earnedMilestones || {},
+    currency: state.currency,
+    userName: state.userName || '',
+    ...extra,
+  };
+}
+
+function hydrateStateFromData(data) {
+  state.schemaVersion = data.schemaVersion || SCHEMA_VERSION;
+  state.transactions = data.transactions || [];
+  state.budgets = data.budgets || {};
+  state.loans = data.loans || [];
+  state.customCategories = data.customCategories || { income: [], expense: [] };
+  state.incomeSources = data.incomeSources || [];
+  state.decisions = data.decisions || [];
+  state.recurringExpenses = data.recurringExpenses || [];
+  state.savings = data.savings || [];
+  state.savingsGoals = data.savingsGoals || [];
+  state.earnedMilestones = data.earnedMilestones || {};
+  state.currency = data.currency || 'AUD';
+  state.userName = data.userName || '';
+}
+
+function validateBackupDataShape(data) {
+  return !!data
+    && typeof data === 'object'
+    && (Array.isArray(data.transactions)
+      || Array.isArray(data.incomeSources)
+      || Array.isArray(data.recurringExpenses)
+      || Array.isArray(data.loans)
+      || !!data.budgets);
 }
 
 /* ============ HELPERS ============ */
@@ -4505,6 +4660,14 @@ function goalsSummary() {
   return `${goals.length} goal${goals.length === 1 ? '' : 's'} · ${fmt(totalTarget)} target`;
 }
 
+function encryptedBackupSummary() {
+  const last = localStorage.getItem(LAST_ENCRYPTED_BACKUP_KEY) || localStorage.getItem('ledger_last_export');
+  if (!last) return 'No encrypted backup yet';
+  const days = Math.floor((Date.now() - parseInt(last, 10)) / 86400000);
+  if (days <= 0) return 'Last encrypted backup: today';
+  return `Last encrypted backup: ${days}d ago`;
+}
+
 function renderProfile() {
   const el = document.getElementById('profileContent');
   if (!el) return;
@@ -4572,11 +4735,11 @@ function renderProfile() {
     ${profileGroupHtml(
       'dataBackup',
       'Data & Backup',
-      'Export, import, and keep a copy before big changes',
+      encryptedBackupSummary(),
       '',
       `
         <div class="setting-row" onclick="exportData()">
-          <span class="setting-label">Export Data (JSON)</span>
+          <span class="setting-label">Back up data</span>
           <span class="setting-value">↓</span>
         </div>
         <div class="setting-row" onclick="exportCSV()">
@@ -4584,10 +4747,14 @@ function renderProfile() {
           <span class="setting-value">↓</span>
         </div>
         <div class="setting-row" onclick="document.getElementById('importFile').click()">
-          <span class="setting-label">Import from JSON</span>
+          <span class="setting-label">Restore encrypted backup</span>
           <span class="setting-value">↑</span>
         </div>
-        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+        <div class="setting-row" onclick="resetRecoveryKey()">
+          <span class="setting-label">Lost recovery key?</span>
+          <span class="setting-value">New key</span>
+        </div>
+        <input type="file" id="importFile" accept=".ledgerbackup,.json,application/json" style="display:none" onchange="importData(event)">
       `
     )}
     ${profileGroupHtml(
@@ -4633,10 +4800,11 @@ function saveUserName() {
 function updateProfileFooter() {
   const el = document.getElementById('lastBackup');
   if (!el) return;
-  const lastExp = localStorage.getItem('ledger_last_export');
+  el.style.color = '';
+  const lastExp = localStorage.getItem(LAST_ENCRYPTED_BACKUP_KEY) || localStorage.getItem('ledger_last_export');
   if (lastExp) {
     const days = Math.floor((Date.now() - parseInt(lastExp)) / 86400000);
-    el.textContent = days === 0 ? 'Last backup: today' : `Last backup: ${days}d ago`;
+    el.textContent = days === 0 ? 'Last encrypted backup: today' : `Last encrypted backup: ${days}d ago`;
   } else {
     el.textContent = 'No backups yet — export regularly';
     el.style.color = 'var(--warning)';
@@ -5772,26 +5940,180 @@ function runSearch() {
 }
 
 /* ============ EXPORT / IMPORT ============ */
-function exportData() {
-  const data = {
-    schemaVersion: SCHEMA_VERSION,
+function cryptoReady() {
+  return !!(window.crypto && window.crypto.subtle && window.crypto.getRandomValues);
+}
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  bytes.forEach(b => { binary += String.fromCharCode(b); });
+  return btoa(binary);
+}
+
+function base64ToBytes(value) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function base64Url(bytes) {
+  return bytesToBase64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function normalizeRecoveryKey(value) {
+  return String(value || '').replace(/[^A-Za-z0-9_-]/g, '');
+}
+
+function formatRecoveryKey(value) {
+  const normalized = normalizeRecoveryKey(value);
+  return normalized.match(/.{1,4}/g)?.join('-') || '';
+}
+
+function generateRecoveryKey() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return base64Url(bytes);
+}
+
+async function deriveBackupCryptoKey(recoveryKey, saltBytes) {
+  const material = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(normalizeRecoveryKey(recoveryKey)),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: saltBytes, iterations: 210000, hash: 'SHA-256' },
+    material,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptBackupPayload(data, recoveryKey) {
+  const salt = new Uint8Array(16);
+  const iv = new Uint8Array(12);
+  crypto.getRandomValues(salt);
+  crypto.getRandomValues(iv);
+  const key = await deriveBackupCryptoKey(recoveryKey, salt);
+  const plain = new TextEncoder().encode(JSON.stringify(data));
+  const cipherBuffer = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plain);
+  return {
+    format: ENCRYPTED_BACKUP_FORMAT,
+    version: 1,
     appVersion: APP_VERSION,
-    transactions: state.transactions,
-    budgets: state.budgets,
-    loans: state.loans,
-    customCategories: state.customCategories,
-    currency: state.currency,
-    exportedAt: new Date().toISOString(),
+    schemaVersion: SCHEMA_VERSION,
+    encryptedAt: new Date().toISOString(),
+    kdf: { name: 'PBKDF2', hash: 'SHA-256', iterations: 210000, salt: bytesToBase64(salt) },
+    cipher: { name: 'AES-GCM', iv: bytesToBase64(iv), text: bytesToBase64(new Uint8Array(cipherBuffer)) },
   };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+}
+
+async function decryptBackupEnvelope(envelope, recoveryKey) {
+  if (!envelope || envelope.format !== ENCRYPTED_BACKUP_FORMAT || !envelope.kdf || !envelope.cipher) {
+    throw new Error('Unsupported encrypted backup');
+  }
+  const key = await deriveBackupCryptoKey(recoveryKey, base64ToBytes(envelope.kdf.salt));
+  const plainBuffer = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: base64ToBytes(envelope.cipher.iv) },
+    key,
+    base64ToBytes(envelope.cipher.text)
+  );
+  const data = JSON.parse(new TextDecoder().decode(plainBuffer));
+  if (!validateBackupDataShape(data)) throw new Error('Invalid backup contents');
+  return data;
+}
+
+function downloadTextFile(filename, text, type = 'application/json') {
+  const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `ledger-backup-${todayISO()}.json`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-  localStorage.setItem('ledger_last_export', Date.now().toString());
-  showToast('Exported JSON');
+}
+
+function getSavedRecoveryKey() {
+  return normalizeRecoveryKey(localStorage.getItem(RECOVERY_KEY_STORAGE_KEY));
+}
+
+function openBackupSetupModal(mode = 'first') {
+  pendingGeneratedRecoveryKey = generateRecoveryKey();
+  recoveryKeyActionTaken = false;
+  document.getElementById('recoveryKeyDisplay').textContent = formatRecoveryKey(pendingGeneratedRecoveryKey);
+  document.getElementById('confirmRecoverySavedBtn').disabled = true;
+  document.getElementById('backupKeyIntro').innerHTML = mode === 'lost'
+    ? `<strong>Make a new recovery key</strong><p>You can make a new key because your data is still on this device. Old backups still need the old key. New backups will use this key.</p>`
+    : `<strong>Your backup is encrypted</strong><p>Save this recovery key before creating your first encrypted backup. Future backups will reuse this same key automatically.</p>`;
+  openModal('backupKeyModal', '#confirmRecoverySavedBtn');
+}
+
+async function copyRecoveryKey() {
+  if (!pendingGeneratedRecoveryKey) return;
+  const text = formatRecoveryKey(pendingGeneratedRecoveryKey);
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('Recovery key copied');
+  } catch (e) {
+    window.prompt('Copy this recovery key', text);
+  }
+  recoveryKeyActionTaken = true;
+  document.getElementById('confirmRecoverySavedBtn').disabled = false;
+}
+
+function downloadRecoveryKey() {
+  if (!pendingGeneratedRecoveryKey) return;
+  downloadTextFile(`ledger-recovery-key-${todayISO()}.txt`, `Ledger Compass recovery key\n\n${formatRecoveryKey(pendingGeneratedRecoveryKey)}\n\nSave this key so you can restore encrypted backups on a new phone.\n`, 'text/plain');
+  recoveryKeyActionTaken = true;
+  document.getElementById('confirmRecoverySavedBtn').disabled = false;
+  showToast('Recovery key file saved');
+}
+
+async function confirmRecoveryKeySaved() {
+  if (!pendingGeneratedRecoveryKey || !recoveryKeyActionTaken) return;
+  localStorage.setItem(RECOVERY_KEY_STORAGE_KEY, pendingGeneratedRecoveryKey);
+  const key = pendingGeneratedRecoveryKey;
+  pendingGeneratedRecoveryKey = null;
+  closeModal('backupKeyModal');
+  await createEncryptedBackup(key);
+}
+
+function resetRecoveryKey() {
+  if (!confirm('Make a new recovery key? Old backups will still need the old key. New backups will use the new key.')) return;
+  openBackupSetupModal('lost');
+}
+
+async function createEncryptedBackup(recoveryKey = getSavedRecoveryKey()) {
+  if (!cryptoReady()) {
+    showToast('Encrypted backup is not supported in this browser', '⚠');
+    return;
+  }
+  if (!recoveryKey) {
+    openBackupSetupModal('first');
+    return;
+  }
+  try {
+    const data = buildAppDataPayload({ appVersion: APP_VERSION, exportedAt: new Date().toISOString() });
+    const encrypted = await encryptBackupPayload(data, recoveryKey);
+    downloadTextFile(`ledger-encrypted-backup-${todayISO()}.ledgerbackup`, JSON.stringify(encrypted, null, 2));
+    const now = Date.now().toString();
+    localStorage.setItem(LAST_ENCRYPTED_BACKUP_KEY, now);
+    localStorage.setItem('ledger_last_export', now);
+    updateProfileFooter();
+    renderBackupWarnBanner();
+    showToast('Encrypted backup saved');
+  } catch (e) {
+    console.error('Encrypted backup failed:', e);
+    showToast('Backup failed — try again', '⚠');
+  }
+}
+
+function exportData() {
+  createEncryptedBackup();
 }
 
 function exportCSV() {
@@ -5816,31 +6138,97 @@ function exportCSV() {
   showToast('Exported CSV');
 }
 
+function closeRestoreModal() {
+  pendingRestoreEnvelope = null;
+  pendingRestoreData = null;
+  document.getElementById('restoreRecoveryKey').value = '';
+  document.getElementById('restoreError').textContent = '';
+  closeModal('restoreModal');
+}
+
+function openRestoreModal() {
+  document.getElementById('restoreRecoveryKey').value = '';
+  document.getElementById('restoreError').textContent = '';
+  document.getElementById('restoreStepKey').style.display = 'block';
+  document.getElementById('restoreStepPreview').style.display = 'none';
+  openModal('restoreModal', '#restoreRecoveryKey');
+}
+
+function backupPreviewCounts(data) {
+  return {
+    Transactions: (data.transactions || []).length,
+    Income: (data.incomeSources || []).length,
+    Bills: (data.recurringExpenses || []).length,
+    Loans: (data.loans || []).length,
+    Goals: (data.savingsGoals || []).length,
+    Decisions: (data.decisions || []).length,
+  };
+}
+
+function hasCurrentFinanceData() {
+  return state.transactions.length > 0
+    || state.incomeSources.length > 0
+    || state.recurringExpenses.length > 0
+    || state.loans.length > 0
+    || state.savings.length > 0
+    || state.savingsGoals.length > 0
+    || state.decisions.length > 0;
+}
+
+async function decryptImportedBackup() {
+  const errorEl = document.getElementById('restoreError');
+  errorEl.textContent = '';
+  try {
+    const key = document.getElementById('restoreRecoveryKey').value;
+    const decrypted = await decryptBackupEnvelope(pendingRestoreEnvelope, key);
+    pendingRestoreData = runMigrations(decrypted);
+    document.getElementById('restoreStepKey').style.display = 'none';
+    document.getElementById('restoreStepPreview').style.display = 'block';
+    document.getElementById('restorePreviewMeta').textContent = `Encrypted ${formatDateLabel((pendingRestoreEnvelope.encryptedAt || '').slice(0, 10))} · App v${pendingRestoreEnvelope.appVersion || 'unknown'}`;
+    const counts = backupPreviewCounts(pendingRestoreData);
+    document.getElementById('restorePreviewCounts').innerHTML = Object.entries(counts).map(([label, value]) => `
+      <div class="backup-preview-stat"><span>${label}</span><strong>${value}</strong></div>
+    `).join('');
+    document.getElementById('restoreReplaceWarning').textContent = hasCurrentFinanceData()
+      ? 'Restore will replace everything currently in this app with this backup. Because this app already has data, confirm carefully before replacing it.'
+      : 'Restore will replace everything currently in this app with this backup.';
+    refreshA11y(document.getElementById('restoreModal'));
+  } catch (e) {
+    errorEl.textContent = "That key didn't work. Double-check it and try again.";
+  }
+}
+
+function confirmEncryptedRestore() {
+  if (!pendingRestoreData) return;
+  if (hasCurrentFinanceData() && !confirm('This will replace everything currently in Ledger Compass with this backup. Continue?')) return;
+  try {
+    localStorage.setItem(BACKUP_PREFIX + Date.now() + '_pre_restore', localStorage.getItem(STORAGE_KEY) || '{}');
+    hydrateStateFromData(pendingRestoreData);
+    saveData();
+    closeRestoreModal();
+    renderAll();
+    goPage('home');
+    showToast('Encrypted backup restored');
+  } catch (e) {
+    console.error('Restore failed:', e);
+    showToast('Restore failed', '⚠');
+  }
+}
+
 function importData(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     try {
-      const data = JSON.parse(e.target.result);
-      if (!confirm('Import will REPLACE current data. Continue? (Current data will be backed up first)')) {
-        event.target.value = '';
-        return;
+      const parsed = JSON.parse(e.target.result);
+      if (parsed && parsed.format === ENCRYPTED_BACKUP_FORMAT) {
+        pendingRestoreEnvelope = parsed;
+        pendingRestoreData = null;
+        openRestoreModal();
+      } else {
+        showToast('Import an encrypted backup file', '⚠');
       }
-      // Backup current data first
-      const backupKey = BACKUP_PREFIX + Date.now();
-      localStorage.setItem(backupKey, localStorage.getItem(STORAGE_KEY) || '{}');
-      
-      // Run migrations on imported data
-      const migrated = runMigrations(data);
-      state.transactions = migrated.transactions || [];
-      state.budgets = migrated.budgets || {};
-      state.loans = migrated.loans || [];
-      state.customCategories = migrated.customCategories || { income: [], expense: [] };
-      state.currency = migrated.currency || 'AUD';
-      saveData();
-      renderAll();
-      showToast('Imported successfully');
     } catch (err) {
       showToast('Import failed — invalid file', '⚠');
     }
@@ -10377,7 +10765,7 @@ function renderBackupWarnBanner() {
   const dismissed = sessionStorage.getItem('backup_warn_dismissed');
   if (dismissed === 'yes') { el.innerHTML = ''; return; }
   
-  const lastExp = localStorage.getItem('ledger_last_export');
+  const lastExp = localStorage.getItem(LAST_ENCRYPTED_BACKUP_KEY) || localStorage.getItem('ledger_last_export');
   let daysSince;
   if (!lastExp) daysSince = 999;
   else daysSince = Math.floor((Date.now() - parseInt(lastExp)) / 86400000);
@@ -10392,13 +10780,19 @@ function renderBackupWarnBanner() {
   const sub = isRed
     ? 'iOS can clear PWA data. Tap to export JSON.'
     : 'Tap to download a backup to your Files app.';
+  const displayTitle = isRed
+    ? `${daysSince === 999 ? 'No encrypted backup yet' : daysSince + ' days since encrypted backup'} - please back up now`
+    : `${daysSince} days since last encrypted backup`;
+  const displaySub = isRed
+    ? 'iOS can clear PWA data. Tap to save an encrypted backup.'
+    : 'Tap to download an encrypted backup to your Files app.';
   
   el.innerHTML = `
     <div class="backup-warn ${zone}" onclick="exportData()">
       <div class="backup-warn-icon">${isRed ? '⚠' : '💾'}</div>
       <div class="backup-warn-text">
-        <div class="backup-warn-title">${title}</div>
-        <div class="backup-warn-sub">${sub}</div>
+        <div class="backup-warn-title">${displayTitle}</div>
+        <div class="backup-warn-sub">${displaySub}</div>
       </div>
       <button class="auto-log-close" onclick="dismissBackupWarn(event)">×</button>
     </div>
