@@ -16,10 +16,10 @@ function check(name, pass) {
 const appVersion = (web.match(/const APP_VERSION = '([^']+)'/) || [])[1];
 const androidVersion = (gradle.match(/versionName "([^"]+)"/) || [])[1];
 
-check('APP_VERSION is 2.9.3', appVersion === '2.9.3');
+check('APP_VERSION is 2.9.4', appVersion === '2.9.4');
 check('package version matches APP_VERSION', pkg.version === appVersion);
 check('Android versionName matches APP_VERSION', androidVersion === appVersion);
-check('Android versionCode is 6', /versionCode 6\b/.test(gradle));
+check('Android versionCode is 7', /versionCode 7\b/.test(gradle));
 check('Android auto backup disabled', /android:allowBackup="false"/.test(manifest));
 
 check('last-good storage key exists', web.includes("const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1'"));
@@ -41,6 +41,7 @@ check('owner PWA unlock key exists', web.includes("const OWNER_PWA_UNLOCK_KEY = 
 check('owner PWA unlock is web-only', web.includes('if (isNativeAndroidApp()) return false;'));
 check('private owner link sets only Pro flag', ownerPage.includes("localStorage.setItem('ledger_owner_pwa_unlocked_v1', 'yes')") && !ownerPage.includes('ledger_data_v1'));
 check('private owner link returns to real app', ownerPage.includes("../www/index.html?owner=harsh"));
+check('real app reads owner URL', web.includes('function applyOwnerPwaUnlockFromUrl()') && web.includes("params.get('owner') !== 'harsh'"));
 
 const failed = checks.filter(c => !c.pass);
 console.log(JSON.stringify({ pass: failed.length === 0, checks, failed }, null, 2));
