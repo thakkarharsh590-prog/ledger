@@ -1,10 +1,18 @@
 {
   "name": "ledger-main",
-  "version": "1.0.0",
+  "version": "2.9.1",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run qa:date",
+    "qa:date": "node qa/date_logic_tests.js",
+    "qa:backup": "node qa/encrypted-backup-qa.js",
+    "qa:pro": "node qa/pro-monetization-qa.js",
+    "qa:launch": "node qa/launch-architecture-qa.js",
+    "qa:full": "node qa/full-qa-playwright.js",
+    "android:sync": "npx cap sync android",
+    "android:apk": "cd android && gradlew.bat assembleDebug",
+    "android:aab": "cd android && gradlew.bat bundleRelease"
   },
   "keywords": [],
   "author": "",
@@ -14,5 +22,8 @@
     "@capacitor/android": "^8.3.4",
     "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
   }
 }

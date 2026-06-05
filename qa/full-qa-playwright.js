@@ -1,7 +1,7 @@
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
-const { chromium } = require('C:/Users/HP/AppData/Roaming/npm/node_modules/playwright/index.js');
+const { chromium } = require('playwright');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'qa', 'full-qa');
@@ -232,6 +232,7 @@ function reportHtml(summary, metadata) {
       localStorage.setItem('ledger_setup_status_v1', JSON.stringify({ status: 'skipped', at: Date.now(), version: 'qa' }));
       localStorage.setItem('ledger_install_dismissed', '1');
       localStorage.setItem('first_launch_warning_shown', 'yes');
+      localStorage.setItem('ledger_pro_dev_unlocked_v1', 'yes');
       localStorage.removeItem('ledger_data_v1');
       localStorage.removeItem('ledger_ui_prefs_v1');
     });
@@ -245,7 +246,7 @@ function reportHtml(summary, metadata) {
       const title = await page.title();
       const version = await page.locator('#versionTag').textContent();
       if (title !== 'Ledger Compass') throw new Error('bad title ' + title);
-      if (version !== 'v2.8.5') throw new Error('bad version ' + version);
+      if (version !== 'v2.9.1') throw new Error('bad version ' + version);
       await expectText(page, 'Recent Activity');
       await assertNoHorizontalScroll(page);
       await snap(page, '01-home-empty');

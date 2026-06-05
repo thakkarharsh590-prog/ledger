@@ -1,7 +1,7 @@
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
-const { chromium } = require('C:/Users/HP/AppData/Roaming/npm/node_modules/playwright/index.js');
+const { chromium } = require('playwright');
 
 const ROOT = path.resolve(__dirname, '..');
 

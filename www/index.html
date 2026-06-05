@@ -1329,6 +1329,89 @@
     min-height: 18px;
     margin-top: 8px;
   }
+  .pro-badge {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(201,255,61,0.28);
+    background: rgba(201,255,61,0.08);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    vertical-align: middle;
+  }
+  .pro-card {
+    padding: 14px;
+    border: 1px solid rgba(201,255,61,0.22);
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(201,255,61,0.08), rgba(255,255,255,0.02));
+  }
+  .pro-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .pro-card-sub {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .pro-plan-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin: 14px 0;
+  }
+  .pro-plan {
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .pro-plan-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .pro-plan-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .pro-plan-price { font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--accent); }
+  .pro-feature-list {
+    margin: 12px 0;
+    display: grid;
+    gap: 8px;
+  }
+  .pro-feature {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    color: var(--text-dim);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .pro-feature span:first-child { color: var(--accent); }
+  .pro-dev-row {
+    display: none;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .pro-dev-row.visible { display: block; }
+  .pro-lock-inline {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border: 1px dashed rgba(201,255,61,0.24);
+    border-radius: 10px;
+    color: var(--text-dim);
+    font-size: 12px;
+    line-height: 1.5;
+    background: rgba(201,255,61,0.04);
+  }
 
   /* Toggle */
   .toggle-row {
@@ -3025,7 +3108,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">Ledger Compass</span>
-    <span class="version-tag" id="versionTag">v2.8.5</span>
+    <span class="version-tag" id="versionTag">v2.9.1</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme" aria-label="Dark theme">
@@ -3265,7 +3348,7 @@
       <span class="profile-name" id="profileName">Set your name</span>
       <button class="profile-edit-btn" onclick="openNameModal()" title="Edit name">✏</button>
     </div>
-    <div class="profile-version">Ledger Compass v<span id="profileVersion">2.8.5</span></div>
+    <div class="profile-version">Ledger Compass v<span id="profileVersion">2.9.1</span></div>
   </div>
 
   <div id="profileContent"></div>
@@ -3544,6 +3627,46 @@
       <button class="btn-danger" type="button" id="restoreConfirmBtn" onclick="confirmEncryptedRestore()">Replace app data with this backup</button>
       <button class="btn-secondary" type="button" onclick="closeRestoreModal()">Cancel</button>
     </div>
+  </div>
+</div>
+
+<!-- PRO UPGRADE MODAL -->
+<div class="modal-backdrop" id="proModal" onclick="closeModalOnBg(event, 'proModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Unlock Ledger Compass Pro</div>
+    <div class="modal-sub" id="proModalSub">Unlimited planning for goals, loans, and decisions.</div>
+    <div class="pro-card">
+      <div class="pro-card-title">Keep every decision, goal, and loan strategy.</div>
+      <div class="pro-card-sub">Pro is built for bigger planning. Basic tracking, backup, and restore stay free.</div>
+    </div>
+    <div class="pro-plan-grid">
+      <div class="pro-plan">
+        <div class="pro-plan-head">
+          <span class="pro-plan-name">Monthly</span>
+          <span class="pro-plan-price">A$2.99/mo</span>
+        </div>
+        <button class="btn-primary" type="button" onclick="purchasePro('monthly')">Start monthly Pro</button>
+      </div>
+      <div class="pro-plan">
+        <div class="pro-plan-head">
+          <span class="pro-plan-name">Annual</span>
+          <span class="pro-plan-price">A$19.99/yr</span>
+        </div>
+        <button class="btn-secondary" type="button" onclick="purchasePro('yearly')">Start annual Pro</button>
+      </div>
+    </div>
+    <div class="pro-feature-list">
+      <div class="pro-feature"><span>✓</span><span>Unlimited loans, goals, and saved decisions</span></div>
+      <div class="pro-feature"><span>✓</span><span>Advanced forecast, loan payoff strategy, and smart insights</span></div>
+      <div class="pro-feature"><span>✓</span><span>Future encrypted cloud backup and multi-device restore</span></div>
+    </div>
+    <button class="btn-secondary" type="button" onclick="restorePurchase()">Restore purchase</button>
+    <button class="btn-secondary" type="button" onclick="manageSubscription()">Manage subscription</button>
+    <div class="pro-dev-row" id="proDevRow">
+      <button class="btn-secondary" type="button" onclick="toggleDevPro()">Browser test: toggle Pro</button>
+    </div>
+    <button class="btn-secondary" type="button" onclick="closeModal('proModal')">Not now</button>
   </div>
 </div>
 
@@ -3870,12 +3993,25 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.8.5';
+const APP_VERSION = '2.9.1';
 const SCHEMA_VERSION = 9;
 const STORAGE_KEY = 'ledger_data_v1';
+const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1';
+const LAST_SAVE_STATUS_KEY = 'ledger_last_save_status_v1';
 const BACKUP_PREFIX = 'ledger_backup_';
 const UI_PREFS_KEY = 'ledger_ui_prefs_v1';
 const SETUP_STATUS_KEY = 'ledger_setup_status_v1';
+const PRO_DEV_UNLOCK_KEY = 'ledger_pro_dev_unlocked_v1';
+const PRO_PRODUCT_ID = 'ledger_compass_pro';
+const PRO_MONTHLY_BASE_PLAN = 'pro_monthly';
+const PRO_YEARLY_BASE_PLAN = 'pro_yearly';
+const PRO_PRICE_MONTHLY = 'A$2.99/month';
+const PRO_PRICE_YEARLY = 'A$19.99/year';
+const FREE_LIMITS = {
+  loans: 1,
+  savingsGoals: 1,
+  decisions: 5,
+};
 const AUTO_SNAPSHOT_PREFIX = 'ledger_snap_';
 const MAX_AUTO_SNAPSHOTS = 7;
 const RECOVERY_KEY_STORAGE_KEY = 'ledger_recovery_key_v1';
@@ -3886,6 +4022,15 @@ let pendingGeneratedRecoveryKey = null;
 let recoveryKeyActionTaken = false;
 let pendingRestoreEnvelope = null;
 let pendingRestoreData = null;
+let launchRecoveryIssue = null;
+let crashGuardActive = false;
+let billingState = {
+  isPro: false,
+  source: 'free',
+  checking: false,
+  lastCheckedAt: null,
+  error: null,
+};
 
 const CLICKABLE_A11Y_SELECTOR = [
   '.hero[onclick]',
@@ -4150,13 +4295,19 @@ function loadData() {
     if (!raw) return;
     
     const data = JSON.parse(raw);
+    if (!validateBackupDataShape(data)) throw new Error('Saved app data is not a valid Ledger Compass payload');
     
     // Run migrations if schema is older
     const migrated = runMigrations(data);
+    if (!validateAppDataShape(migrated)) throw new Error('Migrated app data failed validation');
     
     hydrateStateFromData(migrated);
   } catch (e) {
     console.error('Load error:', e);
+    launchRecoveryIssue = {
+      type: 'load',
+      message: e && e.message ? e.message : 'Saved data could not be loaded.',
+    };
     showToast('Load error — using empty data', '⚠');
   }
 }
@@ -4304,12 +4455,47 @@ function runMigrations(data) {
 }
 
 function saveData() {
+  const previousRaw = localStorage.getItem(STORAGE_KEY);
   try {
     const payload = buildAppDataPayload({ lastSaved: Date.now() });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    if (!validateAppDataShape(payload)) throw new Error('App data failed validation before save');
+
+    if (previousRaw && validateRawAppData(previousRaw)) {
+      localStorage.setItem(LAST_GOOD_STORAGE_KEY, previousRaw);
+    }
+
+    const raw = JSON.stringify(payload);
+    localStorage.setItem(STORAGE_KEY, raw);
+
+    const verifiedRaw = localStorage.getItem(STORAGE_KEY);
+    if (verifiedRaw !== raw) throw new Error('Saved data did not verify after write');
+
+    const verified = JSON.parse(verifiedRaw);
+    if (!validateAppDataShape(verified)) throw new Error('Saved data failed validation after write');
+
+    localStorage.setItem(LAST_SAVE_STATUS_KEY, JSON.stringify({
+      ok: true,
+      appVersion: APP_VERSION,
+      savedAt: payload.lastSaved,
+    }));
+    return true;
   } catch (e) {
     console.error('Save error:', e);
+    try {
+      if (previousRaw) localStorage.setItem(STORAGE_KEY, previousRaw);
+    } catch (restoreErr) {
+      console.warn('Could not restore previous data after failed save:', restoreErr);
+    }
+    try {
+      localStorage.setItem(LAST_SAVE_STATUS_KEY, JSON.stringify({
+        ok: false,
+        appVersion: APP_VERSION,
+        failedAt: Date.now(),
+        message: e && e.message ? e.message : 'Save failed',
+      }));
+    } catch (statusErr) {}
     showToast('Save failed — storage full?', '⚠');
+    return false;
   }
 }
 
@@ -4346,6 +4532,29 @@ function hydrateStateFromData(data) {
   state.earnedMilestones = data.earnedMilestones || {};
   state.currency = data.currency || 'AUD';
   state.userName = data.userName || '';
+}
+
+function validateAppDataShape(data) {
+  return !!data
+    && typeof data === 'object'
+    && Array.isArray(data.transactions)
+    && typeof data.budgets === 'object'
+    && Array.isArray(data.loans)
+    && data.customCategories
+    && typeof data.customCategories === 'object'
+    && Array.isArray(data.incomeSources)
+    && Array.isArray(data.decisions)
+    && Array.isArray(data.recurringExpenses)
+    && (!data.savings || Array.isArray(data.savings))
+    && (!data.savingsGoals || Array.isArray(data.savingsGoals));
+}
+
+function validateRawAppData(raw) {
+  try {
+    return validateAppDataShape(JSON.parse(raw));
+  } catch (e) {
+    return false;
+  }
 }
 
 function validateBackupDataShape(data) {
@@ -4638,6 +4847,138 @@ function stopProfileAction(event, fn) {
   fn();
 }
 
+function isNativeAndroidApp() {
+  return !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+}
+
+function isLocalQaHost() {
+  return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+}
+
+function allowQaProSimulation() {
+  return !isNativeAndroidApp() && isLocalQaHost();
+}
+
+function getLedgerBillingPlugin() {
+  return window.Capacitor?.Plugins?.LedgerBilling || null;
+}
+
+function isPro() {
+  return !!billingState.isPro;
+}
+
+function currentPlanLabel() {
+  if (isPro()) return 'Pro active';
+  if (billingState.checking) return 'Checking subscription';
+  return 'Free plan';
+}
+
+function canCreateFreeLimitedItem(kind, editingId) {
+  if (editingId || isPro()) return true;
+  const limit = FREE_LIMITS[kind];
+  if (!limit) return true;
+  const count = kind === 'loans'
+    ? state.loans.length
+    : kind === 'savingsGoals'
+      ? state.savingsGoals.length
+      : state.decisions.length;
+  return count < limit;
+}
+
+function proLockHtml(reason = 'Unlock Pro for unlimited planning.') {
+  return `<div class="pro-lock-inline">
+    <strong style="color:var(--text);">Pro</strong> ${escapeHtml(reason)}
+    <button class="btn-secondary" type="button" onclick="openProModal('${escapeHtml(reason).replace(/'/g, "\\'")}')" style="margin-top:8px;">Unlock Pro</button>
+  </div>`;
+}
+
+function openProModal(reason) {
+  const sub = document.getElementById('proModalSub');
+  if (sub) sub.textContent = reason || 'Unlock Pro for unlimited planning.';
+  const devRow = document.getElementById('proDevRow');
+  if (devRow) devRow.classList.toggle('visible', allowQaProSimulation());
+  openModal('proModal');
+}
+
+async function syncProEntitlement(opts = {}) {
+  billingState.checking = true;
+  billingState.error = null;
+  const plugin = getLedgerBillingPlugin();
+  try {
+    if (plugin && typeof plugin.getEntitlement === 'function') {
+      const result = await plugin.getEntitlement({ productId: PRO_PRODUCT_ID });
+      billingState.isPro = !!result?.isPro;
+      billingState.source = result?.source || 'google_play';
+    } else if (allowQaProSimulation()) {
+      billingState.isPro = localStorage.getItem(PRO_DEV_UNLOCK_KEY) === 'yes';
+      billingState.source = billingState.isPro ? 'browser_test' : 'free';
+    } else {
+      billingState.isPro = false;
+      billingState.source = 'google_play_unavailable';
+      billingState.error = 'Google Play Billing bridge not available.';
+    }
+  } catch (err) {
+    billingState.isPro = false;
+    billingState.source = 'error';
+    billingState.error = err && err.message ? err.message : 'Could not check subscription.';
+  } finally {
+    billingState.checking = false;
+    billingState.lastCheckedAt = Date.now();
+    if (!opts.silent) renderAll();
+  }
+  return billingState.isPro;
+}
+
+async function initBilling() {
+  await syncProEntitlement({ silent: true });
+}
+
+async function purchasePro(plan) {
+  const plugin = getLedgerBillingPlugin();
+  const basePlanId = plan === 'yearly' ? PRO_YEARLY_BASE_PLAN : PRO_MONTHLY_BASE_PLAN;
+  if (!plugin || typeof plugin.purchase !== 'function') {
+    if (allowQaProSimulation()) {
+      localStorage.setItem(PRO_DEV_UNLOCK_KEY, 'yes');
+      await syncProEntitlement();
+      closeModal('proModal');
+      showToast('Browser test Pro enabled');
+      return;
+    }
+    showToast('Google Play Billing is not ready yet', 'warning');
+    return;
+  }
+  try {
+    const result = await plugin.purchase({ productId: PRO_PRODUCT_ID, basePlanId });
+    billingState.isPro = !!result?.isPro;
+    billingState.source = 'google_play';
+    closeModal('proModal');
+    renderAll();
+    showToast(billingState.isPro ? 'Pro unlocked' : 'Purchase not completed');
+  } catch (err) {
+    showToast('Purchase was not completed', 'warning');
+  }
+}
+
+async function restorePurchase() {
+  const active = await syncProEntitlement();
+  showToast(active ? 'Pro restored' : 'No active Pro subscription found', active ? '✓' : 'warning');
+}
+
+function manageSubscription() {
+  const url = `https://play.google.com/store/account/subscriptions?sku=${encodeURIComponent(PRO_PRODUCT_ID)}&package=com.ledgercompass.app`;
+  window.open(url, '_blank', 'noopener');
+}
+
+async function toggleDevPro() {
+  if (!allowQaProSimulation()) return;
+  const next = localStorage.getItem(PRO_DEV_UNLOCK_KEY) === 'yes' ? 'no' : 'yes';
+  if (next === 'yes') localStorage.setItem(PRO_DEV_UNLOCK_KEY, 'yes');
+  else localStorage.removeItem(PRO_DEV_UNLOCK_KEY);
+  await syncProEntitlement();
+  closeModal('proModal');
+  showToast(isPro() ? 'Browser test Pro enabled' : 'Browser test Pro disabled');
+}
+
 function incomeSourcesSummary() {
   if (state.incomeSources.length === 0) return 'Not set up yet';
   const weekly = state.incomeSources.reduce((sum, src) => {
@@ -4676,6 +5017,32 @@ function renderProfile() {
   const sectionAdd = (label, fn) => `<span class="profile-group-add" onclick="stopProfileAction(event, ${fn})">${label}</span>`;
 
   el.innerHTML = `
+    ${profileGroupHtml(
+      'pro',
+      'Ledger Compass Pro',
+      currentPlanLabel(),
+      isPro() ? '<span class="pro-badge">Pro</span>' : sectionAdd('Upgrade', 'openProModal'),
+      `
+        <div class="pro-card">
+          <div class="pro-card-title">${isPro() ? 'Your Pro plan is active' : 'Unlock unlimited planning'}</div>
+          <div class="pro-card-sub">${isPro() ? 'Unlimited loans, goals, decisions, strategies, and future encrypted cloud sync are available.' : 'Free includes core tracking, basic forecast, and encrypted backup. Pro adds unlimited planning for A$2.99/month or A$19.99/year.'}</div>
+        </div>
+        <div class="setting-row" onclick="restorePurchase()">
+          <span class="setting-label">Restore purchase</span>
+          <span class="setting-value">Google Play</span>
+        </div>
+        <div class="setting-row" onclick="manageSubscription()">
+          <span class="setting-label">Manage subscription</span>
+          <span class="setting-value">↗</span>
+        </div>
+        ${allowQaProSimulation() ? `
+          <div class="setting-row" onclick="toggleDevPro()">
+            <span class="setting-label">Browser test Pro</span>
+            <span class="setting-value">${isPro() ? 'On' : 'Off'}</span>
+          </div>
+        ` : ''}
+      `
+    )}
     ${profileGroupHtml(
       'incomeSources',
       'Income Sources',
@@ -4961,6 +5328,10 @@ function renderStats() {
 }
 
 function setForecastMode(mode) {
+  if (!isPro() && mode === 'bars') {
+    openProModal('Unlock Pro for advanced forecast views and weekly income/spending projections.');
+    return;
+  }
   state.forecastMode = mode;
   document.querySelectorAll('.fc-tab').forEach(t => {
     t.classList.toggle('active', t.dataset.mode === mode);
@@ -4971,6 +5342,10 @@ function setForecastMode(mode) {
 function renderForecastChart() {
   const el = document.getElementById('forecastChartContainer');
   if (!el) return;
+  if (!isPro()) {
+    el.innerHTML = proLockHtml('Unlock Pro for the advanced 60-day forecast chart and projected weekly bars. Basic Compass forecast stays free.');
+    return;
+  }
   
   if (state.forecastMode === 'bars') {
     el.innerHTML = renderForecastBars();
@@ -5302,7 +5677,7 @@ function renderLoans() {
   });
   const remaining = Math.max(0, totalBorrowed - totalPaid);
   const overallPct = totalBorrowed > 0 ? (totalPaid / totalBorrowed) * 100 : 0;
-  const strategy = computeLoanStrategy();
+  const strategy = isPro() ? computeLoanStrategy() : null;
   const activeLoanCount = state.loans.filter(l => getLoanPaid(l) < l.total).length;
   const monthlyInterest = strategy ? strategy.totalMonthlyInterest : 0;
   
@@ -5448,6 +5823,10 @@ function editCurrentLoan() {
 }
 
 function openLoanModal() {
+  if (!canCreateFreeLimitedItem('loans')) {
+    openProModal('Free includes 1 loan. Unlock Pro for unlimited loans and payoff strategy.');
+    return;
+  }
   state.editingLoanId = null;
   state.loanDeductOn = false;
   document.getElementById('loanModalTitle').textContent = 'Add Loan';
@@ -5515,6 +5894,11 @@ function saveLoan() {
     return; 
   }
   if (initialPaid < 0) { showToast('Invalid paid amount', '⚠'); return; }
+  
+  if (!state.editingLoanId && !canCreateFreeLimitedItem('loans')) {
+    openProModal('Free includes 1 loan. Unlock Pro for unlimited loans and payoff strategy.');
+    return;
+  }
   
   if (state.editingLoanId) {
     const idx = state.loans.findIndex(l => l.id === state.editingLoanId);
@@ -8993,6 +9377,11 @@ function renderCompassLoanLink() {
   const card = document.getElementById('compassLoanLinkCard');
   const summary = document.getElementById('compassLoanLinkSummary');
   if (!card || !summary) return;
+  if (!isPro() && state.loans.length > 0) {
+    card.style.display = 'block';
+    summary.innerHTML = 'Unlock Pro for the recommended payoff order and debt strategy.';
+    return;
+  }
   const result = computeLoanStrategy();
   if (!result) {
     card.style.display = 'none';
@@ -9220,6 +9609,12 @@ function renderLoanStrategy() {
   const card = document.getElementById('loanStrategyCard');
   const el = document.getElementById('loanStrategyContent');
   if (!el || !card) return;
+
+  if (!isPro() && state.loans.length > 0) {
+    card.style.display = 'block';
+    el.innerHTML = proLockHtml('Unlock Pro for the recommended payoff order, interest view, and extra-payment savings.');
+    return;
+  }
   
   const result = computeLoanStrategy();
   if (!result) {
@@ -9496,6 +9891,10 @@ function renderForecast() {
 
 function renderSmartInsights() {
   const list = document.getElementById('smartInsights');
+  if (!isPro()) {
+    list.innerHTML = proLockHtml('Unlock Pro for smart recurring bill insights, subscription patterns, and cash buffer explanations.');
+    return;
+  }
   const insights = [];
   
   if (state.transactions.length < 10) {
@@ -9659,6 +10058,11 @@ function runAffordabilityCheck() {
 
 function saveDecision(action) {
   if (!state.pendingAffordCheck) { closeModal('affordModal'); return; }
+  if (!canCreateFreeLimitedItem('decisions')) {
+    closeModal('affordModal');
+    openProModal('Free saves 5 affordability decisions. Unlock Pro for unlimited decision history.');
+    return;
+  }
   
   const decision = {
     id: uid('dec'),
@@ -9763,7 +10167,7 @@ function renderAffordabilityResult(result, amount, what) {
         </div>
       ` : ''}
 
-      ${goal ? `
+      ${goal && isPro() ? `
         <div class="afford-panel">
           <div class="afford-section-title">Goal impact</div>
           <div class="afford-sub">${escapeHtml(goal.goalName)} is due ${formatDateLabel(goal.deadline)}. This purchase could delay that goal by about ${goal.delayDays || 0} day${goal.delayDays === 1 ? '' : 's'}.</div>
@@ -9777,6 +10181,11 @@ function renderAffordabilityResult(result, amount, what) {
               <div class="afford-small-value">${goal.newWeeklyPace !== null ? fmt(goal.newWeeklyPace) + '/wk' : 'Not set'}</div>
             </div>
           </div>
+        </div>
+      ` : goal ? `
+        <div class="afford-panel">
+          <div class="afford-section-title">Goal impact <span class="pro-badge">Pro</span></div>
+          ${proLockHtml('Unlock Pro to see how this purchase changes your savings goal timeline.')}
         </div>
       ` : ''}
 
@@ -9820,7 +10229,7 @@ function runAffordabilityCheck() {
       lowPointBalance: projection.lowPointBalance,
       firstNegativeDate: projection.firstNegativeDate,
     },
-    goalImpact: goal ? {
+    goalImpact: isPro() && goal ? {
       goalId: goal.goalId,
       goalName: goal.goalName,
       deadline: goal.deadline,
@@ -10021,6 +10430,10 @@ function deleteSavingsEntry() {
 }
 
 function openGoalModal(goalId) {
+  if (!goalId && !canCreateFreeLimitedItem('savingsGoals')) {
+    openProModal('Free includes 1 savings goal. Unlock Pro for unlimited goals and goal impact planning.');
+    return;
+  }
   state.editingGoalId = goalId || null;
   document.getElementById('goalModalTitle').textContent = goalId ? 'Edit Goal' : 'New Goal';
   document.getElementById('goalDeleteBtn').style.display = goalId ? 'block' : 'none';
@@ -10051,6 +10464,11 @@ function saveGoal() {
   
   if (!name) { showToast('Enter goal name', '⚠'); return; }
   if (!target || target <= 0) { showToast('Enter target amount', '⚠'); return; }
+  
+  if (!state.editingGoalId && !canCreateFreeLimitedItem('savingsGoals')) {
+    openProModal('Free includes 1 savings goal. Unlock Pro for unlimited goals and goal impact planning.');
+    return;
+  }
   
   if (state.editingGoalId) {
     const idx = state.savingsGoals.findIndex(g => g.id === state.editingGoalId);
@@ -10669,16 +11087,16 @@ function findRecoveryData() {
   // Returns the most recent snapshot or backup, or null
   const allKeys = Object.keys(localStorage);
   const candidates = allKeys
-    .filter(k => k.startsWith(AUTO_SNAPSHOT_PREFIX) || k.startsWith(BACKUP_PREFIX))
+    .filter(k => k === LAST_GOOD_STORAGE_KEY || k.startsWith(AUTO_SNAPSHOT_PREFIX) || k.startsWith(BACKUP_PREFIX))
     .sort((a, b) => b.localeCompare(a)); // newest first
   
   for (const key of candidates) {
     try {
       const raw = localStorage.getItem(key);
       const parsed = JSON.parse(raw);
-      if (parsed && (parsed.transactions || parsed.loans || parsed.budgets)) {
+      if (validateBackupDataShape(parsed)) {
         const txCount = (parsed.transactions || []).length;
-        if (txCount > 0 || (parsed.loans || []).length > 0) {
+        if (key === LAST_GOOD_STORAGE_KEY || txCount > 0 || (parsed.loans || []).length > 0) {
           return { key, data: parsed, txCount };
         }
       }
@@ -10748,6 +11166,106 @@ function dismissRecovery() {
   localStorage.setItem('recovery_dismissed', 'yes');
   const banner = document.getElementById('recoveryBanner');
   if (banner) banner.remove();
+}
+
+function restoreLastGoodData() {
+  const found = findRecoveryData();
+  if (!found) { showToast('No last-good data found', 'warning'); return; }
+  try {
+    const migrated = runMigrations(found.data);
+    if (!validateAppDataShape(migrated)) throw new Error('Recovery data failed validation');
+    hydrateStateFromData(migrated);
+    saveData();
+    removeLaunchRecoveryUI();
+    renderAllSafely('restore-last-good');
+    showToast('Last-good data restored');
+  } catch (e) {
+    console.error('Last-good restore failed:', e);
+    showToast('Restore failed', 'warning');
+  }
+}
+
+function exportEmergencyBackup() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+      || localStorage.getItem(LAST_GOOD_STORAGE_KEY)
+      || JSON.stringify(buildAppDataPayload({ exportedAt: new Date().toISOString(), emergencyExport: true }), null, 2);
+    downloadTextFile(`ledger-emergency-backup-${todayISO()}.json`, raw, 'application/json');
+    showToast('Emergency backup saved');
+  } catch (e) {
+    console.error('Emergency export failed:', e);
+    showToast('Emergency export failed', 'warning');
+  }
+}
+
+function removeLaunchRecoveryUI() {
+  const existing = document.getElementById('launchRecoveryOverlay');
+  if (existing) existing.remove();
+  launchRecoveryIssue = null;
+  crashGuardActive = false;
+}
+
+function showLaunchRecoveryUI(issue) {
+  if (document.getElementById('launchRecoveryOverlay')) return;
+  const message = issue && issue.message ? issue.message : 'Ledger Compass hit a launch error.';
+  const overlay = document.createElement('div');
+  overlay.id = 'launchRecoveryOverlay';
+  overlay.style.cssText = [
+    'position:fixed',
+    'inset:0',
+    'z-index:99999',
+    'background:rgba(10,10,15,.96)',
+    'color:#f8fafc',
+    'display:flex',
+    'align-items:center',
+    'justify-content:center',
+    'padding:20px',
+    'font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif'
+  ].join(';');
+  overlay.innerHTML = `
+    <div style="width:min(420px,100%);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:20px;background:#111827;box-shadow:0 18px 60px rgba(0,0,0,.35);">
+      <div style="font-size:18px;font-weight:800;margin-bottom:8px;">Ledger Compass recovery</div>
+      <div style="font-size:14px;line-height:1.5;color:#cbd5e1;margin-bottom:16px;">${escapeHtml(message)} Your data is still on this device where possible. Try exporting a backup or restoring the last-good copy.</div>
+      <div style="display:grid;gap:10px;">
+        <button type="button" onclick="exportEmergencyBackup()" style="padding:12px;border:0;border-radius:8px;background:#a3e635;color:#111827;font-weight:800;">Export emergency backup</button>
+        <button type="button" onclick="restoreLastGoodData()" style="padding:12px;border:1px solid rgba(255,255,255,.18);border-radius:8px;background:#1f2937;color:#f8fafc;font-weight:700;">Restore last-good data</button>
+        <button type="button" onclick="location.reload()" style="padding:12px;border:1px solid rgba(255,255,255,.18);border-radius:8px;background:transparent;color:#f8fafc;font-weight:700;">Reload app</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function checkLaunchRecoveryIssue() {
+  if (launchRecoveryIssue) showLaunchRecoveryUI(launchRecoveryIssue);
+}
+
+function installCrashGuard() {
+  window.addEventListener('error', event => {
+    showCrashRecovery(event.error || event.message || 'Unexpected app error');
+  });
+  window.addEventListener('unhandledrejection', event => {
+    showCrashRecovery(event.reason || 'Unexpected async app error');
+  });
+}
+
+function showCrashRecovery(reason) {
+  if (crashGuardActive) return;
+  crashGuardActive = true;
+  const message = reason && reason.message ? reason.message : String(reason || 'Unexpected app error');
+  console.error('Crash guard activated:', reason);
+  showLaunchRecoveryUI({ type: 'crash', message });
+}
+
+function renderAllSafely(source = 'render') {
+  try {
+    renderAll();
+    checkLaunchRecoveryIssue();
+    return true;
+  } catch (e) {
+    showCrashRecovery(e);
+    return false;
+  }
 }
 
 
@@ -11576,6 +12094,7 @@ function initA11y() {
 }
 
 function init() {
+  installCrashGuard();
   initTheme();          // apply saved theme before first render
   // v2.5.1: First, check if we need to cache-bust the URL
   // This runs BEFORE everything else to ensure we have the latest HTML
@@ -11583,11 +12102,12 @@ function init() {
 
   ensureSavingsCategory();  // v2.4: register savings category
   loadData();
+  initBilling().then(() => renderAllSafely('billing-init')); // Google Play Pro entitlement, with browser QA fallback
   takeAutoSnapshot();      // Snapshot AFTER load (preserves loaded state)
   checkVersionChange();    // Toast if updated
   setupManifest();
   runAutoLog();            // Generate any due transactions
-  renderAll();
+  renderAllSafely('init');
   initA11y();
   showInstallBannerIfNeeded();
   checkRecoveryMode();     // Offer restore if storage is empty but backups exist
@@ -11621,7 +12141,11 @@ function init() {
   });
 }
 
-init();
+try {
+  init();
+} catch (e) {
+  showCrashRecovery(e);
+}
 </script>
 </body>
 </html>
