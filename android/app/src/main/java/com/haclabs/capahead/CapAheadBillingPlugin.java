@@ -1,4 +1,4 @@
-package com.ledgercompass.app;
+package com.haclabs.capahead;
 
 import com.android.billingclient.api.AcknowledgePurchaseParams;
 import com.android.billingclient.api.BillingClient;
@@ -19,9 +19,9 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import java.util.ArrayList;
 import java.util.List;
 
-@CapacitorPlugin(name = "LedgerBilling")
-public class LedgerBillingPlugin extends Plugin implements PurchasesUpdatedListener {
-  private static final String PRO_PRODUCT_ID = "ledger_compass_pro";
+@CapacitorPlugin(name = "CapAheadBilling")
+public class CapAheadBillingPlugin extends Plugin implements PurchasesUpdatedListener {
+  private static final String PRO_PRODUCT_ID = "capahead_pro";
   private BillingClient billingClient;
   private PluginCall pendingPurchaseCall;
 
@@ -35,12 +35,12 @@ public class LedgerBillingPlugin extends Plugin implements PurchasesUpdatedListe
           .build()
       )
       .build();
-    connectBilling(null);
+    connectBilling(null, null);
   }
 
   @PluginMethod
   public void getEntitlement(PluginCall call) {
-    ensureBillingReady(() -> queryActiveSubscription(call));
+    ensureBillingReady(() -> queryActiveSubscription(call), () -> resolveFreeEntitlement(call, "google_play_unavailable", -1, "Google Play Billing is not available."));
   }
 
   @PluginMethod
@@ -51,24 +51,29 @@ public class LedgerBillingPlugin extends Plugin implements PurchasesUpdatedListe
       call.reject("Unknown product.");
       return;
     }
-    ensureBillingReady(() -> launchSubscriptionPurchase(call, productId, basePlanId));
+    ensureBillingReady(() -> launchSubscriptionPurchase(call, productId, basePlanId), () -> call.reject("Google Play Billing is not available."));
   }
 
-  private void ensureBillingReady(Runnable readyAction) {
+  private void ensureBillingReady(Runnable readyAction, Runnable unavailableAction) {
     if (billingClient != null && billingClient.isReady()) {
       readyAction.run();
       return;
     }
-    connectBilling(readyAction);
+    connectBilling(readyAction, unavailableAction);
   }
 
-  private void connectBilling(Runnable readyAction) {
-    if (billingClient == null) return;
+  private void connectBilling(Runnable readyAction, Runnable unavailableAction) {
+    if (billingClient == null) {
+      if (unavailableAction != null) unavailableAction.run();
+      return;
+    }
     billingClient.startConnection(new BillingClientStateListener() {
       @Override
       public void onBillingSetupFinished(BillingResult billingResult) {
         if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK && readyAction != null) {
           readyAction.run();
+        } else if (unavailableAction != null) {
+          unavailableAction.run();
         }
       }
 
@@ -113,6 +118,17 @@ public class LedgerBillingPlugin extends Plugin implements PurchasesUpdatedListe
       result.put("debugMessage", billingResult.getDebugMessage());
       call.resolve(result);
     });
+  }
+
+  private void resolveFreeEntitlement(PluginCall call, String source, int responseCode, String debugMessage) {
+    JSObject result = new JSObject();
+    result.put("isPro", false);
+    result.put("source", source);
+    result.put("suspended", false);
+    result.put("purchaseTime", 0);
+    result.put("responseCode", responseCode);
+    result.put("debugMessage", debugMessage);
+    call.resolve(result);
   }
 
   private void launchSubscriptionPurchase(PluginCall call, String productId, String basePlanId) {

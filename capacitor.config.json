@@ -1,6 +1,6 @@
 {
-  "appId": "com.ledgercompass.app",
-  "appName": "Ledger Compass",
+  "appId": "com.haclabs.capahead",
+  "appName": "CapAhead",
   "webDir": "www",
   "server": {
     "androidScheme": "https"

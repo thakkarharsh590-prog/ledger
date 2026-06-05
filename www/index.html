@@ -3,13 +3,13 @@
   ============================================================
   LEDGER — Personal Finance App
   ============================================================
-  Owner:        Ledger Compass
+  Owner:        HAC Labs
   Version:      2.8.5
   Last edited:  2026-05-28
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   9
 
-  NAMED: Ledger Compass
+  NAMED: CapAhead
 
   v2.8.5 — LAUNCH UX POLISH (schema v9 unchanged):
   - Profile reorganized into collapsible setup/settings groups with saved UI preferences
@@ -115,7 +115,7 @@
   - Auto-snapshots, recovery mode, backup reminders, refresh button
   
   NEW IN v2.2:
-  - Renamed to "Ledger Compass" + new logo (LC monogram)
+  - Renamed to "CapAhead" + new logo (CA monogram)
   - Platform detection: iOS / Android / Desktop install instructions
   - SMART AFFORDABILITY:
     * Factors in recurring income & expenses (weekly surplus calc)
@@ -150,13 +150,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Ledger Compass">
+<meta name="apple-mobile-web-app-title" content="CapAhead">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0a0a0f">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Ledger Compass</title>
+<title>CapAhead</title>
 
 <!-- PWA Manifest (inline as data URI so single-file works) -->
 <link rel="manifest" id="manifestLink">
@@ -3092,7 +3092,7 @@
     <div class="setup-top">
       <div>
         <div class="setup-kicker" id="setupStepLabel">Step 1 of 5</div>
-        <h1 id="setupTitle">Set up Ledger Compass</h1>
+        <h1 id="setupTitle">Set up CapAhead</h1>
       </div>
       <button class="icon-btn setup-close" type="button" onclick="SetupWizardController.skip()" aria-label="Skip setup">×</button>
     </div>
@@ -3115,7 +3115,7 @@
       <path d="M 12 4.5 L 13.5 12 L 12 19.5 L 10.5 12 Z" fill="#c9ff3d"/>
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
-    <span class="brand-word">Ledger Compass</span>
+    <span class="brand-word">CapAhead</span>
     <span class="version-tag" id="versionTag">v2.9.4</span>
   </div>
   <div class="topbar-actions">
@@ -3356,7 +3356,7 @@
       <span class="profile-name" id="profileName">Set your name</span>
       <button class="profile-edit-btn" onclick="openNameModal()" title="Edit name">✏</button>
     </div>
-    <div class="profile-version">Ledger Compass v<span id="profileVersion">2.9.4</span></div>
+    <div class="profile-version">CapAhead v<span id="profileVersion">2.9.4</span></div>
   </div>
 
   <div id="profileContent"></div>
@@ -3595,7 +3595,7 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">Save your recovery key</div>
-    <div class="modal-sub">This key lets you restore Ledger Compass on a new phone.</div>
+    <div class="modal-sub">This key lets you restore CapAhead on a new phone.</div>
     <div id="backupKeyIntro" class="backup-panel">
       <strong>Your backup is encrypted</strong>
       <p>Save this recovery key before creating your first encrypted backup. Future backups will reuse this same key automatically.</p>
@@ -3642,7 +3642,7 @@
 <div class="modal-backdrop" id="proModal" onclick="closeModalOnBg(event, 'proModal')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">Unlock Ledger Compass Pro</div>
+    <div class="modal-title">Unlock CapAhead Pro</div>
     <div class="modal-sub" id="proModalSub">Unlimited planning for goals, loans, and decisions.</div>
     <div class="pro-card">
       <div class="pro-card-title">Keep every decision, goal, and loan strategy.</div>
@@ -4011,9 +4011,10 @@ const UI_PREFS_KEY = 'ledger_ui_prefs_v1';
 const SETUP_STATUS_KEY = 'ledger_setup_status_v1';
 const PRO_DEV_UNLOCK_KEY = 'ledger_pro_dev_unlocked_v1';
 const OWNER_PWA_UNLOCK_KEY = 'ledger_owner_pwa_unlocked_v1';
-const PRO_PRODUCT_ID = 'ledger_compass_pro';
+const PRO_PRODUCT_ID = 'capahead_pro';
 const PRO_MONTHLY_BASE_PLAN = 'pro_monthly';
 const PRO_YEARLY_BASE_PLAN = 'pro_yearly';
+const PRO_ENTITLEMENT_TIMEOUT_MS = 3500;
 const PRO_PRICE_MONTHLY = 'A$2.99/month';
 const PRO_PRICE_YEARLY = 'A$19.99/year';
 const FREE_LIMITS = {
@@ -4304,7 +4305,7 @@ function loadData() {
     if (!raw) return;
     
     const data = JSON.parse(raw);
-    if (!validateBackupDataShape(data)) throw new Error('Saved app data is not a valid Ledger Compass payload');
+    if (!validateBackupDataShape(data)) throw new Error('Saved app data is not a valid CapAhead payload');
     
     // Run migrations if schema is older
     const migrated = runMigrations(data);
@@ -4366,7 +4367,7 @@ function runMigrations(data) {
     }
   }
   
-  // Migration: v3 -> v4 (Ledger Compass rebrand, no data changes)
+  // Migration: v3 -> v4 (CapAhead rebrand, no data changes)
   if (fromVersion < 4) {
     migrated.schemaVersion = 4;
   }
@@ -4887,8 +4888,8 @@ function applyOwnerPwaUnlockFromUrl() {
   } catch (e) {}
 }
 
-function getLedgerBillingPlugin() {
-  return window.Capacitor?.Plugins?.LedgerBilling || null;
+function getCapAheadBillingPlugin() {
+  return window.Capacitor?.Plugins?.CapAheadBilling || null;
 }
 
 function isPro() {
@@ -4899,6 +4900,16 @@ function currentPlanLabel() {
   if (isPro()) return 'Pro active';
   if (billingState.checking) return 'Checking subscription';
   return 'Free plan';
+}
+
+function withTimeout(promise, timeoutMs, timeoutMessage) {
+  let timer = null;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
 }
 
 function canCreateFreeLimitedItem(kind, editingId) {
@@ -4931,13 +4942,17 @@ function openProModal(reason) {
 async function syncProEntitlement(opts = {}) {
   billingState.checking = true;
   billingState.error = null;
-  const plugin = getLedgerBillingPlugin();
+  const plugin = getCapAheadBillingPlugin();
   try {
     if (hasOwnerPwaUnlock()) {
       billingState.isPro = true;
       billingState.source = 'owner_pwa_test';
     } else if (plugin && typeof plugin.getEntitlement === 'function') {
-      const result = await plugin.getEntitlement({ productId: PRO_PRODUCT_ID });
+      const result = await withTimeout(
+        plugin.getEntitlement({ productId: PRO_PRODUCT_ID }),
+        PRO_ENTITLEMENT_TIMEOUT_MS,
+        'Google Play Billing entitlement check timed out.'
+      );
       billingState.isPro = !!result?.isPro;
       billingState.source = result?.source || 'google_play';
     } else if (allowQaProSimulation()) {
@@ -4965,7 +4980,7 @@ async function initBilling() {
 }
 
 async function purchasePro(plan) {
-  const plugin = getLedgerBillingPlugin();
+  const plugin = getCapAheadBillingPlugin();
   const basePlanId = plan === 'yearly' ? PRO_YEARLY_BASE_PLAN : PRO_MONTHLY_BASE_PLAN;
   if (!plugin || typeof plugin.purchase !== 'function') {
     if (allowQaProSimulation()) {
@@ -4996,7 +5011,7 @@ async function restorePurchase() {
 }
 
 function manageSubscription() {
-  const url = `https://play.google.com/store/account/subscriptions?sku=${encodeURIComponent(PRO_PRODUCT_ID)}&package=com.ledgercompass.app`;
+  const url = `https://play.google.com/store/account/subscriptions?sku=${encodeURIComponent(PRO_PRODUCT_ID)}&package=com.haclabs.capahead`;
   window.open(url, '_blank', 'noopener');
 }
 
@@ -5050,7 +5065,7 @@ function renderProfile() {
   el.innerHTML = `
     ${profileGroupHtml(
       'pro',
-      'Ledger Compass Pro',
+      'CapAhead Pro',
       currentPlanLabel(),
       isPro() ? '<span class="pro-badge">Pro</span>' : sectionAdd('Upgrade', 'openProModal'),
       `
@@ -5687,7 +5702,7 @@ function renderLoans() {
     summary.innerHTML = '';
     if (strategyCard && strategyContent) {
       strategyCard.style.display = 'block';
-      strategyContent.innerHTML = emptyState('No payoff plan yet', 'Add a loan and Ledger Compass will suggest the smartest order to attack debt.', {
+      strategyContent.innerHTML = emptyState('No payoff plan yet', 'Add a loan and CapAhead will suggest the smartest order to attack debt.', {
         icon: 'credit-card',
         actionLabel: 'Add loan',
         action: 'openLoanModal()',
@@ -6482,7 +6497,7 @@ async function copyRecoveryKey() {
 
 function downloadRecoveryKey() {
   if (!pendingGeneratedRecoveryKey) return;
-  downloadTextFile(`ledger-recovery-key-${todayISO()}.txt`, `Ledger Compass recovery key\n\n${formatRecoveryKey(pendingGeneratedRecoveryKey)}\n\nSave this key so you can restore encrypted backups on a new phone.\n`, 'text/plain');
+  downloadTextFile(`ledger-recovery-key-${todayISO()}.txt`, `CapAhead recovery key\n\n${formatRecoveryKey(pendingGeneratedRecoveryKey)}\n\nSave this key so you can restore encrypted backups on a new phone.\n`, 'text/plain');
   recoveryKeyActionTaken = true;
   document.getElementById('confirmRecoverySavedBtn').disabled = false;
   showToast('Recovery key file saved');
@@ -6615,7 +6630,7 @@ async function decryptImportedBackup() {
 
 function confirmEncryptedRestore() {
   if (!pendingRestoreData) return;
-  if (hasCurrentFinanceData() && !confirm('This will replace everything currently in Ledger Compass with this backup. Continue?')) return;
+  if (hasCurrentFinanceData() && !confirm('This will replace everything currently in CapAhead with this backup. Continue?')) return;
   try {
     localStorage.setItem(BACKUP_PREFIX + Date.now() + '_pre_restore', localStorage.getItem(STORAGE_KEY) || '{}');
     hydrateStateFromData(pendingRestoreData);
@@ -6699,7 +6714,7 @@ function showInstallBannerIfNeeded() {
     if (p.browser === 'safari-ios') {
       title = 'Install on iPhone';
       sub = 'Tap Share → Add to Home Screen';
-      helpAlert = 'To install Ledger Compass on your iPhone:\n\n1. Tap the Share button (square with arrow) at the bottom of Safari\n2. Scroll down and tap "Add to Home Screen"\n3. Tap Add\n\nYou\'ll get a Ledger Compass icon on your home screen that opens full-screen like a real app.';
+      helpAlert = 'To install CapAhead on your iPhone:\n\n1. Tap the Share button (square with arrow) at the bottom of Safari\n2. Scroll down and tap "Add to Home Screen"\n3. Tap Add\n\nYou\'ll get a CapAhead icon on your home screen that opens full-screen like a real app.';
     } else {
       title = 'Open in Safari to install';
       sub = `${p.browser.split('-')[0]} doesn't support installing. Open in Safari first.`;
@@ -6709,7 +6724,7 @@ function showInstallBannerIfNeeded() {
     if (p.browser === 'chrome-android') {
       title = 'Install on Android';
       sub = 'Tap menu (⋮) → Install app';
-      helpAlert = 'To install Ledger Compass on Android:\n\n1. Tap the three-dot menu (⋮) in Chrome\n2. Tap "Install app" or "Add to Home screen"\n3. Confirm\n\nYou\'ll get an icon on your home screen that opens like a real app.';
+      helpAlert = 'To install CapAhead on Android:\n\n1. Tap the three-dot menu (⋮) in Chrome\n2. Tap "Install app" or "Add to Home screen"\n3. Confirm\n\nYou\'ll get an icon on your home screen that opens like a real app.';
     } else {
       title = 'Install on Android';
       sub = 'Tap menu → Add to Home screen';
@@ -6719,7 +6734,7 @@ function showInstallBannerIfNeeded() {
     // Desktop
     title = 'Install as desktop app';
     sub = p.browser === 'chrome-desktop' ? 'Click install icon in address bar' : 'Use Chrome to install';
-    helpAlert = 'On desktop:\n\n• Chrome / Edge: look for an install icon in the address bar (right side)\n• Or use the browser menu → "Install Ledger Compass..."\n\nYou\'ll get a standalone app window.';
+    helpAlert = 'On desktop:\n\n• Chrome / Edge: look for an install icon in the address bar (right side)\n• Or use the browser menu → "Install CapAhead..."\n\nYou\'ll get a standalone app window.';
   }
   
   document.getElementById('installBanner').innerHTML = `
@@ -6748,8 +6763,8 @@ function dismissInstall() {
 /* ============ PWA MANIFEST (inline) ============ */
 function setupManifest() {
   const manifest = {
-    name: 'Ledger Compass',
-    short_name: 'Ledger',
+    name: 'CapAhead',
+    short_name: 'CapAhead',
     description: 'Personal finance tracker with smart insights',
     start_url: './?source=pwa',
     display: 'standalone',
@@ -9570,7 +9585,7 @@ function renderSafeSave() {
   const result = computeSafeWeeklySave();
   
   if (!result.hasEnoughData) {
-    el.innerHTML = emptyState('No safe-save estimate yet', 'Add income and regular bills so Ledger Compass can suggest a weekly saving amount that still leaves room for life.', {
+    el.innerHTML = emptyState('No safe-save estimate yet', 'Add income and regular bills so CapAhead can suggest a weekly saving amount that still leaves room for life.', {
       icon: 'wallet',
       actionLabel: 'Add income source',
       action: 'openIncomeSrcModal()',
@@ -11238,7 +11253,7 @@ function removeLaunchRecoveryUI() {
 
 function showLaunchRecoveryUI(issue) {
   if (document.getElementById('launchRecoveryOverlay')) return;
-  const message = issue && issue.message ? issue.message : 'Ledger Compass hit a launch error.';
+  const message = issue && issue.message ? issue.message : 'CapAhead hit a launch error.';
   const overlay = document.createElement('div');
   overlay.id = 'launchRecoveryOverlay';
   overlay.style.cssText = [
@@ -11255,7 +11270,7 @@ function showLaunchRecoveryUI(issue) {
   ].join(';');
   overlay.innerHTML = `
     <div style="width:min(420px,100%);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:20px;background:#111827;box-shadow:0 18px 60px rgba(0,0,0,.35);">
-      <div style="font-size:18px;font-weight:800;margin-bottom:8px;">Ledger Compass recovery</div>
+      <div style="font-size:18px;font-weight:800;margin-bottom:8px;">CapAhead recovery</div>
       <div style="font-size:14px;line-height:1.5;color:#cbd5e1;margin-bottom:16px;">${escapeHtml(message)} Your data is still on this device where possible. Try exporting a backup or restoring the last-good copy.</div>
       <div style="display:grid;gap:10px;">
         <button type="button" onclick="exportEmergencyBackup()" style="padding:12px;border:0;border-radius:8px;background:#a3e635;color:#111827;font-weight:800;">Export emergency backup</button>
@@ -11415,7 +11430,7 @@ function autoCacheBust() {
 function flashVersionBanner() {
   const el = document.getElementById('versionBanner');
   if (!el) return;
-  el.textContent = `Ledger Compass v${APP_VERSION} loaded`;
+  el.textContent = `CapAhead v${APP_VERSION} loaded`;
   el.style.display = 'block';
   // Trigger fade-in
   requestAnimationFrame(() => {
@@ -11685,11 +11700,11 @@ const SetupWizardController = {
     SetupWizardState.draft = draft;
     const step = SetupWizardState.step;
     const titles = [
-      ['Set up Ledger Compass', 'Answer a few questions so your plan starts with real numbers.'],
+      ['Set up CapAhead', 'Answer a few questions so your plan starts with real numbers.'],
       ['What is your balance?', 'Use the money available across bank and cash accounts right now.'],
       ['When do you get paid?', 'Your pay cycle powers forecasts, set-aside math, and weekly plans.'],
       ['Add fixed bills', 'Rent, subscriptions, repayments, and regular bills make Compass useful.'],
-      ['Your first plan is ready', 'Review the starting picture before Ledger Compass builds your plan.'],
+      ['Your first plan is ready', 'Review the starting picture before CapAhead builds your plan.'],
     ];
     document.getElementById('setupStepLabel').textContent = `Step ${step + 1} of 5`;
     document.getElementById('setupTitle').textContent = titles[step][0];
@@ -11711,7 +11726,7 @@ const SetupWizardController = {
     if (step === 0) return `
       <div class="setup-panel">
         <h2>Start with your real money picture</h2>
-        <p>Ledger Compass works best when it knows your balance, pay cycle, and regular bills. This takes about two minutes and stays on this device.</p>
+        <p>CapAhead works best when it knows your balance, pay cycle, and regular bills. This takes about two minutes and stays on this device.</p>
       </div>
       <div class="field">
         <label for="setupName">Name optional</label>
@@ -11839,7 +11854,7 @@ function restartSetupWizard() {
 
 const TOUR_STEPS = [
   {
-    title: '👋 Welcome to Ledger Compass',
+    title: '👋 Welcome to CapAhead',
     body: 'Your <strong>smart finance buddy</strong>. Let me show you around in 30 seconds — tap Next to start.',
     target: null,  // intro, no spotlight
     page: 'home',
@@ -12096,7 +12111,7 @@ function showFirstLaunchWarningIfNeeded() {
   }
   setTimeout(() => {
     alert(
-      '👋 Welcome to Ledger Compass!\n\n' +
+      '👋 Welcome to CapAhead!\n\n' +
       'IMPORTANT — Data Safety:\n\n' +
       '• Your data is stored ONLY on this device.\n' +
       '• Removing the app from your home screen on iPhone may wipe your data.\n' +
