@@ -1,0 +1,84 @@
+{
+  "summary": {
+    "total": 8,
+    "pass": 8,
+    "fail": 0
+  },
+  "metadata": {
+    "generatedAt": "2026-06-06T13:42:47.153Z",
+    "url": "http://127.0.0.1:53567/www/index.html?v=pro-paywall-1780753345406"
+  },
+  "results": [
+    {
+      "name": "Advanced forecast is paywalled for Free",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Loan payoff strategy is paywalled for Free",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Smart insights are paywalled for Free",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Third savings goal opens Pro paywall",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Goal impact detail is paywalled but affordability check still runs",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Sixth saved decision opens Pro paywall",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Free can still record multiple loans",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "No console/page errors",
+      "status": "PASS",
+      "details": ""
+    }
+  ],
+  "consoleErrors": [],
+  "screenshots": [
+    {
+      "name": "01-advanced-forecast-paywall",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\01-advanced-forecast-paywall.png"
+    },
+    {
+      "name": "02-loan-strategy-paywall",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\02-loan-strategy-paywall.png"
+    },
+    {
+      "name": "03-smart-insights-paywall",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\03-smart-insights-paywall.png"
+    },
+    {
+      "name": "04-third-goal-pro-modal",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\04-third-goal-pro-modal.png"
+    },
+    {
+      "name": "05-goal-impact-paywall",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\05-goal-impact-paywall.png"
+    },
+    {
+      "name": "06-sixth-decision-pro-modal",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\06-sixth-decision-pro-modal.png"
+    },
+    {
+      "name": "07-free-second-loan-modal",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\07-free-second-loan-modal.png"
+    }
+  ]
+}
