@@ -16,17 +16,17 @@ function check(name, pass) {
 const appVersion = (web.match(/const APP_VERSION = '([^']+)'/) || [])[1];
 const androidVersion = (gradle.match(/versionName "([^"]+)"/) || [])[1];
 
-check('APP_VERSION is 2.9.4', appVersion === '2.9.4');
+check('APP_VERSION is 2.9.5', appVersion === '2.9.5');
 check('package version matches APP_VERSION', pkg.version === appVersion);
 check('Android versionName matches APP_VERSION', androidVersion === appVersion);
-check('Android versionCode is 7', /versionCode 7\b/.test(gradle));
+check('Android versionCode is 8', /versionCode 8\b/.test(gradle));
 check('Android auto backup disabled', /android:allowBackup="false"/.test(manifest));
 
 check('last-good storage key exists', web.includes("const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1'"));
 check('safe save validates before write', web.includes('validateAppDataShape(payload)'));
 check('safe save verifies written data', web.includes('Saved data did not verify after write'));
 check('safe save stores status', web.includes('LAST_SAVE_STATUS_KEY'));
-check('load path validates saved data', web.includes('Saved app data is not a valid Ledger Compass payload'));
+check('load path validates saved data', web.includes('Saved app data is not a valid CapAhead payload'));
 
 check('crash guard installs error handler', web.includes("window.addEventListener('error'"));
 check('crash guard installs rejection handler', web.includes("window.addEventListener('unhandledrejection'"));

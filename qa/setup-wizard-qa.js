@@ -188,7 +188,7 @@ function reportHtml(summary, metadata) {
       await expectVisible(page, '#setupWizard', 'setup wizard');
       await expectVisible(page, '#setupName', 'name field');
       const title = await page.locator('#setupTitle').textContent();
-      if (title !== 'Set up Ledger Compass') throw new Error(`unexpected title: ${title}`);
+      if (title !== 'Set up CapAhead') throw new Error(`unexpected title: ${title}`);
       await snap(page, 'setup-01-fresh-wizard');
       await context.close();
     });

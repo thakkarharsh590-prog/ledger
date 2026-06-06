@@ -86,13 +86,24 @@ async function expectBodyContains(page, text) {
     await page.locator('.nav-item').filter({ hasText: 'Loans' }).click();
     await expectBodyContains(page, 'Unlock Pro for the recommended payoff order');
     await page.locator('#page-loans.active .link').filter({ hasText: '+ New' }).click();
-    await expectBodyContains(page, 'Free includes 1 loan');
-    await expectBodyContains(page, 'A$2.99/mo');
-    await page.locator('#proModal button').filter({ hasText: 'Not now' }).click();
+    const freeLoanModalOpen = await page.locator('#loanModal.open').count();
+    if (!freeLoanModalOpen) throw new Error('Free should allow recording multiple loans for accurate forecasts');
+    await page.locator('#loanModal button').filter({ hasText: 'Cancel' }).click();
 
     await page.evaluate(() => goPage('savings'));
     await page.locator('#page-savings.active .link').filter({ hasText: '+ New goal' }).click();
-    await expectBodyContains(page, 'Free includes 1 savings goal');
+    const secondGoalModalOpen = await page.locator('#goalModal.open').count();
+    if (!secondGoalModalOpen) throw new Error('Free should allow creating a second savings goal');
+    await page.locator('#inpGoalName').fill('Holiday QA');
+    await page.locator('#inpGoalTarget').fill('800');
+    await page.locator('#goalModal button').filter({ hasText: 'Save Goal' }).click();
+    const hasTwoGoals = await page.evaluate(() => state.savingsGoals.length === 2);
+    if (!hasTwoGoals) throw new Error('Free should save exactly two goals before paywalling');
+    await page.locator('#page-savings.active .link').filter({ hasText: '+ New goal' }).click();
+    await expectBodyContains(page, 'Free includes 2 savings goals');
+    await expectBodyContains(page, '7 days free');
+    await expectBodyContains(page, 'A$4.99/mo');
+    await expectBodyContains(page, 'A$39.99/yr');
     await page.locator('#proModal button').filter({ hasText: 'Not now' }).click();
 
     await page.locator('.nav-item').filter({ hasText: 'Compass' }).click();
@@ -113,7 +124,7 @@ async function expectBodyContains(page, text) {
     await page.locator('.nav-item').filter({ hasText: 'Loans' }).click();
     await page.locator('#page-loans.active .link').filter({ hasText: '+ New' }).click();
     const loanModalOpen = await page.locator('#loanModal.open').count();
-    if (!loanModalOpen) throw new Error('Pro should allow opening add-loan modal after one loan exists');
+    if (!loanModalOpen) throw new Error('Pro should still allow opening add-loan modal');
     await page.locator('#loanModal button').filter({ hasText: 'Cancel' }).click();
 
     await browser.close();

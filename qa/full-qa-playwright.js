@@ -245,8 +245,8 @@ function reportHtml(summary, metadata) {
       await page.waitForTimeout(1000);
       const title = await page.title();
       const version = await page.locator('#versionTag').textContent();
-      if (title !== 'Ledger Compass') throw new Error('bad title ' + title);
-      if (version !== 'v2.9.4') throw new Error('bad version ' + version);
+      if (title !== 'CapAhead') throw new Error('bad title ' + title);
+      if (version !== 'v2.9.5') throw new Error('bad version ' + version);
       await expectText(page, 'Recent Activity');
       await assertNoHorizontalScroll(page);
       await snap(page, '01-home-empty');

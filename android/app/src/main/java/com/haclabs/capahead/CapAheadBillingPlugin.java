@@ -188,10 +188,23 @@ public class CapAheadBillingPlugin extends Plugin implements PurchasesUpdatedLis
   private ProductDetails.SubscriptionOfferDetails selectOffer(ProductDetails details, String basePlanId) {
     List<ProductDetails.SubscriptionOfferDetails> offers = details.getSubscriptionOfferDetails();
     if (offers == null || offers.isEmpty()) return null;
+    ProductDetails.SubscriptionOfferDetails firstMatchingBasePlan = null;
     for (ProductDetails.SubscriptionOfferDetails offer : offers) {
-      if (basePlanId.equals(offer.getBasePlanId())) return offer;
+      if (!basePlanId.equals(offer.getBasePlanId())) continue;
+      if (firstMatchingBasePlan == null) firstMatchingBasePlan = offer;
+      if (hasSevenDayFreeTrial(offer)) return offer;
     }
-    return offers.get(0);
+    return firstMatchingBasePlan != null ? firstMatchingBasePlan : offers.get(0);
+  }
+
+  private boolean hasSevenDayFreeTrial(ProductDetails.SubscriptionOfferDetails offer) {
+    if (offer.getPricingPhases() == null || offer.getPricingPhases().getPricingPhaseList() == null) {
+      return false;
+    }
+    for (ProductDetails.PricingPhase phase : offer.getPricingPhases().getPricingPhaseList()) {
+      if (phase.getPriceAmountMicros() == 0 && "P7D".equals(phase.getBillingPeriod())) return true;
+    }
+    return false;
   }
 
   @Override
