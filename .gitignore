@@ -22,3 +22,6 @@ npm-debug.log*
 # Environment files (secrets)
 .env
 .env.local
+
+# Private owner-only local builds
+owner-private-ios/
