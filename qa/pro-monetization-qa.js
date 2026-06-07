@@ -107,7 +107,7 @@ async function expectBodyContains(page, text) {
     await page.locator('#proModal button').filter({ hasText: 'Not now' }).click();
 
     await page.locator('.nav-item').filter({ hasText: 'Compass' }).click();
-    await page.locator('.compass-cta').click();
+    await page.getByRole('button', { name: /Can I afford this/ }).click();
     await page.locator('#inpAffordAmount').fill('25');
     await page.locator('#inpAffordWhat').fill('QA purchase');
     await page.locator('button').filter({ hasText: 'Run Check' }).click();
@@ -118,8 +118,23 @@ async function expectBodyContains(page, text) {
     if (!decisionCountStillFive) throw new Error('Free decision limit should not create a sixth decision');
 
     await page.locator('.nav-item').filter({ hasText: 'Profile' }).click();
-    await page.locator('.setting-row').filter({ hasText: 'Browser test Pro' }).click();
-    await expectBodyContains(page, 'Browser test Pro enabled');
+    const profileBody = await bodyText(page);
+    if (profileBody.includes('Browser test Pro')) throw new Error('Profile must not expose Browser test Pro in launch UI');
+    await page.evaluate(async () => {
+      localStorage.setItem('ledger_pro_dev_unlocked_v1', 'yes');
+      await syncProEntitlement();
+      renderAll();
+    });
+
+    await page.locator('.nav-item').filter({ hasText: 'Compass' }).click();
+    await page.locator('.compass-cta').filter({ hasText: 'What if?' }).click();
+    await page.locator('#inpScenarioName').fill('QA scenario');
+    await page.locator('#inpScenarioAmount').fill('35');
+    await page.locator('#scenarioModal button').filter({ hasText: 'Run scenario' }).click();
+    await expectBodyContains(page, 'LOWEST POINT AFTER');
+    await page.locator('#scenarioModal button').filter({ hasText: 'Save scenario' }).click();
+    const scenarioSaved = await page.evaluate(() => state.decisions.some(d => d.action === 'scenario'));
+    if (!scenarioSaved) throw new Error('Pro should save scenario into decision history');
 
     await page.locator('.nav-item').filter({ hasText: 'Loans' }).click();
     await page.locator('#page-loans.active .link').filter({ hasText: '+ New' }).click();

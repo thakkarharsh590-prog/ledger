@@ -36,12 +36,12 @@ check('last-good restore exists', web.includes('function restoreLastGoodData()')
 
 check('QA Pro simulation requires localhost', web.includes('function allowQaProSimulation()') && web.includes('isLocalQaHost()'));
 check('GitHub/browser purchase fallback is not broad', !web.includes('if (!isNativeAndroidApp()) {\n      localStorage.setItem(PRO_DEV_UNLOCK_KEY'));
-check('Profile dev toggle is local-QA only', web.includes('${allowQaProSimulation() ? `'));
-check('owner PWA unlock key exists', web.includes("const OWNER_PWA_UNLOCK_KEY = 'ledger_owner_pwa_unlocked_v1'"));
-check('owner PWA unlock is web-only', web.includes('if (isNativeAndroidApp()) return false;'));
-check('private owner link sets only Pro flag', ownerPage.includes("localStorage.setItem('ledger_owner_pwa_unlocked_v1', 'yes')") && !ownerPage.includes('ledger_data_v1'));
-check('private owner link returns to real app', ownerPage.includes("../www/index.html?owner=harsh"));
-check('real app reads owner URL', web.includes('function applyOwnerPwaUnlockFromUrl()') && web.includes("params.get('owner') !== 'harsh'"));
+check('Profile dev toggle is not visible in launch UI', !web.includes('Browser test Pro') && !web.includes('proDevRow'));
+check('public owner PWA unlock key is stripped from shipped app', !web.includes('OWNER_PWA_UNLOCK_KEY') && !web.includes('ledger_owner_pwa_unlocked_v1'));
+check('public owner URL unlock is stripped from shipped app', !web.includes('applyOwnerPwaUnlockFromUrl') && !web.includes("params.get('owner')"));
+check('private owner artifact is separate from shipped app', ownerPage.includes('ledger_owner_pwa_unlocked_v1') && !web.includes('ledger_owner_pwa_unlocked_v1'));
+check('loan modal placeholder is launch neutral', web.includes('placeholder="e.g. Bank, HECS, Friend"') && !web.includes('placeholder="e.g. NAB, HECS, Friend"'));
+check('Pro foresight schema fields exist', web.includes('monthlySnapshots') && web.includes('alertSettings') && web.includes('SCHEMA_VERSION = 10'));
 
 const failed = checks.filter(c => !c.pass);
 console.log(JSON.stringify({ pass: failed.length === 0, checks, failed }, null, 2));

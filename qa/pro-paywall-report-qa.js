@@ -270,7 +270,7 @@ async function run() {
 
     await test('Goal impact detail is paywalled but affordability check still runs', async () => {
       await page.locator('.nav-item').filter({ hasText: 'Compass' }).click();
-      await page.locator('.compass-cta').click();
+      await page.getByRole('button', { name: /Can I afford this/ }).click();
       await page.locator('#inpAffordAmount').fill('30');
       await page.locator('#inpAffordWhat').fill('Coffee machine');
       await page.locator('button').filter({ hasText: 'Run Check' }).click();

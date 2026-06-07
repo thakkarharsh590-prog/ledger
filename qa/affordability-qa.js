@@ -159,7 +159,7 @@ async function seedState(page, opts = {}) {
 async function runCheck(page, amount, label = 'QA purchase') {
   await page.evaluate(() => goPage('compass'));
   await page.waitForFunction(() => document.getElementById('page-compass')?.classList.contains('active'));
-  await page.locator('.compass-cta').click();
+  await page.getByRole('button', { name: /Can I afford this/ }).click();
   await page.locator('#inpAffordAmount').fill(String(amount));
   await page.locator('#inpAffordWhat').fill(label);
   await page.getByRole('button', { name: 'Run Check' }).click();

@@ -8,6 +8,7 @@
     "qa:date": "node qa/date_logic_tests.js",
     "qa:backup": "node qa/encrypted-backup-qa.js",
     "qa:pro": "node qa/pro-monetization-qa.js",
+    "qa:foresight": "node qa/pro-foresight-qa.js",
     "qa:launch": "node qa/launch-architecture-qa.js",
     "qa:scroll": "node qa/mobile-scroll-qa.js",
     "qa:full": "node qa/full-qa-playwright.js",

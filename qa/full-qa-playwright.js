@@ -384,7 +384,7 @@ function reportHtml(summary, metadata) {
 
     await test('Compass affordability flow and Insights analysis hub render', async () => {
       await page.locator('.nav-item').filter({ hasText: 'Compass' }).click();
-      await page.locator('.compass-cta').click();
+      await page.getByRole('button', { name: /Can I afford this/ }).click();
       await page.locator('#inpAffordAmount').fill('100');
       await page.locator('#inpAffordWhat').fill('QA purchase');
       await page.locator('#affordInputView .btn-primary').click();

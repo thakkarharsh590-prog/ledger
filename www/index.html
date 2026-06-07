@@ -2107,6 +2107,90 @@
     font-weight: 500;
     color: var(--text);
   }
+  .insight-action-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .mini-action {
+    min-height: 34px;
+    border: 1px solid var(--border);
+    background: var(--surface-overlay);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .mini-action.primary {
+    border-color: rgba(201,255,61,0.35);
+    background: rgba(201,255,61,0.1);
+    color: var(--accent);
+  }
+  .scenario-grid,
+  .trend-grid,
+  .alert-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .scenario-type {
+    border: 1px solid var(--border);
+    background: var(--surface-overlay);
+    color: var(--text);
+    border-radius: 10px;
+    min-height: 64px;
+    padding: 10px;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .scenario-type.active {
+    border-color: rgba(201,255,61,0.45);
+    background: rgba(201,255,61,0.1);
+  }
+  .scenario-type strong,
+  .trend-card strong,
+  .alert-card strong {
+    display: block;
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .scenario-type span,
+  .trend-card span,
+  .alert-card span {
+    display: block;
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--text-dim);
+  }
+  .scenario-result-card,
+  .trend-card,
+  .alert-card {
+    background: var(--surface-overlay);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .scenario-compare {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .scenario-compare .forecast-summary-card {
+    min-height: 72px;
+  }
+  .scenario-note {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin-top: 10px;
+  }
   
   /* Decision journal */
   .decision-item {
@@ -3346,6 +3430,12 @@
   </div>
 
   <div class="forecast-chart-wrap">
+    <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Am I getting ahead? <span class="pro-badge">Pro</span></div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Monthly balance, savings, debt, and spending progress.</div>
+    <div id="aheadTrends"></div>
+  </div>
+
+  <div class="forecast-chart-wrap">
     <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Smart Insights <span class="pro-badge">Pro</span></div>
     <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Patterns, subscriptions, cash buffer, and debt signals from your data.</div>
     <div id="smartInsights"></div>
@@ -3410,6 +3500,10 @@
   
   <button class="compass-cta" onclick="openAffordabilityModal()">
     <span style="font-size:18px;">⚖</span> Can I afford this?
+  </button>
+
+  <button class="compass-cta" onclick="openScenarioModal()" style="background:linear-gradient(135deg,rgba(201,255,61,0.16),rgba(96,165,250,0.12));color:var(--text);border:1px solid rgba(201,255,61,0.28);">
+    <span style="font-size:18px;">?</span> What if?
   </button>
   
   <!-- v2.6: MOMENTUM SECTION (streaks + milestones) -->
@@ -3777,9 +3871,9 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">Unlock CapAhead Pro</div>
-    <div class="modal-sub" id="proModalSub">7 days free, then unlimited planning for goals, loans, and decisions.</div>
+    <div class="modal-sub" id="proModalSub">See the next 60 days, test decisions before you make them, and get warned before money gets tight.</div>
     <div class="pro-card">
-      <div class="pro-card-title">Keep every decision, goal, and loan strategy.</div>
+      <div class="pro-card-title">Plan, predict, and stay ahead.</div>
       <div class="pro-card-sub">Start with 7 days free. Basic tracking, loan recording, backup, and restore stay free.</div>
     </div>
     <div class="pro-plan-grid">
@@ -3800,15 +3894,14 @@
     </div>
     <div class="pro-feature-list">
       <div class="pro-feature"><span>✓</span><span>7-day free trial through Google Play</span></div>
-      <div class="pro-feature"><span>✓</span><span>Unlimited goals and saved decisions</span></div>
-      <div class="pro-feature"><span>✓</span><span>Advanced forecast, loan payoff strategy, and smart insights</span></div>
-      <div class="pro-feature"><span>✓</span><span>Future encrypted cloud backup and multi-device restore</span></div>
+      <div class="pro-feature"><span>✓</span><span>Test purchases, loans, and savings changes before you commit</span></div>
+      <div class="pro-feature"><span>✓</span><span>Get 60-day forecast alerts before tight spots happen</span></div>
+      <div class="pro-feature"><span>✓</span><span>Know exactly what to save each week for your goals</span></div>
+      <div class="pro-feature"><span>✓</span><span>See whether you are getting ahead month by month</span></div>
+      <div class="pro-feature"><span>✓</span><span>Unlock unlimited goals, decisions, loan strategy, insights, and monthly reviews</span></div>
     </div>
     <button class="btn-secondary" type="button" onclick="restorePurchase()">Restore purchase</button>
     <button class="btn-secondary" type="button" onclick="manageSubscription()">Manage subscription</button>
-    <div class="pro-dev-row" id="proDevRow">
-      <button class="btn-secondary" type="button" onclick="toggleDevPro()">Browser test: toggle Pro</button>
-    </div>
     <button class="btn-secondary" type="button" onclick="closeModal('proModal')">Not now</button>
   </div>
 </div>
@@ -3827,7 +3920,7 @@
 
     <div class="field">
       <label>Lender</label>
-      <input type="text" id="inpLoanLender" placeholder="e.g. NAB, HECS, Friend">
+      <input type="text" id="inpLoanLender" placeholder="e.g. Bank, HECS, Friend">
     </div>
 
     <div class="field">
@@ -3948,6 +4041,40 @@
       <button class="btn-primary" onclick="saveDecision('yes')" style="margin-top:12px;">I'm buying it</button>
       <button class="btn-secondary" onclick="saveDecision('no')">I'll wait / skip</button>
       <button class="btn-secondary" onclick="closeModal('affordModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- WHAT IF SCENARIO MODAL -->
+<div class="modal-backdrop" id="scenarioModal" onclick="closeModalOnBg(event, 'scenarioModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">What if?</div>
+    <div class="modal-sub">Test a money move against your 60-day forecast</div>
+    <div id="scenarioInputView">
+      <div class="scenario-grid" id="scenarioTypeGrid"></div>
+      <div class="field">
+        <label>Scenario name</label>
+        <input type="text" id="inpScenarioName" placeholder="e.g. New phone, cancel streaming">
+      </div>
+      <div class="field">
+        <label>Amount</label>
+        <div class="amount-input-wrap">
+          <input type="number" inputmode="decimal" id="inpScenarioAmount" class="amount-input" placeholder="0.00" step="0.01">
+        </div>
+      </div>
+      <div class="field" id="scenarioGoalField">
+        <label>Goal to boost (optional)</label>
+        <select id="inpScenarioGoal"></select>
+      </div>
+      <button class="btn-primary" onclick="runScenarioPlanner()">Run scenario</button>
+      <button class="btn-secondary" onclick="closeModal('scenarioModal')">Cancel</button>
+    </div>
+    <div id="scenarioResultView" style="display:none;">
+      <div id="scenarioResult"></div>
+      <button class="btn-primary" onclick="saveScenarioDecision()" style="margin-top:12px;">Save scenario</button>
+      <button class="btn-secondary" onclick="resetScenarioModal()">Try another</button>
+      <button class="btn-secondary" onclick="closeModal('scenarioModal')">Close</button>
     </div>
   </div>
 </div>
@@ -4137,7 +4264,7 @@
    ============================================================ */
 
 const APP_VERSION = '2.9.6';
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 const STORAGE_KEY = 'ledger_data_v1';
 const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1';
 const LAST_SAVE_STATUS_KEY = 'ledger_last_save_status_v1';
@@ -4145,7 +4272,6 @@ const BACKUP_PREFIX = 'ledger_backup_';
 const UI_PREFS_KEY = 'ledger_ui_prefs_v1';
 const SETUP_STATUS_KEY = 'ledger_setup_status_v1';
 const PRO_DEV_UNLOCK_KEY = 'ledger_pro_dev_unlocked_v1';
-const OWNER_PWA_UNLOCK_KEY = 'ledger_owner_pwa_unlocked_v1';
 const PRO_PRODUCT_ID = 'capahead_pro';
 const PRO_MONTHLY_BASE_PLAN = 'pro_monthly';
 const PRO_YEARLY_BASE_PLAN = 'pro_yearly';
@@ -4410,6 +4536,8 @@ let state = {
   savings: [],        // v2.4: savings deposits/withdrawals
   savingsGoals: [],   // v2.4: optional savings goals (v2.6: can have .deadline)
   earnedMilestones: {}, // v2.6: { milestoneId: timestampEarned }
+  monthlySnapshots: [],
+  alertSettings: { enabled: false, permission: 'unknown', inAppOnly: true, lastScheduledAt: null },
   currency: 'AUD',
   userName: '',
   // UI-only state (not persisted)
@@ -4427,6 +4555,8 @@ let state = {
   editingIncSrcId: null,
   selectedCycle: 'fortnightly',
   pendingAffordCheck: null,
+  pendingScenario: null,
+  selectedScenarioType: 'purchase',
   editingRecExpId: null,
   selectedRecCycle: 'monthly',
   incSrcAutoLogOn: false,
@@ -4596,6 +4726,13 @@ function runMigrations(data) {
     if (!migrated.userName) migrated.userName = '';
   }
 
+  // Migration: v9 -> v10 (Pro foresight snapshots + alert preferences)
+  if (fromVersion < 10) {
+    migrated.schemaVersion = 10;
+    if (!migrated.monthlySnapshots) migrated.monthlySnapshots = [];
+    if (!migrated.alertSettings) migrated.alertSettings = { enabled: false, permission: 'unknown', inAppOnly: true, lastScheduledAt: null };
+  }
+
   return migrated;
 }
 
@@ -4657,6 +4794,8 @@ function buildAppDataPayload(extra = {}) {
     savings: state.savings,
     savingsGoals: state.savingsGoals,
     earnedMilestones: state.earnedMilestones || {},
+    monthlySnapshots: state.monthlySnapshots || [],
+    alertSettings: state.alertSettings || { enabled: false, permission: 'unknown', inAppOnly: true, lastScheduledAt: null },
     currency: state.currency,
     userName: state.userName || '',
     ...extra,
@@ -4675,6 +4814,8 @@ function hydrateStateFromData(data) {
   state.savings = data.savings || [];
   state.savingsGoals = data.savingsGoals || [];
   state.earnedMilestones = data.earnedMilestones || {};
+  state.monthlySnapshots = data.monthlySnapshots || [];
+  state.alertSettings = data.alertSettings || { enabled: false, permission: 'unknown', inAppOnly: true, lastScheduledAt: null };
   state.currency = data.currency || 'AUD';
   state.userName = data.userName || '';
 }
@@ -4691,7 +4832,8 @@ function validateAppDataShape(data) {
     && Array.isArray(data.decisions)
     && Array.isArray(data.recurringExpenses)
     && (!data.savings || Array.isArray(data.savings))
-    && (!data.savingsGoals || Array.isArray(data.savingsGoals));
+    && (!data.savingsGoals || Array.isArray(data.savingsGoals))
+    && (!data.monthlySnapshots || Array.isArray(data.monthlySnapshots));
 }
 
 function validateRawAppData(raw) {
@@ -5004,25 +5146,6 @@ function allowQaProSimulation() {
   return !isNativeAndroidApp() && isLocalQaHost();
 }
 
-function hasOwnerPwaUnlock() {
-  if (isNativeAndroidApp()) return false;
-  try {
-    return localStorage.getItem(OWNER_PWA_UNLOCK_KEY) === 'yes';
-  } catch (e) {
-    return false;
-  }
-}
-
-function applyOwnerPwaUnlockFromUrl() {
-  if (isNativeAndroidApp()) return;
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('owner') !== 'harsh') return;
-  try {
-    localStorage.setItem(OWNER_PWA_UNLOCK_KEY, 'yes');
-    localStorage.setItem('ledger_owner_pwa_unlocked_at', String(Date.now()));
-  } catch (e) {}
-}
-
 function getCapAheadBillingPlugin() {
   return window.Capacitor?.Plugins?.CapAheadBilling || null;
 }
@@ -5069,8 +5192,6 @@ function proLockHtml(reason = 'Unlock Pro for unlimited planning.') {
 function openProModal(reason) {
   const sub = document.getElementById('proModalSub');
   if (sub) sub.textContent = reason || 'Unlock Pro for unlimited planning.';
-  const devRow = document.getElementById('proDevRow');
-  if (devRow) devRow.classList.toggle('visible', allowQaProSimulation());
   openModal('proModal');
 }
 
@@ -5079,10 +5200,7 @@ async function syncProEntitlement(opts = {}) {
   billingState.error = null;
   const plugin = getCapAheadBillingPlugin();
   try {
-    if (hasOwnerPwaUnlock()) {
-      billingState.isPro = true;
-      billingState.source = 'owner_pwa_test';
-    } else if (plugin && typeof plugin.getEntitlement === 'function') {
+    if (plugin && typeof plugin.getEntitlement === 'function') {
       const result = await withTimeout(
         plugin.getEntitlement({ productId: PRO_PRODUCT_ID }),
         PRO_ENTITLEMENT_TIMEOUT_MS,
@@ -5122,7 +5240,7 @@ async function purchasePro(plan) {
       localStorage.setItem(PRO_DEV_UNLOCK_KEY, 'yes');
       await syncProEntitlement();
       closeModal('proModal');
-      showToast('Browser test Pro enabled');
+      showToast('QA Pro enabled');
       return;
     }
     showToast('Google Play Billing is not ready yet', 'warning');
@@ -5150,6 +5268,117 @@ function manageSubscription() {
   window.open(url, '_blank', 'noopener');
 }
 
+function getLocalNotificationsPlugin() {
+  return window.Capacitor?.Plugins?.LocalNotifications || window.Capacitor?.Plugins?.LocalNotification || null;
+}
+
+function alertSettingsSummary() {
+  const settings = state.alertSettings || {};
+  if (!settings.enabled) return 'Off';
+  if (settings.inAppOnly) return 'In-app only';
+  return settings.permission === 'granted' ? 'On' : 'Fallback';
+}
+
+function buildProAlertCandidates() {
+  const alerts = [];
+  const forecast = computeForecastSummary(60);
+  if (forecast.firstNegative) {
+    alerts.push({
+      id: 'cash_squeeze',
+      title: 'Cash squeeze ahead',
+      body: `You may be tight around ${formatDateLabel(forecast.firstNegative.date)}.`,
+    });
+  }
+  const upcomingBills = getUpcomingBills(7);
+  if (upcomingBills.length) {
+    const bill = upcomingBills[0];
+    alerts.push({
+      id: 'bill_due',
+      title: 'Bill due soon',
+      body: `${bill.name} is due ${formatDateLabel(bill.date)}. Check your set-aside before it hits.`,
+    });
+  }
+  const behindGoal = (state.savingsGoals || []).map(g => ({ goal: g, pace: computeGoalPace(g) })).find(x => x.pace?.onTrackStatus === 'behind');
+  if (behindGoal) {
+    alerts.push({
+      id: 'goal_coach',
+      title: 'Goal needs attention',
+      body: `${behindGoal.goal.name} needs about ${fmt(behindGoal.pace.weeklyPace)}/week to stay on track.`,
+    });
+  }
+  const subTotal = state.transactions.filter(t => t.type === 'expense' && t.category === 'subs').reduce((sum, t) => sum + t.amount, 0);
+  if (subTotal > 0) {
+    alerts.push({
+      id: 'subscription_watch',
+      title: 'Subscription check',
+      body: `Your subscription spending is worth reviewing before the next renewal cycle.`,
+    });
+  }
+  return alerts.slice(0, 4);
+}
+
+async function scheduleProAlerts() {
+  const plugin = getLocalNotificationsPlugin();
+  const alerts = buildProAlertCandidates();
+  if (!plugin || typeof plugin.schedule !== 'function') {
+    state.alertSettings = { enabled: true, permission: 'unavailable', inAppOnly: true, lastScheduledAt: Date.now() };
+    saveData();
+    showToast('Alerts enabled in-app');
+    renderProfile();
+    return false;
+  }
+  try {
+    let permission = 'granted';
+    if (typeof plugin.requestPermissions === 'function') {
+      const result = await plugin.requestPermissions();
+      permission = result?.display || result?.receive || result?.permission || 'denied';
+    }
+    if (permission !== 'granted') {
+      state.alertSettings = { enabled: true, permission: 'denied', inAppOnly: true, lastScheduledAt: Date.now() };
+      saveData();
+      showToast('Alerts enabled in-app');
+      renderProfile();
+      return false;
+    }
+    if (alerts.length) {
+      await plugin.schedule({
+        notifications: alerts.map((alert, index) => ({
+          id: 7000 + index,
+          title: alert.title,
+          body: alert.body,
+          schedule: { at: new Date(Date.now() + (index + 1) * 60000) },
+        })),
+      });
+    }
+    state.alertSettings = { enabled: true, permission: 'granted', inAppOnly: false, lastScheduledAt: Date.now() };
+    saveData();
+    showToast('Forecast alerts enabled');
+    renderProfile();
+    return true;
+  } catch (err) {
+    state.alertSettings = { enabled: true, permission: 'error', inAppOnly: true, lastScheduledAt: Date.now() };
+    saveData();
+    showToast('Alerts enabled in-app');
+    renderProfile();
+    return false;
+  }
+}
+
+async function toggleProAlerts() {
+  if (!isPro()) {
+    openProModal('Unlock Pro to get 60-day forecast alerts before tight spots happen.');
+    return;
+  }
+  if (state.alertSettings?.enabled) {
+    state.alertSettings = { enabled: false, permission: state.alertSettings.permission || 'unknown', inAppOnly: true, lastScheduledAt: Date.now() };
+    saveData();
+    showToast('Forecast alerts off');
+    renderProfile();
+    return;
+  }
+  await scheduleProAlerts();
+}
+
 async function toggleDevPro() {
   if (!allowQaProSimulation()) return;
   const next = localStorage.getItem(PRO_DEV_UNLOCK_KEY) === 'yes' ? 'no' : 'yes';
@@ -5157,7 +5386,7 @@ async function toggleDevPro() {
   else localStorage.removeItem(PRO_DEV_UNLOCK_KEY);
   await syncProEntitlement();
   closeModal('proModal');
-  showToast(isPro() ? 'Browser test Pro enabled' : 'Browser test Pro disabled');
+  showToast(isPro() ? 'QA Pro enabled' : 'QA Pro disabled');
 }
 
 function incomeSourcesSummary() {
@@ -5205,8 +5434,8 @@ function renderProfile() {
       isPro() ? '<span class="pro-badge">Pro</span>' : sectionAdd('Upgrade', 'openProModal'),
       `
         <div class="pro-card">
-          <div class="pro-card-title">${isPro() ? 'Your Pro plan is active' : 'Unlock unlimited planning'}</div>
-          <div class="pro-card-sub">${isPro() ? 'Unlimited goals, decisions, strategies, and future encrypted cloud sync are available.' : `Free includes core tracking, complete loan recording, basic forecast, and encrypted backup. Pro starts with a ${PRO_TRIAL_TEXT}, then ${PRO_PRICE_MONTHLY} or ${PRO_PRICE_YEARLY}.`}</div>
+          <div class="pro-card-title">${isPro() ? 'Your Pro plan is active' : 'Unlock foresight planning'}</div>
+          <div class="pro-card-sub">${isPro() ? 'What-if scenarios, forecast alerts, goal coaching, trends, loan strategy, and monthly reviews are available.' : `Free includes core tracking, complete loan recording, basic forecast, and encrypted backup. Pro starts with a ${PRO_TRIAL_TEXT}, then ${PRO_PRICE_MONTHLY} or ${PRO_PRICE_YEARLY}.`}</div>
         </div>
         <div class="setting-row" onclick="restorePurchase()">
           <span class="setting-label">Restore purchase</span>
@@ -5216,12 +5445,10 @@ function renderProfile() {
           <span class="setting-label">Manage subscription</span>
           <span class="setting-value">↗</span>
         </div>
-        ${allowQaProSimulation() ? `
-          <div class="setting-row" onclick="toggleDevPro()">
-            <span class="setting-label">Browser test Pro</span>
-            <span class="setting-value">${isPro() ? 'On' : 'Off'}</span>
-          </div>
-        ` : ''}
+        <div class="setting-row" onclick="toggleProAlerts()">
+          <span class="setting-label">Forecast alerts</span>
+          <span class="setting-value">${alertSettingsSummary()}</span>
+        </div>
       `
     )}
     ${profileGroupHtml(
@@ -5508,6 +5735,7 @@ function renderStats() {
   renderForecastChart();
   renderForecastSummaryCards();
   renderMonthlyReportCard();
+  renderAheadTrends();
   renderSmartInsights();
 }
 
@@ -5569,6 +5797,118 @@ function computeForecastSummary(daysAhead = 60) {
     nextLoan: loanEvents[0] || null,
     pressure,
   };
+}
+
+function monthKeyOf(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function addMonthsLocal(date, months) {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+function previousCompletedMonthKey() {
+  return monthKeyOf(addMonthsLocal(new Date(todayISO() + 'T00:00:00'), -1));
+}
+
+function buildMonthlySnapshot(monthKey) {
+  const [year, month] = monthKey.split('-').map(Number);
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 0);
+  const startISO = isoOf(start);
+  const endISO = isoOf(end);
+  const monthlyTx = state.transactions.filter(t => t.date >= startISO && t.date <= endISO);
+  const incomeTotal = monthlyTx.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+  const expenseTotal = monthlyTx.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  const categoryTotals = {};
+  monthlyTx.filter(t => t.type === 'expense').forEach(t => {
+    categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+  });
+  const balance = state.transactions
+    .filter(t => t.date <= endISO)
+    .reduce((sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount), 0);
+  const savingsTotal = (state.savings || [])
+    .filter(s => s.date <= endISO)
+    .reduce((sum, s) => sum + (s.type === 'deposit' ? s.amount : -s.amount), 0);
+  const debtTotal = (state.loans || []).reduce((sum, loan) => {
+    const paid = (loan.initialPaid || 0) + (loan.payments || [])
+      .filter(p => !p.date || p.date <= endISO)
+      .reduce((pSum, p) => pSum + (p.amount || 0), 0);
+    return sum + Math.max(0, (loan.total || 0) - paid);
+  }, 0);
+  return { month: monthKey, balance, savingsTotal, debtTotal, incomeTotal, expenseTotal, categoryTotals, createdAt: Date.now() };
+}
+
+function backfillMonthlySnapshots() {
+  if (!Array.isArray(state.monthlySnapshots)) state.monthlySnapshots = [];
+  const completedLimit = previousCompletedMonthKey();
+  const existing = new Set(state.monthlySnapshots.map(s => s.month));
+  let startKey = completedLimit;
+  if (state.monthlySnapshots.length) {
+    const sorted = [...state.monthlySnapshots].map(s => s.month).sort();
+    const last = sorted[sorted.length - 1];
+    const [year, month] = last.split('-').map(Number);
+    startKey = monthKeyOf(addMonthsLocal(new Date(year, month - 1, 1), 1));
+  }
+  let cursor = new Date(Number(startKey.slice(0, 4)), Number(startKey.slice(5, 7)) - 1, 1);
+  const toAdd = [];
+  while (monthKeyOf(cursor) <= completedLimit) {
+    const key = monthKeyOf(cursor);
+    if (!existing.has(key)) toAdd.push(buildMonthlySnapshot(key));
+    cursor = addMonthsLocal(cursor, 1);
+  }
+  if (toAdd.length) {
+    state.monthlySnapshots = [...state.monthlySnapshots, ...toAdd].sort((a, b) => a.month.localeCompare(b.month));
+    saveData();
+  }
+}
+
+function renderAheadTrends() {
+  const el = document.getElementById('aheadTrends');
+  if (!el) return;
+  const snapshots = [...(state.monthlySnapshots || [])].sort((a, b) => a.month.localeCompare(b.month));
+  const latest = snapshots[snapshots.length - 1] || null;
+  const prev = snapshots[snapshots.length - 2] || null;
+  const currentDebt = state.loans.reduce((sum, l) => sum + Math.max(0, (l.total || 0) - getLoanPaid(l)), 0);
+  const currentNet = getCurrentBalance() + getSavingsBalance() - currentDebt;
+  if (!isPro()) {
+    el.innerHTML = `
+      <div class="pro-preview-wrap">
+        <div class="pro-preview-content">
+          <div class="trend-grid">
+            ${forecastSummaryCard('Net progress', fmtSigned(currentNet))}
+            ${forecastSummaryCard('Snapshots', `${snapshots.length} saved`)}
+          </div>
+        </div>
+        <div class="pro-preview-lock">
+          ${proLockHtml('Unlock Pro to see month-over-month balance, savings, debt, and spending trends.')}
+        </div>
+      </div>
+    `;
+    return;
+  }
+  if (!latest) {
+    el.innerHTML = emptyState('Trends start after one full month', 'CapAhead will save a local month-end snapshot the next time a month completes.', { icon: 'trend-up' });
+    return;
+  }
+  const latestNet = latest.balance + latest.savingsTotal - latest.debtTotal;
+  const prevNet = prev ? prev.balance + prev.savingsTotal - prev.debtTotal : null;
+  const netChange = prev ? latestNet - prevNet : null;
+  const spendChange = prev ? latest.expenseTotal - prev.expenseTotal : null;
+  const debtChange = prev ? latest.debtTotal - prev.debtTotal : null;
+  const bestCategory = Object.entries(latest.categoryTotals || {}).sort((a, b) => b[1] - a[1])[0];
+  const bestCatName = bestCategory ? getCat(bestCategory[0], 'expense').name : 'No spend';
+  el.innerHTML = `
+    <div class="trend-grid">
+      <div class="trend-card"><span>Latest snapshot</span><strong>${escapeHtml(latest.month)}</strong></div>
+      <div class="trend-card"><span>Net progress</span><strong style="color:${latestNet >= 0 ? 'var(--income)' : 'var(--expense)'};">${fmtSigned(latestNet)}</strong></div>
+      <div class="trend-card"><span>Vs previous month</span><strong style="color:${netChange === null || netChange >= 0 ? 'var(--income)' : 'var(--expense)'};">${netChange === null ? 'First month' : fmtSigned(netChange)}</strong></div>
+      <div class="trend-card"><span>Spending change</span><strong style="color:${spendChange === null || spendChange <= 0 ? 'var(--income)' : 'var(--expense)'};">${spendChange === null ? 'First month' : fmtSigned(spendChange)}</strong></div>
+      <div class="trend-card"><span>Debt change</span><strong style="color:${debtChange === null || debtChange <= 0 ? 'var(--income)' : 'var(--expense)'};">${debtChange === null ? 'First month' : fmtSigned(debtChange)}</strong></div>
+      <div class="trend-card"><span>Top category</span><strong>${escapeHtml(bestCatName)}${bestCategory ? ' ' + fmt(bestCategory[1]) : ''}</strong></div>
+    </div>
+    <div class="scenario-note">Snapshots stay on this device and are included in encrypted backups.</div>
+  `;
 }
 
 function renderForecastSummaryCards() {
@@ -10377,6 +10717,8 @@ function buildSmartInsightItems() {
     insights.push({
       icon: categoryIconSvg('play-square', 'Subscriptions'),
       text: `<strong>Subscriptions:</strong> ${fmt(subTotal)} in the last 30 days, about ${fmt(subTotal * 12)} per year.`,
+      actionLabel: 'Create scenario',
+      action: `openScenarioModal({type:'cancel_expense',amount:${Math.round(subTotal)},name:'Cancel or trim subscriptions'})`,
     });
   }
 
@@ -10395,6 +10737,8 @@ function buildSmartInsightItems() {
     insights.push({
       icon: categoryIcon(cat),
       text: `<strong>Top category this month:</strong> ${escapeHtml(cat.name)} at ${fmt(amount)}.`,
+      actionLabel: 'Reduce spend',
+      action: `openScenarioModal({type:'reduce_spend',amount:${Math.max(10, Math.round(amount / 4))},name:'Reduce ${escapeHtml(cat.name)} spend'})`,
     });
   }
 
@@ -10423,6 +10767,8 @@ function buildSmartInsightItems() {
     insights.push({
       icon: categoryIconSvg('wallet', 'Cash buffer'),
       text: `<strong>Cash buffer:</strong> ${Math.floor(balance / avgDaily)} days of spending at current pace.`,
+      actionLabel: 'Test a purchase',
+      action: `openScenarioModal({type:'purchase',name:'Test a purchase'})`,
     });
   }
 
@@ -10470,6 +10816,18 @@ function renderSmartInsights() {
     });
     return;
   }
+
+  const smartItems = buildSmartInsightItems();
+  list.innerHTML = smartItems.length ? smartItems.map(i => `
+    <div class="insight-item">
+      <div class="insight-icon">${i.icon}</div>
+      <div class="insight-body">
+        ${i.text}
+        ${i.actionLabel && i.action ? `<div class="insight-action-row"><button class="mini-action primary" type="button" onclick="${i.action}">${escapeHtml(i.actionLabel)}</button></div>` : ''}
+      </div>
+    </div>
+  `).join('') : emptyState('No major patterns yet', 'CapAhead will surface subscriptions, spending changes, and cash buffer opportunities as your history grows.', { icon: 'trend-up' });
+  return;
   
   // 0. Interest paid YTD (the wake-up number)
   const interestYTD = getInterestPaidYTD();
@@ -10567,6 +10925,251 @@ function renderSmartInsights() {
       <div class="insight-body">${i.text}</div>
     </div>
   `).join('');
+}
+
+/* ============================================================
+   PRO FORESIGHT: WHAT-IF SCENARIOS
+   ============================================================ */
+
+const SCENARIO_TYPES = [
+  { id: 'purchase', title: 'Buy something', hint: 'One-off purchase today' },
+  { id: 'loan', title: 'Take a loan', hint: 'Adds estimated repayments' },
+  { id: 'cancel_expense', title: 'Cancel bill', hint: 'Monthly amount freed up' },
+  { id: 'reduce_spend', title: 'Reduce spend', hint: 'Weekly spending cut' },
+  { id: 'increase_saving', title: 'Boost goal', hint: 'Weekly extra saved' },
+];
+
+function openScenarioModal(prefill = {}) {
+  state.selectedScenarioType = prefill.type || 'purchase';
+  state.pendingScenario = null;
+  renderScenarioTypeGrid();
+  populateScenarioGoals(prefill.goalId || '');
+  document.getElementById('inpScenarioName').value = prefill.name || '';
+  document.getElementById('inpScenarioAmount').value = prefill.amount ? String(prefill.amount) : '';
+  document.getElementById('scenarioInputView').style.display = 'block';
+  document.getElementById('scenarioResultView').style.display = 'none';
+  document.getElementById('scenarioResult').innerHTML = '';
+  openModal('scenarioModal', '#inpScenarioName');
+}
+
+function resetScenarioModal() {
+  state.pendingScenario = null;
+  document.getElementById('scenarioInputView').style.display = 'block';
+  document.getElementById('scenarioResultView').style.display = 'none';
+  document.getElementById('scenarioResult').innerHTML = '';
+}
+
+function renderScenarioTypeGrid() {
+  const grid = document.getElementById('scenarioTypeGrid');
+  if (!grid) return;
+  grid.innerHTML = SCENARIO_TYPES.map(type => `
+    <button class="scenario-type ${state.selectedScenarioType === type.id ? 'active' : ''}" type="button" onclick="selectScenarioType('${type.id}')">
+      <strong>${escapeHtml(type.title)}</strong>
+      <span>${escapeHtml(type.hint)}</span>
+    </button>
+  `).join('');
+}
+
+function selectScenarioType(type) {
+  state.selectedScenarioType = type;
+  renderScenarioTypeGrid();
+}
+
+function populateScenarioGoals(selectedId = '') {
+  const select = document.getElementById('inpScenarioGoal');
+  if (!select) return;
+  select.innerHTML = '<option value="">No specific goal</option>' +
+    (state.savingsGoals || []).map(g => `<option value="${g.id}" ${g.id === selectedId ? 'selected' : ''}>${escapeHtml(g.name)}</option>`).join('');
+}
+
+function scenarioTypeLabel(type) {
+  const found = SCENARIO_TYPES.find(t => t.id === type);
+  return found ? found.title : 'Scenario';
+}
+
+function summarizeScenarioForecast(points) {
+  const lowest = points.reduce((min, p) => p.balance < min.balance ? p : min, points[0]);
+  const firstNegative = points.find(p => p.balance < 0) || null;
+  return { lowest, firstNegative, final: points[points.length - 1] || null };
+}
+
+function computeScenarioForecast(type, amount, daysAhead = 60) {
+  const today = new Date(todayISO() + 'T00:00:00');
+  const incomeEvents = getUpcomingPayEvents(daysAhead);
+  const bills = getUpcomingBills(daysAhead);
+  const loanEvents = getUpcomingLoanPayments(daysAhead);
+  const avgDaily = getAvgDailyExpense();
+  let balance = getCurrentBalance();
+  const points = [];
+  const loanMonthly = type === 'loan' ? Math.max(50, amount / 24) : 0;
+  const dailyBoost = type === 'cancel_expense' ? amount / 30 : type === 'reduce_spend' ? amount / 7 : 0;
+  const dailyCost = type === 'increase_saving' ? amount / 7 : 0;
+
+  for (let i = 1; i <= daysAhead; i++) {
+    const d = addDays(today, i);
+    const dISO = isoOf(d);
+    const incomeToday = incomeEvents.filter(e => e.date === dISO).reduce((s, e) => s + e.amount, 0);
+    const billsToday = bills.filter(b => b.date === dISO).reduce((s, b) => s + b.amount, 0);
+    const loansToday = loanEvents.filter(e => e.date === dISO).reduce((s, e) => s + e.amount, 0);
+    let scenarioDelta = dailyBoost - dailyCost;
+    if (type === 'purchase' && i === 1) scenarioDelta -= amount;
+    if (type === 'loan' && (i === 30 || i === 60)) scenarioDelta -= loanMonthly;
+    balance += incomeToday - billsToday - loansToday - avgDaily + scenarioDelta;
+    points.push({ date: dISO, balance, isProjection: true });
+  }
+  return points;
+}
+
+function computeScenarioGoalImpact(type, amount, goalId) {
+  const goal = goalId
+    ? (state.savingsGoals || []).find(g => g.id === goalId)
+    : (state.savingsGoals || []).filter(g => g.deadline && g.target > 0).sort((a, b) => a.deadline.localeCompare(b.deadline))[0];
+  if (!goal) return null;
+  const pace = computeGoalPace(goal);
+  if (!pace) return null;
+  if (type === 'increase_saving' || type === 'reduce_spend' || type === 'cancel_expense') {
+    const extraWeekly = type === 'cancel_expense' ? cycleToWeekly(amount, 'monthly') : amount;
+    const currentWeeks = pace.weeksLeft;
+    const newWeeks = Math.max(1, Math.ceil(pace.remaining / Math.max(1, pace.weeklyPace + extraWeekly)));
+    return {
+      goalId: goal.id,
+      goalName: goal.name,
+      mode: 'improve',
+      days: Math.max(0, (currentWeeks - newWeeks) * 7),
+      currentWeekly: pace.weeklyPace,
+      newWeekly: pace.weeklyPace + extraWeekly,
+    };
+  }
+  const extraWeeks = Math.ceil(amount / Math.max(1, pace.weeklyPace));
+  return {
+    goalId: goal.id,
+    goalName: goal.name,
+    mode: 'delay',
+    days: extraWeeks * 7,
+    currentWeekly: pace.weeklyPace,
+    newWeekly: pace.weeklyPace,
+  };
+}
+
+function runScenarioPlanner() {
+  const amount = parseFloat(document.getElementById('inpScenarioAmount').value);
+  const name = document.getElementById('inpScenarioName').value.trim() || scenarioTypeLabel(state.selectedScenarioType);
+  const goalId = document.getElementById('inpScenarioGoal').value || null;
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'warning'); return; }
+
+  const baseline = computeBalanceForecast(60).filter(p => p.isProjection);
+  const scenarioPoints = computeScenarioForecast(state.selectedScenarioType, amount, 60);
+  const baseSummary = summarizeScenarioForecast(baseline);
+  const scenarioSummary = summarizeScenarioForecast(scenarioPoints);
+  const goalImpact = computeScenarioGoalImpact(state.selectedScenarioType, amount, goalId);
+  state.pendingScenario = {
+    id: uid('scenario'),
+    scenarioType: state.selectedScenarioType,
+    what: name,
+    amount,
+    date: todayISO(),
+    zone: scenarioSummary.firstNegative ? 'red' : scenarioSummary.lowest.balance < getCurrentReservedAmount() ? 'yellow' : 'green',
+    title: `${scenarioTypeLabel(state.selectedScenarioType)} scenario`,
+    baseline: baseSummary,
+    scenario: scenarioSummary,
+    goalImpact,
+    createdAt: Date.now(),
+  };
+  document.getElementById('scenarioResult').innerHTML = renderScenarioResult(state.pendingScenario);
+  document.getElementById('scenarioInputView').style.display = 'none';
+  document.getElementById('scenarioResultView').style.display = 'block';
+}
+
+function renderScenarioResult(result) {
+  const base = result.baseline;
+  const after = result.scenario;
+  const lowestDelta = after.lowest.balance - base.lowest.balance;
+  const finalDelta = after.final.balance - base.final.balance;
+  if (!isPro()) {
+    return `
+      <div class="pro-preview-wrap">
+        <div class="pro-preview-content">
+          <div class="scenario-result-card">
+            <strong>${escapeHtml(result.what)}</strong>
+            <div class="scenario-note">Basic check complete. Pro shows the full 60-day scenario impact, risk date change, and goal movement.</div>
+          </div>
+          <div class="scenario-compare">
+            ${forecastSummaryCard('Current lowest', `${fmt(base.lowest.balance)} on ${formatDateLabel(base.lowest.date)}`)}
+            ${forecastSummaryCard('Scenario lowest', 'Pro detail')}
+          </div>
+        </div>
+        <div class="pro-preview-lock">
+          ${proLockHtml('Unlock Pro to compare this scenario against your 60-day forecast and goals.')}
+        </div>
+      </div>
+    `;
+  }
+  const goalText = result.goalImpact
+    ? result.goalImpact.mode === 'improve'
+      ? `${escapeHtml(result.goalImpact.goalName)} could move forward by about ${result.goalImpact.days} day${result.goalImpact.days === 1 ? '' : 's'}.`
+      : `${escapeHtml(result.goalImpact.goalName)} could move back by about ${result.goalImpact.days} day${result.goalImpact.days === 1 ? '' : 's'}.`
+    : 'No deadline goal selected.';
+  return `
+    <div class="scenario-result-card">
+      <strong>${escapeHtml(result.what)} · ${fmt(result.amount)}</strong>
+      <div class="scenario-note">${escapeHtml(scenarioTypeLabel(result.scenarioType))}. Your decision stays yours; this is the cash-flow view before you choose.</div>
+    </div>
+    <div class="scenario-compare">
+      ${forecastSummaryCard('Lowest point now', `${fmt(base.lowest.balance)} on ${formatDateLabel(base.lowest.date)}`)}
+      ${forecastSummaryCard('Lowest point after', `${fmt(after.lowest.balance)} on ${formatDateLabel(after.lowest.date)}`)}
+      ${forecastSummaryCard('Lowest change', fmtSigned(lowestDelta))}
+      ${forecastSummaryCard('60-day change', fmtSigned(finalDelta))}
+      ${forecastSummaryCard('Risk date now', base.firstNegative ? formatDateLabel(base.firstNegative.date) : 'None projected')}
+      ${forecastSummaryCard('Risk date after', after.firstNegative ? formatDateLabel(after.firstNegative.date) : 'None projected')}
+    </div>
+    <div class="scenario-result-card" style="margin-top:10px;">
+      <strong>Goal impact</strong>
+      <span>${goalText}</span>
+    </div>
+  `;
+}
+
+function saveScenarioDecision() {
+  if (!state.pendingScenario) return;
+  if (!canCreateFreeLimitedItem('decisions')) {
+    closeModal('scenarioModal');
+    openProModal('Free saves 5 decisions or scenarios. Unlock Pro for unlimited scenario history.');
+    return;
+  }
+  const s = state.pendingScenario;
+  state.decisions.push({
+    id: uid('dec'),
+    what: s.what,
+    amount: s.amount,
+    date: s.date,
+    action: 'scenario',
+    zone: s.zone,
+    title: s.title,
+    scenarioType: s.scenarioType,
+    projectionSnapshot: {
+      lowPointDate: s.scenario.lowest.date,
+      lowPointBalance: s.scenario.lowest.balance,
+      firstNegativeDate: s.scenario.firstNegative?.date || null,
+      fourteenDayBalance: s.scenario.final?.balance ?? null,
+    },
+    goalImpact: s.goalImpact ? {
+      goalId: s.goalImpact.goalId,
+      goalName: s.goalImpact.goalName,
+      delayDays: s.goalImpact.mode === 'delay' ? s.goalImpact.days : 0,
+      improveDays: s.goalImpact.mode === 'improve' ? s.goalImpact.days : 0,
+      newWeeklyPace: s.goalImpact.newWeekly,
+    } : null,
+    createdAt: Date.now(),
+  });
+  saveData();
+  state.pendingScenario = null;
+  closeModal('scenarioModal');
+  showToast('Scenario saved');
+}
+
+function boostGoalScenario(goalId, amount, name) {
+  const goal = (state.savingsGoals || []).find(g => g.id === goalId);
+  openScenarioModal({ type: 'increase_saving', amount, goalId, name: name || `Boost ${goal ? goal.name : 'this goal'}` });
 }
 
 /* ============================================================
@@ -10826,7 +11429,7 @@ function renderDecisions() {
             <div class="decision-what">${escapeHtml(d.what || 'Unnamed purchase')} &middot; ${fmt(d.amount)}</div>
             <div class="decision-meta">${formatDateLabel(d.date)}</div>
           </div>
-          <span class="decision-verdict-dot ${d.zone}">${d.action === 'yes' ? 'Bought' : 'Skipped'}</span>
+          <span class="decision-verdict-dot ${d.zone}">${d.action === 'scenario' ? 'Scenario' : d.action === 'yes' ? 'Bought' : 'Skipped'}</span>
         </div>
         <div class="decision-outcome">${escapeHtml(d.title || legacyTitle)}</div>
         ${snapshot ? `
@@ -10835,7 +11438,7 @@ function renderDecisions() {
             <span>14 days<strong>${fmtSigned(snapshot.fourteenDayBalance)}</strong></span>
             <span>Lowest point<strong>${fmtSigned(snapshot.lowPointBalance)}${snapshot.lowPointDate ? ' - ' + formatDateLabel(snapshot.lowPointDate) : ''}</strong></span>
             <span>Negative date<strong>${snapshot.firstNegativeDate ? formatDateLabel(snapshot.firstNegativeDate) : 'None projected'}</strong></span>
-            ${d.goalImpact ? `<span>Goal delay<strong>${d.goalImpact.delayDays || 0} day${d.goalImpact.delayDays === 1 ? '' : 's'}</strong></span>` : ''}
+            ${d.goalImpact ? `<span>${d.goalImpact.improveDays ? 'Goal boost' : 'Goal delay'}<strong>${d.goalImpact.improveDays || d.goalImpact.delayDays || 0} day${(d.goalImpact.improveDays || d.goalImpact.delayDays || 0) === 1 ? '' : 's'}</strong></span>` : ''}
           </div>
         ` : ''}
       </div>
@@ -11122,7 +11725,12 @@ function renderSavingsPage() {
         }
         
         if (!isDone && pace && pace.daysLeft > 0) {
-          pacingStr = `<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">📍 Save ~<strong style="color:var(--text);">${fmt(pace.weeklyPace)}/week</strong> to hit target</div>`;
+          pacingStr = `
+            <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">Save ~<strong style="color:var(--text);">${fmt(pace.weeklyPace)}/week</strong> to hit target</div>
+            <div class="insight-action-row">
+              <button class="mini-action primary" type="button" onclick="event.stopPropagation();boostGoalScenario('${g.id}', ${Math.max(1, Math.round(pace.weeklyPace))})">Boost this goal</button>
+            </div>
+          `;
           
           // On-track status badge
           if (pace.onTrackStatus === 'ahead') {
@@ -12666,13 +13274,13 @@ function init() {
   autoCacheBust();  // may redirect — if it does, the rest doesn't matter
 
   ensureSavingsCategory();  // v2.4: register savings category
-  applyOwnerPwaUnlockFromUrl();
   loadData();
   initBilling().then(() => renderAllSafely('billing-init')); // Google Play Pro entitlement, with browser QA fallback
   takeAutoSnapshot();      // Snapshot AFTER load (preserves loaded state)
   checkVersionChange();    // Toast if updated
   setupManifest();
   runAutoLog();            // Generate any due transactions
+  backfillMonthlySnapshots();
   renderAllSafely('init');
   initA11y();
   showInstallBannerIfNeeded();
