@@ -111,7 +111,7 @@ async function expectBodyContains(page, text) {
     await page.locator('#inpAffordAmount').fill('25');
     await page.locator('#inpAffordWhat').fill('QA purchase');
     await page.locator('button').filter({ hasText: 'Run Check' }).click();
-    await page.locator('button').filter({ hasText: "I'll wait / skip" }).click();
+    await page.locator('#affordResultView button').filter({ hasText: "I'll wait / skip" }).click();
     await expectBodyContains(page, 'Free saves 5 affordability decisions');
     await page.locator('#proModal button').filter({ hasText: 'Not now' }).click();
     const decisionCountStillFive = await page.evaluate(() => state.decisions.length === 5);

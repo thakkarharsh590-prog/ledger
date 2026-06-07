@@ -1415,6 +1415,62 @@
     line-height: 1.5;
     background: rgba(201,255,61,0.04);
   }
+  .pro-preview-wrap {
+    position: relative;
+    overflow: hidden;
+  }
+  .pro-preview-content {
+    filter: blur(3px);
+    opacity: 0.55;
+    pointer-events: none;
+    user-select: none;
+  }
+  .pro-preview-lock {
+    position: absolute;
+    inset: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .forecast-summary-grid,
+  .report-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .forecast-summary-card,
+  .report-summary-card {
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--surface-overlay);
+    border: 1px solid var(--border);
+  }
+  .forecast-summary-card span,
+  .report-summary-card span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .forecast-summary-card strong,
+  .report-summary-card strong {
+    display: block;
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.35;
+  }
+  .report-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .monthly-report-page {
+    display: none;
+  }
 
   /* Toggle */
   .toggle-row {
@@ -2817,6 +2873,83 @@
     background: rgba(201,255,61,0.12);
     color: var(--accent);
   }
+
+  @media print {
+    body {
+      background: #ffffff !important;
+      color: #111827 !important;
+      padding: 0 !important;
+    }
+    .topbar,
+    .bottom-nav,
+    .page,
+    .modal-backdrop,
+    .toast,
+    .backup-warn,
+    .tour-overlay {
+      display: none !important;
+    }
+    .monthly-report-page {
+      display: block !important;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 18mm 12mm;
+      font-family: Arial, sans-serif;
+      color: #111827;
+      background: #ffffff;
+    }
+    .monthly-report-page h1 {
+      font-size: 28px;
+      margin: 0 0 4px;
+      line-height: 1.15;
+    }
+    .monthly-report-page h2 {
+      font-size: 16px;
+      margin: 22px 0 8px;
+      page-break-after: avoid;
+    }
+    .monthly-report-page p,
+    .monthly-report-page li {
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .report-print-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 16px 0;
+    }
+    .report-print-card {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 10px;
+      page-break-inside: avoid;
+    }
+    .report-print-card span {
+      display: block;
+      color: #6b7280;
+      font-size: 10px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .report-print-card strong {
+      display: block;
+      font-size: 16px;
+    }
+    .report-print-section {
+      border-top: 1px solid #e5e7eb;
+      padding-top: 8px;
+      page-break-inside: avoid;
+    }
+    .report-privacy-note {
+      border: 1px solid #f59e0b;
+      background: #fffbeb;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      margin: 14px 0;
+    }
+  }
   
   /* Weekly Plan card */
   .weekly-plan-toggle {
@@ -3116,7 +3249,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">CapAhead</span>
-    <span class="version-tag" id="versionTag">v2.9.5</span>
+    <span class="version-tag" id="versionTag">v2.9.6</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme" aria-label="Dark theme">
@@ -3196,13 +3329,26 @@
   
   <!-- v2.6: Forecast chart -->
   <div class="forecast-chart-wrap">
-    <div style="font-size:13px;font-weight:500;margin-bottom:4px;">📈 Balance forecast</div>
-    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Last 30 days + projected next 60</div>
+    <div style="font-size:13px;font-weight:500;margin-bottom:4px;">60-Day Cashflow Forecast <span class="pro-badge">Pro</span></div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Projected balance, paydays, bills, loan payments, and risk dates.</div>
     <div class="forecast-toggle">
       <button class="fc-tab active" data-mode="line" onclick="setForecastMode('line')">Line</button>
       <button class="fc-tab" data-mode="bars" onclick="setForecastMode('bars')">Bars</button>
     </div>
     <div id="forecastChartContainer"></div>
+    <div id="forecastSummaryCards"></div>
+  </div>
+
+  <div class="forecast-chart-wrap">
+    <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Monthly Review PDF <span class="pro-badge">Pro</span></div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">A local report you can save as PDF for this month so far.</div>
+    <div id="monthlyReportCard"></div>
+  </div>
+
+  <div class="forecast-chart-wrap">
+    <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Smart Insights <span class="pro-badge">Pro</span></div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Patterns, subscriptions, cash buffer, and debt signals from your data.</div>
+    <div id="smartInsights"></div>
   </div>
   
   <div class="stat-grid">
@@ -3321,21 +3467,9 @@
       </div>
     </div>
   </div>
-  
-  <div class="compass-card">
-    <div class="compass-card-title">Cash Flow Forecast</div>
-    <div class="compass-card-sub">Predicted balance over next 30 days</div>
-    <div class="forecast-chart" id="forecastChart"></div>
-    <div class="forecast-legend" id="forecastLegend"></div>
-    <div id="forecastConfidence"></div>
-  </div>
-  
-  <div class="compass-card">
-    <div class="compass-card-title">Smart Insights</div>
-    <div class="compass-card-sub">Patterns from your data</div>
-    <div id="smartInsights"></div>
-  </div>
 </div>
+
+<div id="monthlyReportPrintRoot" class="monthly-report-page" aria-hidden="true"></div>
 
 <!-- DECISION HISTORY PAGE -->
 <div class="page" id="page-decisions">
@@ -3356,7 +3490,7 @@
       <span class="profile-name" id="profileName">Set your name</span>
       <button class="profile-edit-btn" onclick="openNameModal()" title="Edit name">✏</button>
     </div>
-    <div class="profile-version">CapAhead v<span id="profileVersion">2.9.5</span></div>
+    <div class="profile-version">CapAhead v<span id="profileVersion">2.9.6</span></div>
   </div>
 
   <div id="profileContent"></div>
@@ -4002,7 +4136,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.9.5';
+const APP_VERSION = '2.9.6';
 const SCHEMA_VERSION = 9;
 const STORAGE_KEY = 'ledger_data_v1';
 const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1';
@@ -5371,7 +5505,275 @@ function renderStats() {
 
   renderWeekChart();
   renderCategoryBreakdown();
-  renderForecastChart();   // v2.6
+  renderForecastChart();
+  renderForecastSummaryCards();
+  renderMonthlyReportCard();
+  renderSmartInsights();
+}
+
+function computeForecastConfidence() {
+  const hasIncome = state.incomeSources.some(src => src.cycle !== 'irregular' && src.nextPay);
+  const hasBills = state.recurringExpenses.some(rec => rec.active && rec.nextDue);
+  const dataDays = getDataDays();
+  const txCount = state.transactions.length;
+  if (hasIncome && hasBills && dataDays >= 30 && txCount >= 20) {
+    return {
+      level: 'High',
+      detail: 'Your income, main bills, and enough transaction history are set up.',
+    };
+  }
+  if ((hasIncome || hasBills) && dataDays >= 7 && txCount >= 8) {
+    return {
+      level: 'Medium',
+      detail: 'Some income, bill, or transaction history is available, but the forecast can improve.',
+    };
+  }
+  return {
+    level: 'Low',
+    detail: 'Add income sources, recurring bills, and more transactions for sharper projections.',
+  };
+}
+
+function computeForecastSummary(daysAhead = 60) {
+  const points = computeBalanceForecast(daysAhead).filter(p => p.isProjection);
+  const payEvents = getUpcomingPayEvents(daysAhead);
+  const billEvents = getUpcomingBills(daysAhead);
+  const loanEvents = getUpcomingLoanPayments(daysAhead);
+  const confidence = computeForecastConfidence();
+  if (!points.length) {
+    return {
+      confidence,
+      lowest: null,
+      firstNegative: null,
+      nextPay: payEvents[0] || null,
+      nextBill: billEvents[0] || null,
+      nextLoan: loanEvents[0] || null,
+      pressure: 'Add transactions to build a 60-day forecast.',
+    };
+  }
+  const lowest = points.reduce((min, p) => p.balance < min.balance ? p : min, points[0]);
+  const firstNegative = points.find(p => p.balance < 0) || null;
+  const upcomingOut = [...billEvents.map(e => ({ ...e, kind: 'bill' })), ...loanEvents.map(e => ({ ...e, kind: 'loan' }))]
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const nextPay = payEvents[0] || null;
+  const nextBill = upcomingOut[0] || null;
+  const pressure = firstNegative
+    ? `Risk: balance may go below zero on ${formatDateLabel(firstNegative.date)}.`
+    : `Lowest projected point is ${fmt(lowest.balance)} on ${formatDateLabel(lowest.date)}.`;
+  return {
+    confidence,
+    lowest,
+    firstNegative,
+    nextPay,
+    nextBill,
+    nextLoan: loanEvents[0] || null,
+    pressure,
+  };
+}
+
+function renderForecastSummaryCards() {
+  const el = document.getElementById('forecastSummaryCards');
+  if (!el) return;
+  const summary = computeForecastSummary(60);
+  if (!isPro()) {
+    el.innerHTML = `
+      <div class="forecast-summary-grid pro-preview-wrap">
+        <div class="pro-preview-content">
+          ${forecastSummaryCard('Lowest point', summary.lowest ? `${fmt(summary.lowest.balance)} on ${formatDateLabel(summary.lowest.date)}` : 'Needs more data')}
+          ${forecastSummaryCard('Risk date', summary.firstNegative ? formatDateLabel(summary.firstNegative.date) : 'No negative dip projected')}
+          ${forecastSummaryCard('Next pressure', summary.nextBill ? `${escapeHtml(summary.nextBill.name)} ${fmt(summary.nextBill.amount)}` : 'No bill pressure set')}
+          ${forecastSummaryCard('Confidence', `${summary.confidence.level}: ${summary.confidence.detail}`)}
+        </div>
+      </div>
+    `;
+    return;
+  }
+  el.innerHTML = `
+    <div class="forecast-summary-grid">
+      ${forecastSummaryCard('Lowest point', summary.lowest ? `${fmt(summary.lowest.balance)} on ${formatDateLabel(summary.lowest.date)}` : 'Needs more data')}
+      ${forecastSummaryCard('Risk date', summary.firstNegative ? formatDateLabel(summary.firstNegative.date) : 'No negative dip projected')}
+      ${forecastSummaryCard('Next pressure', summary.nextBill ? `${escapeHtml(summary.nextBill.name)} ${fmt(summary.nextBill.amount)}` : 'No upcoming bills or loan payments')}
+      ${forecastSummaryCard('Confidence', `${summary.confidence.level}: ${summary.confidence.detail}`)}
+    </div>
+  `;
+}
+
+function forecastSummaryCard(label, value) {
+  return `<div class="forecast-summary-card"><span>${escapeHtml(label)}</span><strong>${value}</strong></div>`;
+}
+
+function renderMonthlyReportCard() {
+  const el = document.getElementById('monthlyReportCard');
+  if (!el) return;
+  const data = buildMonthlyReviewData();
+  if (!isPro()) {
+    el.innerHTML = `
+      <div class="pro-preview-wrap">
+        <div class="pro-preview-content">
+          <div class="report-summary-grid">
+            ${reportSummaryCard('Month', data.monthLabel)}
+            ${reportSummaryCard('Spare cash', fmtSigned(data.net))}
+            ${reportSummaryCard('Top category', data.topCategories[0] ? `${escapeHtml(data.topCategories[0].name)} ${fmt(data.topCategories[0].amount)}` : 'No spending yet')}
+            ${reportSummaryCard('Backup', escapeHtml(data.backupStatus))}
+          </div>
+        </div>
+        <div class="pro-preview-lock">
+          ${proLockHtml('Unlock Pro to download a monthly review PDF with income, spending, goals, loans, decisions, and forecast risk.')}
+        </div>
+      </div>
+    `;
+    return;
+  }
+  el.innerHTML = `
+    <div class="report-summary-grid">
+      ${reportSummaryCard('Month', data.monthLabel)}
+      ${reportSummaryCard('Spare cash', fmtSigned(data.net))}
+      ${reportSummaryCard('Top category', data.topCategories[0] ? `${escapeHtml(data.topCategories[0].name)} ${fmt(data.topCategories[0].amount)}` : 'No spending yet')}
+      ${reportSummaryCard('Backup', escapeHtml(data.backupStatus))}
+    </div>
+    <div class="report-actions">
+      <button class="btn-primary" type="button" onclick="openMonthlyReviewReport()">Download monthly review</button>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);line-height:1.45;margin-top:10px;">This report contains personal finance data. Keep the file somewhere safe.</div>
+  `;
+}
+
+function reportSummaryCard(label, value) {
+  return `<div class="report-summary-card"><span>${escapeHtml(label)}</span><strong>${value}</strong></div>`;
+}
+
+function buildMonthlyReviewData() {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthStartISO = isoOf(monthStart);
+  const monthLabel = now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const daysIntoMonth = Math.max(1, now.getDate());
+  const monthlyTx = state.transactions.filter(t => t.date >= monthStartISO);
+  const income = monthlyTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const expenses = monthlyTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const net = income - expenses;
+  const categoryTotals = {};
+  monthlyTx.filter(t => t.type === 'expense').forEach(t => {
+    categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+  });
+  const topCategories = Object.entries(categoryTotals)
+    .map(([id, amount]) => ({ id, name: getCat(id, 'expense').name, amount }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 5);
+  const activeBills = state.recurringExpenses.filter(r => r.active);
+  const goals = (state.savingsGoals || []).map(goal => ({
+    name: goal.name,
+    target: goal.target || 0,
+    progress: getGoalProgress(goal),
+    pace: computeGoalPace(goal),
+  }));
+  const activeLoans = state.loans.filter(l => getLoanPaid(l) < l.total);
+  const decisions = state.decisions.filter(d => d.date >= monthStartISO);
+  const forecast = computeForecastSummary(60);
+  return {
+    monthLabel,
+    periodLabel: daysIntoMonth < 25 ? 'This month so far' : 'Monthly review',
+    generatedAt: new Date().toLocaleString(),
+    income,
+    expenses,
+    net,
+    balance: getCurrentBalance(),
+    avgDaily: getAvgDailyExpense(),
+    topCategories,
+    activeBills,
+    goals,
+    activeLoans,
+    decisions,
+    smartInsights: collectSmartInsightTexts(),
+    backupStatus: encryptedBackupSummary(),
+    forecast,
+  };
+}
+
+function collectSmartInsightTexts() {
+  if (state.transactions.length < 10) return ['Insights need a little more history.'];
+  const items = buildSmartInsightItems().map(item => stripHtml(item.text)).filter(Boolean);
+  return items.length ? items : ['No major patterns detected yet.'];
+}
+
+function renderListOrEmpty(items, emptyText, renderItem) {
+  if (!items || !items.length) return `<p>${escapeHtml(emptyText)}</p>`;
+  return `<ul>${items.map(renderItem).join('')}</ul>`;
+}
+
+function renderMonthlyReviewReportHtml(data) {
+  return `
+    <h1>CapAhead Monthly Review</h1>
+    <p>${escapeHtml(data.periodLabel)} - ${escapeHtml(data.monthLabel)} - Generated ${escapeHtml(data.generatedAt)}</p>
+    <div class="report-privacy-note">This report contains personal finance data. Keep this file somewhere safe.</div>
+    <div class="report-print-grid">
+      ${printCard('Income', fmt(data.income))}
+      ${printCard('Expenses', fmt(data.expenses))}
+      ${printCard('Spare', fmtSigned(data.net))}
+      ${printCard('Balance', fmt(data.balance))}
+      ${printCard('Avg daily spend', fmt(data.avgDaily))}
+      ${printCard('Forecast confidence', `${data.forecast.confidence.level}: ${data.forecast.confidence.detail}`)}
+    </div>
+    ${printSection('60-day forecast', `
+      <p>${escapeHtml(data.forecast.pressure)}</p>
+      <p>Next pay: ${data.forecast.nextPay ? `${escapeHtml(data.forecast.nextPay.name)} ${fmt(data.forecast.nextPay.amount)} on ${formatDateLabel(data.forecast.nextPay.date)}` : 'No upcoming pay event set.'}</p>
+      <p>Next pressure: ${data.forecast.nextBill ? `${escapeHtml(data.forecast.nextBill.name)} ${fmt(data.forecast.nextBill.amount)} on ${formatDateLabel(data.forecast.nextBill.date)}` : 'No upcoming bill or loan pressure set.'}</p>
+    `)}
+    ${printSection('Top spending categories', renderListOrEmpty(data.topCategories, 'No spending categories yet this month.', c => `<li>${escapeHtml(c.name)}: ${fmt(c.amount)}</li>`))}
+    ${printSection('Recurring bills', renderListOrEmpty(data.activeBills, 'No active recurring bills set.', b => `<li>${escapeHtml(b.name)}: ${fmt(cycleToMonthly(b.amount, b.cycle))}/month</li>`))}
+    ${printSection('Saved decisions', renderListOrEmpty(data.decisions, 'No saved decisions this month.', d => `<li>${escapeHtml(d.what || 'Decision')} - ${fmt(d.amount)} - ${escapeHtml(d.action || 'saved')}</li>`))}
+    ${printSection('Goals', renderListOrEmpty(data.goals, 'No savings goals set.', g => `<li>${escapeHtml(g.name)}: ${fmt(g.progress)} of ${fmt(g.target)}${g.pace ? ` (${escapeHtml(g.pace.onTrackStatus.replace(/_/g, ' '))})` : ''}</li>`))}
+    ${printSection('Loans', renderListOrEmpty(data.activeLoans, 'No active loans recorded.', l => `<li>${escapeHtml(l.name)}: ${fmt(Math.max(0, l.total - getLoanPaid(l)))} remaining</li>`))}
+    ${printSection('Smart insights', renderListOrEmpty(data.smartInsights, 'No smart insights yet.', text => `<li>${escapeHtml(text)}</li>`))}
+    ${printSection('Backup status', `<p>${escapeHtml(data.backupStatus)}</p>`)}
+  `;
+}
+
+function printCard(label, value) {
+  return `<div class="report-print-card"><span>${escapeHtml(label)}</span><strong>${value}</strong></div>`;
+}
+
+function printSection(title, body) {
+  return `<section class="report-print-section"><h2>${escapeHtml(title)}</h2>${body}</section>`;
+}
+
+async function openMonthlyReviewReport() {
+  if (!isPro()) {
+    openProModal('Monthly review PDF is a Pro feature. Unlock Pro to save a local month-end report.');
+    return;
+  }
+  const data = buildMonthlyReviewData();
+  const html = renderMonthlyReviewReportHtml(data);
+  const root = document.getElementById('monthlyReportPrintRoot');
+  root.innerHTML = html;
+  const fullHtml = `<!doctype html><html><head><meta charset="utf-8"><title>CapAhead Monthly Review</title><style>${getMonthlyReportPrintCss()}</style></head><body><main class="monthly-report-page">${html}</main></body></html>`;
+  const plugin = getCapAheadPrintPlugin();
+  if (plugin && typeof plugin.printHtml === 'function') {
+    try {
+      await plugin.printHtml({ title: `CapAhead ${data.monthLabel} Review`, html: fullHtml });
+      return;
+    } catch (err) {
+      console.warn('Native print bridge failed, falling back to window.print', err);
+    }
+  }
+  window.print();
+}
+
+function getCapAheadPrintPlugin() {
+  return window.Capacitor?.Plugins?.CapAheadPrint || null;
+}
+
+function getMonthlyReportPrintCss() {
+  return `
+    body{font-family:Arial,sans-serif;color:#111827;background:#fff;margin:0}
+    .monthly-report-page{max-width:760px;margin:0 auto;padding:18mm 12mm}
+    h1{font-size:28px;margin:0 0 4px;line-height:1.15} h2{font-size:16px;margin:22px 0 8px}
+    p,li{font-size:12px;line-height:1.45}.report-print-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
+    .report-print-card{border:1px solid #d1d5db;border-radius:8px;padding:10px;page-break-inside:avoid}
+    .report-print-card span{display:block;color:#6b7280;font-size:10px;text-transform:uppercase;margin-bottom:4px}
+    .report-print-card strong{display:block;font-size:16px}.report-print-section{border-top:1px solid #e5e7eb;padding-top:8px;page-break-inside:avoid}
+    .report-privacy-note{border:1px solid #f59e0b;background:#fffbeb;border-radius:8px;padding:10px;font-size:12px;margin:14px 0}
+  `;
 }
 
 function setForecastMode(mode) {
@@ -5390,7 +5792,7 @@ function renderForecastChart() {
   const el = document.getElementById('forecastChartContainer');
   if (!el) return;
   if (!isPro()) {
-    el.innerHTML = proLockHtml('Unlock Pro for the advanced 60-day forecast chart and projected weekly bars. Basic Compass forecast stays free.');
+    el.innerHTML = renderForecastPreviewLock();
     return;
   }
   
@@ -5399,6 +5801,19 @@ function renderForecastChart() {
   } else {
     el.innerHTML = renderForecastLine();
   }
+}
+
+function renderForecastPreviewLock() {
+  return `
+    <div class="pro-preview-wrap">
+      <div class="pro-preview-content">
+        ${renderForecastLine()}
+      </div>
+      <div class="pro-preview-lock">
+        ${proLockHtml('Unlock Pro for the 60-day cashflow forecast, risk dates, and projected weekly bars. Basic Compass guidance stays free.')}
+      </div>
+    </div>
+  `;
 }
 
 function renderForecastLine() {
@@ -8093,6 +8508,7 @@ function computeBalanceForecast(daysAhead = 60) {
   // Future projection
   const incomeEvents = getUpcomingPayEvents(daysAhead);
   const bills = getUpcomingBills(daysAhead);
+  const loanEvents = getUpcomingLoanPayments(daysAhead);
   const avgDaily = getAvgDailyExpense();
   
   let projBalance = currentBalance;
@@ -8104,8 +8520,9 @@ function computeBalanceForecast(daysAhead = 60) {
     const incomeToday = incomeEvents.filter(e => e.date === dISO).reduce((s,e) => s + e.amount, 0);
     // Subtract bills due today
     const billsToday = bills.filter(b => b.date === dISO).reduce((s,b) => s + b.amount, 0);
+    const loansToday = loanEvents.filter(e => e.date === dISO).reduce((s,e) => s + e.amount, 0);
     // Subtract average daily variable spend
-    projBalance += incomeToday - billsToday - avgDaily;
+    projBalance += incomeToday - billsToday - loansToday - avgDaily;
     
     points.push({ date: dISO, balance: projBalance, isProjection: true });
   }
@@ -9407,8 +9824,6 @@ function renderCompass() {
   renderSafeSave();
   renderCompassLoanLink();
   renderHealthScore();
-  renderForecast();
-  renderSmartInsights();
 }
 
 function renderCompassLoanLink() {
@@ -9927,10 +10342,122 @@ function renderForecast() {
 }
 
 
+function stripHtml(html) {
+  const div = document.createElement('div');
+  div.innerHTML = String(html || '');
+  return div.textContent || div.innerText || '';
+}
+
+function buildSmartInsightItems() {
+  const insights = [];
+  if (state.transactions.length < 10) return insights;
+
+  const interestYTD = getInterestPaidYTD();
+  const monthlyIn = getExpectedMonthlyIncomeRecurring();
+  if (interestYTD > 50) {
+    let extra = '';
+    if (monthlyIn > 0) {
+      const daysOfWork = (interestYTD / (monthlyIn / 30)).toFixed(1);
+      extra = ` (about ${daysOfWork} days of your work this year)`;
+    }
+    insights.push({
+      icon: categoryIconSvg('credit-card', 'Debt'),
+      text: `<strong>Interest paid this year:</strong> ~${fmt(interestYTD)}${extra} - money that did not reduce what you owe.`,
+    });
+  }
+
+  const subTotal = state.transactions
+    .filter(t => t.category === 'subs' && t.type === 'expense')
+    .reduce((sum, transaction) => {
+      const d30 = new Date();
+      d30.setDate(d30.getDate() - 30);
+      return new Date(transaction.date + 'T00:00:00') >= d30 ? sum + transaction.amount : sum;
+    }, 0);
+  if (subTotal > 0) {
+    insights.push({
+      icon: categoryIconSvg('play-square', 'Subscriptions'),
+      text: `<strong>Subscriptions:</strong> ${fmt(subTotal)} in the last 30 days, about ${fmt(subTotal * 12)} per year.`,
+    });
+  }
+
+  const now = new Date();
+  const mStart = isoOf(new Date(now.getFullYear(), now.getMonth(), 1));
+  const catTotals = {};
+  state.transactions.forEach(t => {
+    if (t.type === 'expense' && t.date >= mStart) {
+      catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
+    }
+  });
+  const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+  if (sorted.length > 0) {
+    const [cid, amount] = sorted[0];
+    const cat = getCat(cid, 'expense');
+    insights.push({
+      icon: categoryIcon(cat),
+      text: `<strong>Top category this month:</strong> ${escapeHtml(cat.name)} at ${fmt(amount)}.`,
+    });
+  }
+
+  const dayTotals = [0, 0, 0, 0, 0, 0, 0];
+  const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+  state.transactions.forEach(t => {
+    if (t.type === 'expense') {
+      const dow = new Date(t.date + 'T00:00:00').getDay();
+      dayTotals[dow] += t.amount;
+      dayCounts[dow]++;
+    }
+  });
+  const avgs = dayTotals.map((total, index) => dayCounts[index] > 0 ? total / dayCounts[index] : 0);
+  const maxDay = avgs.indexOf(Math.max(...avgs));
+  const days = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
+  if (avgs[maxDay] > 0) {
+    insights.push({
+      icon: categoryIconSvg('rotate-ccw', 'Pattern'),
+      text: `<strong>Biggest spending day:</strong> ${days[maxDay]} averaging ${fmt(avgs[maxDay])} per transaction.`,
+    });
+  }
+
+  const balance = getCurrentBalance();
+  const avgDaily = getAvgDailyExpense();
+  if (avgDaily > 0 && balance > 0) {
+    insights.push({
+      icon: categoryIconSvg('wallet', 'Cash buffer'),
+      text: `<strong>Cash buffer:</strong> ${Math.floor(balance / avgDaily)} days of spending at current pace.`,
+    });
+  }
+
+  const activeLoans = state.loans.filter(loan => getLoanPaid(loan) < loan.total);
+  const totalDebt = activeLoans.reduce((sum, loan) => sum + Math.max(0, loan.total - getLoanPaid(loan)), 0);
+  if (totalDebt > 0) {
+    insights.push({
+      icon: categoryIconSvg('credit-card', 'Debt'),
+      text: `<strong>Total debt remaining:</strong> ${fmt(totalDebt)} across ${activeLoans.length} loan(s).`,
+    });
+  }
+
+  return insights;
+}
+
 function renderSmartInsights() {
   const list = document.getElementById('smartInsights');
   if (!isPro()) {
-    list.innerHTML = proLockHtml('Unlock Pro for smart recurring bill insights, subscription patterns, and cash buffer explanations.');
+    list.innerHTML = `
+      <div class="pro-preview-wrap">
+        <div class="pro-preview-content">
+          <div class="insight-item">
+            <div class="insight-icon">${categoryIconSvg('play-square', 'Subscriptions')}</div>
+            <div class="insight-body"><strong>Subscription pattern:</strong> recurring spending and cash buffer notes appear here.</div>
+          </div>
+          <div class="insight-item">
+            <div class="insight-icon">${categoryIconSvg('wallet', 'Cash buffer')}</div>
+            <div class="insight-body"><strong>Cash buffer:</strong> plain-English explanations based on your income, bills, and spending pace.</div>
+          </div>
+        </div>
+        <div class="pro-preview-lock">
+          ${proLockHtml('Unlock Pro for smart recurring bill insights, subscription patterns, and cash buffer explanations.')}
+        </div>
+      </div>
+    `;
     return;
   }
   const insights = [];

@@ -1,103 +1,109 @@
 {
   "summary": {
-    "total": 16,
-    "pass": 16,
+    "total": 17,
+    "pass": 17,
     "fail": 0,
-    "durationMs": 32140
+    "durationMs": 15160
   },
   "metadata": {
-    "generatedAt": "2026-06-06T12:20:41.400Z",
-    "url": "http://127.0.0.1:49888/www/index.html?v=full-qa-1780748409305"
+    "generatedAt": "2026-06-07T05:34:38.184Z",
+    "url": "http://127.0.0.1:56417/www/index.html?v=full-qa-1780810463050"
   },
   "results": [
     {
       "name": "App boots on mobile without blank screen",
       "status": "PASS",
-      "duration": 2576,
+      "duration": 2108,
       "details": ""
     },
     {
       "name": "Viewport, focus ring, live region, and reduced motion are present",
       "status": "PASS",
-      "duration": 257,
+      "duration": 118,
       "details": ""
     },
     {
       "name": "Seeded finance data renders across Home, Insights, Loans, Compass, Profile",
       "status": "PASS",
-      "duration": 3395,
+      "duration": 1523,
       "details": ""
     },
     {
       "name": "Finance category surfaces use SVG icons instead of emoji text",
       "status": "PASS",
-      "duration": 2116,
+      "duration": 809,
       "details": ""
     },
     {
       "name": "Transaction add/edit, filters, and search work",
       "status": "PASS",
-      "duration": 5035,
+      "duration": 1284,
       "details": ""
     },
     {
       "name": "Modal semantics, labels, focus trap, and Escape close work",
       "status": "PASS",
-      "duration": 590,
+      "duration": 216,
       "details": ""
     },
     {
       "name": "Navigation exposes aria-current and no horizontal scroll on all primary tabs",
       "status": "PASS",
-      "duration": 3027,
+      "duration": 1591,
       "details": ""
     },
     {
       "name": "Budgets and category breakdown render data and accessible custom controls",
       "status": "PASS",
-      "duration": 378,
+      "duration": 165,
       "details": ""
     },
     {
       "name": "Loan detail and payment flow work",
       "status": "PASS",
-      "duration": 2455,
+      "duration": 1671,
       "details": ""
     },
     {
       "name": "Savings and goals render without category emoji dependency",
       "status": "PASS",
-      "duration": 1078,
+      "duration": 485,
       "details": ""
     },
     {
       "name": "Profile grouped sections render and collapse preference saves",
       "status": "PASS",
-      "duration": 983,
+      "duration": 491,
       "details": ""
     },
     {
-      "name": "Compass affordability flow and smart insights render",
+      "name": "Compass affordability flow and Insights analysis hub render",
       "status": "PASS",
-      "duration": 4022,
+      "duration": 1347,
+      "details": ""
+    },
+    {
+      "name": "Pro monthly review report renders printable local PDF view",
+      "status": "PASS",
+      "duration": 391,
       "details": ""
     },
     {
       "name": "Theme toggle cycles and preserves readable contrast tokens",
       "status": "PASS",
-      "duration": 744,
+      "duration": 259,
       "details": ""
     },
     {
       "name": "Recurring date logic handles invalid and monthly edge cases",
       "status": "PASS",
-      "duration": 13,
+      "duration": 4,
       "details": ""
     },
     {
       "name": "Auto-log catch-up creates income and recurring expense entries safely",
       "status": "PASS",
-      "duration": 103,
+      "duration": 44,
       "details": ""
     },
     {
@@ -122,8 +128,12 @@
       "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\full-qa\\03-savings.png"
     },
     {
-      "name": "04-compass",
-      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\full-qa\\04-compass.png"
+      "name": "04-insights-analysis-hub",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\full-qa\\04-insights-analysis-hub.png"
+    },
+    {
+      "name": "05-monthly-report-print-root",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\full-qa\\05-monthly-report-print-root.png"
     }
   ]
 }

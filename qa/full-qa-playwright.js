@@ -246,7 +246,7 @@ function reportHtml(summary, metadata) {
       const title = await page.title();
       const version = await page.locator('#versionTag').textContent();
       if (title !== 'CapAhead') throw new Error('bad title ' + title);
-      if (version !== 'v2.9.5') throw new Error('bad version ' + version);
+      if (version !== 'v2.9.6') throw new Error('bad version ' + version);
       await expectText(page, 'Recent Activity');
       await assertNoHorizontalScroll(page);
       await snap(page, '01-home-empty');
@@ -291,7 +291,7 @@ function reportHtml(summary, metadata) {
       await page.waitForTimeout(150);
       if (await page.locator('#catPicker .cat-pick svg').count() < 4) throw new Error('picker svg icons missing');
       if (await page.locator('#inpCatEmoji').count() !== 0) throw new Error('custom category emoji input still visible');
-      await page.keyboard.press('Escape');
+      await page.evaluate(() => closeModal('addModal'));
     });
 
     await test('Transaction add/edit, filters, and search work', async () => {
@@ -382,7 +382,7 @@ function reportHtml(summary, metadata) {
       if (prefs !== false) throw new Error('collapse preference not saved');
     });
 
-    await test('Compass affordability flow and smart insights render', async () => {
+    await test('Compass affordability flow and Insights analysis hub render', async () => {
       await page.locator('.nav-item').filter({ hasText: 'Compass' }).click();
       await page.locator('.compass-cta').click();
       await page.locator('#inpAffordAmount').fill('100');
@@ -396,8 +396,27 @@ function reportHtml(summary, metadata) {
       await expectVisibleText(page, '#affordModal', 'Lowest Point');
       await expectVisibleText(page, '#affordModal', 'Goal impact');
       await page.evaluate(() => closeModal('affordModal'));
+      await page.locator('.nav-item').filter({ hasText: 'Insights' }).click();
+      await expectText(page, '60-Day Cashflow Forecast');
       await expectText(page, 'Smart Insights');
-      await snap(page, '04-compass');
+      await expectText(page, 'Monthly Review PDF');
+      await snap(page, '04-insights-analysis-hub');
+    });
+
+    await test('Pro monthly review report renders printable local PDF view', async () => {
+      await page.evaluate(() => {
+        window.__qaPrintCount = 0;
+        window.print = () => { window.__qaPrintCount += 1; };
+        billingState.isPro = true;
+        goPage('stats');
+        renderStats();
+      });
+      await page.locator('button').filter({ hasText: 'Download monthly review' }).click();
+      await page.waitForFunction(() => window.__qaPrintCount === 1);
+      await expectVisibleText(page, '#monthlyReportPrintRoot', 'CapAhead Monthly Review');
+      await expectVisibleText(page, '#monthlyReportPrintRoot', 'This report contains personal finance data');
+      await expectVisibleText(page, '#monthlyReportPrintRoot', '60-day forecast');
+      await snap(page, '05-monthly-report-print-root');
     });
 
     await test('Theme toggle cycles and preserves readable contrast tokens', async () => {

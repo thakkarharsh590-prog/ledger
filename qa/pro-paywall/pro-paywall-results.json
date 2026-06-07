@@ -1,12 +1,12 @@
 {
   "summary": {
-    "total": 8,
-    "pass": 8,
+    "total": 10,
+    "pass": 10,
     "fail": 0
   },
   "metadata": {
-    "generatedAt": "2026-06-06T13:42:47.153Z",
-    "url": "http://127.0.0.1:53567/www/index.html?v=pro-paywall-1780753345406"
+    "generatedAt": "2026-06-07T05:31:06.523Z",
+    "url": "http://127.0.0.1:61817/www/index.html?v=pro-paywall-1780810255247"
   },
   "results": [
     {
@@ -21,6 +21,11 @@
     },
     {
       "name": "Smart insights are paywalled for Free",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Monthly review PDF is paywalled for Free",
       "status": "PASS",
       "details": ""
     },
@@ -45,6 +50,11 @@
       "details": ""
     },
     {
+      "name": "Pro monthly review report renders and triggers print flow",
+      "status": "PASS",
+      "details": ""
+    },
+    {
       "name": "No console/page errors",
       "status": "PASS",
       "details": ""
@@ -65,20 +75,28 @@
       "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\03-smart-insights-paywall.png"
     },
     {
-      "name": "04-third-goal-pro-modal",
-      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\04-third-goal-pro-modal.png"
+      "name": "04-monthly-review-pdf-paywall",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\04-monthly-review-pdf-paywall.png"
     },
     {
-      "name": "05-goal-impact-paywall",
-      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\05-goal-impact-paywall.png"
+      "name": "05-third-goal-pro-modal",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\05-third-goal-pro-modal.png"
     },
     {
-      "name": "06-sixth-decision-pro-modal",
-      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\06-sixth-decision-pro-modal.png"
+      "name": "06-goal-impact-paywall",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\06-goal-impact-paywall.png"
     },
     {
-      "name": "07-free-second-loan-modal",
-      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\07-free-second-loan-modal.png"
+      "name": "07-sixth-decision-pro-modal",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\07-sixth-decision-pro-modal.png"
+    },
+    {
+      "name": "08-free-second-loan-modal",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\08-free-second-loan-modal.png"
+    },
+    {
+      "name": "09-pro-monthly-review-report",
+      "file": "E:\\Downloads\\ledger-main\\ledger-main\\qa\\pro-paywall\\09-pro-monthly-review-report.png"
     }
   ]
 }

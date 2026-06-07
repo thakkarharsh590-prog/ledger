@@ -228,11 +228,12 @@ async function run() {
 
     await test('Advanced forecast is paywalled for Free', async () => {
       await page.evaluate(() => {
-        goPage('home');
+        goPage('stats');
         billingState.isPro = false;
+        renderStats();
         renderForecastChart();
       });
-      await expectLocatorContains(page.locator('#forecastChartContainer'), 'Unlock Pro for the advanced 60-day forecast chart');
+      await expectLocatorContains(page.locator('#forecastChartContainer'), 'Unlock Pro for the 60-day cashflow forecast');
       await snap(page, '01-advanced-forecast-paywall', screenshots);
     });
 
@@ -243,9 +244,16 @@ async function run() {
     });
 
     await test('Smart insights are paywalled for Free', async () => {
-      await page.locator('.nav-item').filter({ hasText: 'Compass' }).click();
+      await page.locator('.nav-item').filter({ hasText: 'Insights' }).click();
       await expectBodyContains(page, 'Unlock Pro for smart recurring bill insights');
       await snap(page, '03-smart-insights-paywall', screenshots);
+    });
+
+    await test('Monthly review PDF is paywalled for Free', async () => {
+      await page.locator('.nav-item').filter({ hasText: 'Insights' }).click();
+      await expectBodyContains(page, 'Monthly Review PDF');
+      await expectBodyContains(page, 'Unlock Pro to download a monthly review PDF');
+      await snap(page, '04-monthly-review-pdf-paywall', screenshots);
     });
 
     await test('Third savings goal opens Pro paywall', async () => {
@@ -256,7 +264,7 @@ async function run() {
       await expectBodyContains(page, '7 days free');
       await expectBodyContains(page, 'A$4.99/mo');
       await expectBodyContains(page, 'A$39.99/yr');
-      await snap(page, '04-third-goal-pro-modal', screenshots);
+      await snap(page, '05-third-goal-pro-modal', screenshots);
       await closeProModal(page);
     });
 
@@ -287,7 +295,7 @@ async function run() {
       });
       await expectLocatorContains(page.locator('#affordVerdict'), 'Goal impact');
       await expectLocatorContains(page.locator('#affordVerdict'), 'Unlock Pro to see how this purchase changes your savings goal timeline');
-      await snap(page, '05-goal-impact-paywall', screenshots);
+      await snap(page, '06-goal-impact-paywall', screenshots);
     });
 
     await test('Sixth saved decision opens Pro paywall', async () => {
@@ -295,7 +303,7 @@ async function run() {
       await page.waitForSelector('#proModal.open', { timeout: 3000 });
       await expectBodyContains(page, 'Free saves 5 affordability decisions');
       await expectBodyContains(page, '7 days free');
-      await snap(page, '06-sixth-decision-pro-modal', screenshots);
+      await snap(page, '07-sixth-decision-pro-modal', screenshots);
       const decisionCountStillFive = await page.evaluate(() => state.decisions.length === 5);
       if (!decisionCountStillFive) throw new Error('Sixth decision was saved despite Free cap');
       await closeProModal(page);
@@ -305,8 +313,26 @@ async function run() {
       await page.locator('.nav-item').filter({ hasText: 'Loans' }).click();
       await page.locator('#page-loans.active .link').filter({ hasText: '+ New' }).click();
       await page.waitForSelector('#loanModal.open', { timeout: 3000 });
-      await snap(page, '07-free-second-loan-modal', screenshots);
+      await snap(page, '08-free-second-loan-modal', screenshots);
       await page.locator('#loanModal button').filter({ hasText: 'Cancel' }).click();
+    });
+
+    await test('Pro monthly review report renders and triggers print flow', async () => {
+      await page.evaluate(() => {
+        window.__qaPrintCount = 0;
+        window.print = () => { window.__qaPrintCount += 1; };
+        billingState.isPro = true;
+        localStorage.setItem('ledger_pro_dev_unlocked_v1', 'yes');
+        goPage('stats');
+        renderStats();
+      });
+      await page.locator('button').filter({ hasText: 'Download monthly review' }).click();
+      await page.waitForFunction(() => window.__qaPrintCount === 1);
+      const reportText = await page.locator('#monthlyReportPrintRoot').innerText();
+      if (!reportText.includes('CapAhead Monthly Review')) throw new Error('monthly report title missing');
+      if (!reportText.includes('This report contains personal finance data')) throw new Error('privacy note missing');
+      if (!reportText.includes('60-day forecast')) throw new Error('forecast section missing');
+      await snap(page, '09-pro-monthly-review-report', screenshots);
     });
 
     if (consoleErrors.length) {
