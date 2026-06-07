@@ -3906,6 +3906,27 @@
   </div>
 </div>
 
+<!-- OWNER LICENSE MODAL -->
+<div class="modal-backdrop" id="ownerLicenseModal" onclick="closeModalOnBg(event, 'ownerLicenseModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Owner Pro Pass</div>
+    <div class="modal-sub">Use this only for your own device.</div>
+    <div class="field">
+      <label>Your device code</label>
+      <textarea id="ownerInstallIdText" rows="3" readonly></textarea>
+    </div>
+    <button class="btn-secondary" type="button" onclick="copyOwnerInstallId()">Copy device code</button>
+    <div class="field">
+      <label>Owner pass</label>
+      <textarea id="ownerLicenseInput" rows="5" placeholder="Paste your owner pass here"></textarea>
+    </div>
+    <button class="btn-primary" type="button" onclick="activateOwnerLicense()">Activate owner Pro</button>
+    <button class="btn-secondary" type="button" onclick="removeOwnerLicense()">Remove owner pass</button>
+    <button class="btn-secondary" type="button" onclick="closeModal('ownerLicenseModal')">Close</button>
+  </div>
+</div>
+
 <!-- LOAN MODAL -->
 <div class="modal-backdrop" id="loanModal" onclick="closeModalOnBg(event, 'loanModal')">
   <div class="modal">
@@ -4279,6 +4300,15 @@ const PRO_ENTITLEMENT_TIMEOUT_MS = 3500;
 const PRO_PRICE_MONTHLY = 'A$4.99/month';
 const PRO_PRICE_YEARLY = 'A$39.99/year';
 const PRO_TRIAL_TEXT = '7-day free trial';
+const OWNER_INSTALL_ID_KEY = 'capahead_owner_install_id_v1';
+const OWNER_LICENSE_KEY = 'capahead_owner_license_v1';
+const OWNER_LICENSE_PUBLIC_KEY = {
+  kty: 'EC',
+  crv: 'P-256',
+  x: 'o_QpaBU2Lwm-Jm7DNKiwLzUp6L5vceQmsM4S5XwX35I',
+  y: 'PLxSVP38TqVXTOWfZpGNx7suAFLGMBcc3VD4zbFoEe4',
+  ext: true,
+};
 const FREE_LIMITS = {
   savingsGoals: 2,
   decisions: 5,
@@ -5150,6 +5180,115 @@ function getCapAheadBillingPlugin() {
   return window.Capacitor?.Plugins?.CapAheadBilling || null;
 }
 
+function bytesToBase64Url(bytes) {
+  let binary = '';
+  bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function base64UrlToBytes(value) {
+  const raw = String(value || '');
+  const padded = raw.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (raw.length % 4)) % 4);
+  const binary = atob(padded);
+  return Uint8Array.from(binary, ch => ch.charCodeAt(0));
+}
+
+function getOwnerInstallId() {
+  let id = localStorage.getItem(OWNER_INSTALL_ID_KEY);
+  if (id) return id;
+  const bytes = new Uint8Array(18);
+  if (window.crypto?.getRandomValues) window.crypto.getRandomValues(bytes);
+  else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  id = 'owner-' + bytesToBase64Url(bytes);
+  localStorage.setItem(OWNER_INSTALL_ID_KEY, id);
+  return id;
+}
+
+function decodeOwnerLicense(token) {
+  const parts = String(token || '').trim().split('.');
+  if (parts.length !== 2) return null;
+  try {
+    return {
+      payloadBytes: new TextEncoder().encode(parts[0]),
+      signatureBytes: base64UrlToBytes(parts[1]),
+      payload: JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[0]))),
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+async function verifyOwnerLicense(token) {
+  const decoded = decodeOwnerLicense(token);
+  if (!decoded || !window.crypto?.subtle) return false;
+  const payload = decoded.payload;
+  if (payload.type !== 'capahead_owner_license') return false;
+  if (payload.installId !== getOwnerInstallId()) return false;
+  if (payload.pro !== true || payload.lifetime !== true) return false;
+  const key = await crypto.subtle.importKey(
+    'jwk',
+    OWNER_LICENSE_PUBLIC_KEY,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['verify']
+  );
+  return crypto.subtle.verify(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    key,
+    decoded.signatureBytes,
+    decoded.payloadBytes
+  );
+}
+
+async function hasValidOwnerLicense() {
+  const token = localStorage.getItem(OWNER_LICENSE_KEY);
+  if (!token) return false;
+  try {
+    return await verifyOwnerLicense(token);
+  } catch (e) {
+    return false;
+  }
+}
+
+function openOwnerLicenseModal() {
+  const installId = getOwnerInstallId();
+  const codeEl = document.getElementById('ownerInstallIdText');
+  const inputEl = document.getElementById('ownerLicenseInput');
+  if (codeEl) codeEl.value = installId;
+  if (inputEl) inputEl.value = localStorage.getItem(OWNER_LICENSE_KEY) || '';
+  openModal('ownerLicenseModal', '#ownerLicenseInput');
+}
+
+async function copyOwnerInstallId() {
+  const id = getOwnerInstallId();
+  try {
+    await navigator.clipboard.writeText(id);
+    showToast('Device code copied');
+  } catch (e) {
+    showToast('Copy the code manually', 'warning');
+  }
+}
+
+async function activateOwnerLicense() {
+  const token = document.getElementById('ownerLicenseInput').value.trim();
+  if (!token) { showToast('Paste your owner pass', 'warning'); return; }
+  if (!(await verifyOwnerLicense(token))) {
+    showToast('Owner pass is not valid for this device', 'warning');
+    return;
+  }
+  localStorage.setItem(OWNER_LICENSE_KEY, token);
+  await syncProEntitlement();
+  closeModal('ownerLicenseModal');
+  showToast('Owner Pro active');
+}
+
+async function removeOwnerLicense() {
+  localStorage.removeItem(OWNER_LICENSE_KEY);
+  await syncProEntitlement();
+  showToast('Owner pass removed');
+  openOwnerLicenseModal();
+}
+
 function isPro() {
   return !!billingState.isPro;
 }
@@ -5200,7 +5339,10 @@ async function syncProEntitlement(opts = {}) {
   billingState.error = null;
   const plugin = getCapAheadBillingPlugin();
   try {
-    if (plugin && typeof plugin.getEntitlement === 'function') {
+    if (await hasValidOwnerLicense()) {
+      billingState.isPro = true;
+      billingState.source = 'owner_lifetime';
+    } else if (plugin && typeof plugin.getEntitlement === 'function') {
       const result = await withTimeout(
         plugin.getEntitlement({ productId: PRO_PRODUCT_ID }),
         PRO_ENTITLEMENT_TIMEOUT_MS,
@@ -5444,6 +5586,10 @@ function renderProfile() {
         <div class="setting-row" onclick="manageSubscription()">
           <span class="setting-label">Manage subscription</span>
           <span class="setting-value">↗</span>
+        </div>
+        <div class="setting-row" onclick="openOwnerLicenseModal()">
+          <span class="setting-label">Owner Pro pass</span>
+          <span class="setting-value">${billingState.source === 'owner_lifetime' ? 'Active' : 'Add'}</span>
         </div>
         <div class="setting-row" onclick="toggleProAlerts()">
           <span class="setting-label">Forecast alerts</span>
