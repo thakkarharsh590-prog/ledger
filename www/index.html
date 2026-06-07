@@ -5259,6 +5259,15 @@ function openOwnerLicenseModal() {
   openModal('ownerLicenseModal', '#ownerLicenseInput');
 }
 
+function shouldShowOwnerTools() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('owner') === '1' || billingState.source === 'owner_lifetime';
+  } catch (e) {
+    return billingState.source === 'owner_lifetime';
+  }
+}
+
 async function copyOwnerInstallId() {
   const id = getOwnerInstallId();
   try {
@@ -5587,10 +5596,12 @@ function renderProfile() {
           <span class="setting-label">Manage subscription</span>
           <span class="setting-value">↗</span>
         </div>
-        <div class="setting-row" onclick="openOwnerLicenseModal()">
-          <span class="setting-label">Owner Pro pass</span>
-          <span class="setting-value">${billingState.source === 'owner_lifetime' ? 'Active' : 'Add'}</span>
-        </div>
+        ${shouldShowOwnerTools() ? `
+          <div class="setting-row" onclick="openOwnerLicenseModal()">
+            <span class="setting-label">Owner Pro pass</span>
+            <span class="setting-value">${billingState.source === 'owner_lifetime' ? 'Active' : 'Add'}</span>
+          </div>
+        ` : ''}
         <div class="setting-row" onclick="toggleProAlerts()">
           <span class="setting-label">Forecast alerts</span>
           <span class="setting-value">${alertSettingsSummary()}</span>

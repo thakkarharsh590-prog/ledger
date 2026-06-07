@@ -38,7 +38,8 @@ check('QA Pro simulation requires localhost', web.includes('function allowQaProS
 check('GitHub/browser purchase fallback is not broad', !web.includes('if (!isNativeAndroidApp()) {\n      localStorage.setItem(PRO_DEV_UNLOCK_KEY'));
 check('Profile dev toggle is not visible in launch UI', !web.includes('Browser test Pro') && !web.includes('proDevRow'));
 check('public owner PWA unlock key is stripped from shipped app', !web.includes('OWNER_PWA_UNLOCK_KEY') && !web.includes('ledger_owner_pwa_unlocked_v1'));
-check('public owner URL unlock is stripped from shipped app', !web.includes('applyOwnerPwaUnlockFromUrl') && !web.includes("params.get('owner')"));
+check('public owner URL unlock is stripped from shipped app', !web.includes('applyOwnerPwaUnlockFromUrl') && !web.includes("params.get('owner') !== 'harsh'"));
+check('owner URL only reveals pass tools', web.includes("params.get('owner') === '1'") && web.includes('function shouldShowOwnerTools()') && web.includes('await verifyOwnerLicense(token)'));
 check('private owner artifact is separate from shipped app', ownerPage.includes('ledger_owner_pwa_unlocked_v1') && !web.includes('ledger_owner_pwa_unlocked_v1'));
 check('loan modal placeholder is launch neutral', web.includes('placeholder="e.g. Bank, HECS, Friend"') && !web.includes('placeholder="e.g. NAB, HECS, Friend"'));
 check('Pro foresight schema fields exist', web.includes('monthlySnapshots') && web.includes('alertSettings') && web.includes('SCHEMA_VERSION = 10'));

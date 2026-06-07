@@ -77,6 +77,18 @@ async function expectBodyContains(page, text) {
 
     const ownerBypassBlocked = await page.evaluate(() => !isPro());
     if (!ownerBypassBlocked) throw new Error('Public owner localStorage/URL path should not unlock Pro');
+    await page.locator('.nav-item').filter({ hasText: 'Profile' }).click();
+    const normalProfile = await bodyText(page);
+    if (normalProfile.includes('Owner Pro pass')) throw new Error('Owner Pro pass row should be hidden in normal Profile');
+
+    const ownerToolPage = await context.newPage();
+    await ownerToolPage.goto(`${baseUrl}/www/index.html?owner=1&v=owner-tools-${Date.now()}`, { waitUntil: 'domcontentloaded' });
+    await ownerToolPage.waitForTimeout(900);
+    await ownerToolPage.locator('.nav-item').filter({ hasText: 'Profile' }).click();
+    await expectBodyContains(ownerToolPage, 'Owner Pro pass');
+    const ownerFlagDoesNotUnlock = await ownerToolPage.evaluate(() => !isPro());
+    if (!ownerFlagDoesNotUnlock) throw new Error('?owner=1 must reveal tools only, not unlock Pro');
+    await ownerToolPage.close();
 
     await page.evaluate(() => {
       const base = Date.now();
