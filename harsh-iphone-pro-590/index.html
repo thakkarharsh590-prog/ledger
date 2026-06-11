@@ -40,13 +40,13 @@
 <body>
   <main>
     <h1>Owner access</h1>
-    <p>This opens CapAhead with Pro enabled on this iPhone PWA. Your saved data stays on the same site storage.</p>
+    <p>This opens CapAhead owner tools for this install. Your saved data stays in the same app storage.</p>
     <button type="button" id="openBtn">Open CapAhead Pro</button>
   </main>
   <script>
     function openOwnerApp() {
       localStorage.setItem('ledger_owner_pwa_unlocked_v1', 'yes');
-      location.replace('../www/index.html?owner=harsh&t=' + Date.now());
+      location.replace('../www/index.html?owner=1&t=' + Date.now());
     }
     document.getElementById('openBtn').addEventListener('click', openOwnerApp);
     setTimeout(openOwnerApp, 600);

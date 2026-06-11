@@ -3333,7 +3333,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">CapAhead</span>
-    <span class="version-tag" id="versionTag">v2.9.6</span>
+    <span class="version-tag" id="versionTag">v2.9.7</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme" aria-label="Dark theme">
@@ -3584,7 +3584,7 @@
       <span class="profile-name" id="profileName">Set your name</span>
       <button class="profile-edit-btn" onclick="openNameModal()" title="Edit name">✏</button>
     </div>
-    <div class="profile-version">CapAhead v<span id="profileVersion">2.9.6</span></div>
+    <div class="profile-version">CapAhead v<span id="profileVersion">2.9.7</span></div>
   </div>
 
   <div id="profileContent"></div>
@@ -4284,7 +4284,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.9.6';
+const APP_VERSION = '2.9.7';
 const SCHEMA_VERSION = 10;
 const STORAGE_KEY = 'ledger_data_v1';
 const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1';
@@ -4325,6 +4325,7 @@ let pendingRestoreEnvelope = null;
 let pendingRestoreData = null;
 let launchRecoveryIssue = null;
 let crashGuardActive = false;
+let crashGuardRuntimeErrors = [];
 let billingState = {
   isPro: false,
   source: 'free',
@@ -4908,10 +4909,17 @@ function getCurrencySymbol() {
   return CURRENCIES.find(c => c.code === state.currency)?.symbol || '$';
 }
 
-function fmt(n) {
+function fmtAbs(n) {
   const sym = getCurrencySymbol();
-  const abs = Math.abs(n);
+  const value = Number(n);
+  const abs = Math.abs(Number.isFinite(value) ? value : 0);
   return sym + abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmt(n) {
+  const value = Number(n);
+  const safe = Number.isFinite(value) ? value : 0;
+  return (safe < 0 ? '-' : '') + fmtAbs(safe);
 }
 
 function fmtShort(n) {
@@ -7361,14 +7369,64 @@ async function decryptBackupEnvelope(envelope, recoveryKey) {
   return data;
 }
 
-function downloadTextFile(filename, text, type = 'application/json') {
+function getNativeExportPlugins() {
+  const plugins = window.Capacitor?.Plugins || {};
+  return {
+    Filesystem: plugins.Filesystem || null,
+    Share: plugins.Share || null,
+  };
+}
+
+function sanitizeExportFilename(filename) {
+  return String(filename || 'capahead-export.txt').replace(/[\\/:*?"<>|]+/g, '-');
+}
+
+function shareTitleForFilename(filename) {
+  if (filename.endsWith('.csv')) return 'Export CSV';
+  if (filename.endsWith('.txt')) return 'Save recovery key';
+  if (filename.endsWith('.ledgerbackup')) return 'Save encrypted backup';
+  return 'Save CapAhead backup';
+}
+
+async function downloadTextFile(filename, text, type = 'application/json') {
+  const safeFilename = sanitizeExportFilename(filename);
+  if (isNativeAndroidApp()) {
+    const { Filesystem, Share } = getNativeExportPlugins();
+    if (!Filesystem || !Share) {
+      throw new Error('Android file export is not available in this build.');
+    }
+    const path = `exports/${Date.now()}-${safeFilename}`;
+    const writeResult = await Filesystem.writeFile({
+      path,
+      data: text,
+      directory: 'CACHE',
+      encoding: 'utf8',
+      recursive: true,
+    });
+    const uri = writeResult?.uri;
+    if (!uri) throw new Error('Android file export did not return a file URI.');
+    await Share.share({
+      title: shareTitleForFilename(safeFilename),
+      text: safeFilename,
+      files: [uri],
+      dialogTitle: shareTitleForFilename(safeFilename),
+    });
+    return { ok: true, filename: safeFilename, native: true, uri };
+  }
+
   const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename;
+  a.download = safeFilename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    a.remove();
+  }, 0);
+  return { ok: true, filename: safeFilename, native: false };
 }
 
 function getSavedRecoveryKey() {
@@ -7399,12 +7457,17 @@ async function copyRecoveryKey() {
   document.getElementById('confirmRecoverySavedBtn').disabled = false;
 }
 
-function downloadRecoveryKey() {
+async function downloadRecoveryKey() {
   if (!pendingGeneratedRecoveryKey) return;
-  downloadTextFile(`ledger-recovery-key-${todayISO()}.txt`, `CapAhead recovery key\n\n${formatRecoveryKey(pendingGeneratedRecoveryKey)}\n\nSave this key so you can restore encrypted backups on a new phone.\n`, 'text/plain');
-  recoveryKeyActionTaken = true;
-  document.getElementById('confirmRecoverySavedBtn').disabled = false;
-  showToast('Recovery key file saved');
+  try {
+    await downloadTextFile(`ledger-recovery-key-${todayISO()}.txt`, `CapAhead recovery key\n\n${formatRecoveryKey(pendingGeneratedRecoveryKey)}\n\nSave this key so you can restore encrypted backups on a new phone.\n`, 'text/plain');
+    recoveryKeyActionTaken = true;
+    document.getElementById('confirmRecoverySavedBtn').disabled = false;
+    showToast('Recovery key file saved');
+  } catch (e) {
+    console.error('Recovery key export failed:', e);
+    showToast('Recovery key file was not saved', 'warning');
+  }
 }
 
 async function confirmRecoveryKeySaved() {
@@ -7433,7 +7496,7 @@ async function createEncryptedBackup(recoveryKey = getSavedRecoveryKey()) {
   try {
     const data = buildAppDataPayload({ appVersion: APP_VERSION, exportedAt: new Date().toISOString() });
     const encrypted = await encryptBackupPayload(data, recoveryKey);
-    downloadTextFile(`ledger-encrypted-backup-${todayISO()}.ledgerbackup`, JSON.stringify(encrypted, null, 2));
+    await downloadTextFile(`ledger-encrypted-backup-${todayISO()}.ledgerbackup`, JSON.stringify(encrypted, null, 2));
     const now = Date.now().toString();
     localStorage.setItem(LAST_ENCRYPTED_BACKUP_KEY, now);
     localStorage.setItem('ledger_last_export', now);
@@ -7450,7 +7513,7 @@ function exportData() {
   createEncryptedBackup();
 }
 
-function exportCSV() {
+async function exportCSV() {
   const rows = [['Date','Type','Category','Description','Amount','Note']];
   state.transactions.forEach(t => {
     rows.push([
@@ -7462,14 +7525,13 @@ function exportCSV() {
     ]);
   });
   const csv = rows.map(r => r.join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `ledger-${todayISO()}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('Exported CSV');
+  try {
+    await downloadTextFile(`ledger-${todayISO()}.csv`, csv, 'text/csv');
+    showToast('Exported CSV');
+  } catch (e) {
+    console.error('CSV export failed:', e);
+    showToast('CSV export failed', 'warning');
+  }
 }
 
 function closeRestoreModal() {
@@ -7573,14 +7635,11 @@ function importData(event) {
 
 
 function confirmClearAll() {
-  if (!confirm('Delete ALL transactions, loans, and budgets? This cannot be undone.')) return;
-  if (!confirm('Are you SURE? Type-check: this deletes everything.')) return;
+  if (!confirm('Delete ALL CapAhead data on this device? This cannot be undone.')) return;
+  if (!confirm('Are you SURE? This clears transactions, income, bills, savings, goals, decisions, snapshots, and profile details.')) return;
   // Backup first
   localStorage.setItem(BACKUP_PREFIX + Date.now() + '_pre_wipe', localStorage.getItem(STORAGE_KEY) || '{}');
-  state.transactions = [];
-  state.budgets = {};
-  state.loans = [];
-  state.customCategories = { income: [], expense: [] };
+  hydrateStateFromData({});
   saveData();
   renderAll();
   goPage('home');
@@ -7607,6 +7666,7 @@ function detectPlatform() {
 }
 
 function showInstallBannerIfNeeded() {
+  if (isNativeAndroidApp()) return;
   const p = detectPlatform();
   if (p.isStandalone) return; // already installed
   const dismissed = localStorage.getItem('ledger_install_dismissed');
@@ -9458,7 +9518,7 @@ function computeAffordabilityVerdict(scenario, projection, goalImpact) {
 
 function fmtSigned(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return 'Not set';
-  return `${n < 0 ? '-' : ''}${fmt(n)}`;
+  return fmt(n);
 }
 
 function computeSmartAffordability(amount, label = '') {
@@ -9531,7 +9591,7 @@ function computeSmartAffordability(amount, label = '') {
   // REASONING (plain English)
   const reasons = [];
   const afterBalSign = afterBal < 0 ? '−' : '';
-  const afterBalStr = `<strong style="color:${afterBal < 0 ? 'var(--expense)' : 'var(--text)'};">${afterBalSign}${fmt(afterBal)}</strong>`;
+  const afterBalStr = `<strong style="color:${afterBal < 0 ? 'var(--expense)' : 'var(--text)'};">${afterBalSign}${fmtAbs(afterBal)}</strong>`;
   reasons.push(`Balance: ${fmt(bal)} → ${afterBalStr}`);
   if (reserved > 0) {
     const truelyFree = bal - reserved;
@@ -9539,7 +9599,7 @@ function computeSmartAffordability(amount, label = '') {
   }
   if (weeklyFree !== null) {
     const wfSign = weeklyFree < 0 ? '−' : '+';
-    reasons.push(`This week's free spending: <strong style="color:${weeklyFree < 0 ? 'var(--expense)' : 'var(--income)'};">${wfSign}${fmt(weeklyFree)}</strong>`);
+    reasons.push(`This week's free spending: <strong style="color:${weeklyFree < 0 ? 'var(--expense)' : 'var(--income)'};">${wfSign}${fmtAbs(weeklyFree)}</strong>`);
   }
   if (daysBufferAfter !== null) {
     if (daysBufferAfter < 0) reasons.push(`You'd run out before next paycheck`);
@@ -9547,7 +9607,7 @@ function computeSmartAffordability(amount, label = '') {
   }
   if (monthlyIn > 0) {
     const lftSign = monthlyLeftover >= 0 ? '+' : '−';
-    reasons.push(`Monthly picture: +${fmt(monthlyIn)} earned, −${fmt(monthlyFixed + monthlyVar)} spent = <strong>${lftSign}${fmt(monthlyLeftover)} spare</strong>`);
+    reasons.push(`Monthly picture: +${fmtAbs(monthlyIn)} earned, −${fmtAbs(monthlyFixed + monthlyVar)} spent = <strong>${lftSign}${fmtAbs(monthlyLeftover)} spare</strong>`);
   }
   if (weekly.weeklyIn > 0) {
     reasons.push(`Weekly extra after bills: ${fmt(weekly.surplus)}`);
@@ -10449,7 +10509,7 @@ function renderExpectedMonthly() {
   
   const leftoverColor = leftover >= 0 ? 'var(--income)' : 'var(--expense)';
   const leftoverSign = leftover >= 0 ? '+' : '−';
-  const leftoverStr = fmt(leftover); // fmt already strips sign via Math.abs
+  const leftoverStr = fmtAbs(leftover);
   
   // Anomaly warnings
   const anomalies = detectDataAnomalies();
@@ -10463,7 +10523,7 @@ function renderExpectedMonthly() {
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div style="display:flex;justify-content:space-between;padding:6px 0;">
         <span style="color:var(--text-dim);font-size:13px;">💼 Money coming in</span>
-        <span style="font-family:'Geist Mono',monospace;color:var(--income);font-weight:500;">+${fmt(monthlyIn)}</span>
+        <span style="font-family:'Geist Mono',monospace;color:var(--income);font-weight:500;">+${fmtAbs(monthlyIn)}</span>
       </div>
       <div style="display:flex;justify-content:space-between;padding:6px 0;">
         <span style="color:var(--text-dim);font-size:13px;">🧾 Regular bills</span>
@@ -11341,46 +11401,6 @@ function openAffordabilityModal() {
   openModal('affordModal', '#inpAffordAmount');
 }
 
-function runAffordabilityCheck() {
-  const amount = parseFloat(document.getElementById('inpAffordAmount').value);
-  const what = document.getElementById('inpAffordWhat').value.trim();
-  
-  if (!amount || amount <= 0) { showToast('Enter a valid amount', '⚠'); return; }
-  
-  const result = computeSmartAffordability(amount);
-  
-  // Render
-  const verdictHtml = `
-    <div class="verdict-card ${result.zone}">
-      <div class="verdict-label">${result.zone === 'green' ? 'Green Zone' : result.zone === 'yellow' ? 'Yellow Zone' : 'Red Zone'}</div>
-      <div class="verdict-title">${result.title}</div>
-      <div class="verdict-reasoning">
-        ${what ? `<div style="margin-bottom:10px;color:var(--text);"><strong>${escapeHtml(what)}</strong> · ${fmt(amount)}</div>` : ''}
-        <ul>${result.reasons.map(r => '<li>' + r + '</li>').join('')}</ul>
-        ${result.strategies.length ? `
-          <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);">
-            <div style="color:var(--text);margin-bottom:6px;font-weight:500;">💡 If you want to wait or be smarter about it:</div>
-            <ul>${result.strategies.map(s => '<li>' + s + '</li>').join('')}</ul>
-          </div>
-        ` : ''}
-        ${result.considerations.length ? `
-          <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);">
-            <div style="color:var(--text);margin-bottom:6px;font-weight:500;">⚖ Things to think about:</div>
-            <ul>${result.considerations.map(c => '<li>' + c + '</li>').join('')}</ul>
-          </div>
-        ` : ''}
-        <div style="margin-top:14px;color:var(--text-muted);font-size:11px;">Your decision — this is just the numbers.</div>
-      </div>
-    </div>
-  `;
-  
-  document.getElementById('affordVerdict').innerHTML = verdictHtml;
-  document.getElementById('affordInputView').style.display = 'none';
-  document.getElementById('affordResultView').style.display = 'block';
-  
-  state.pendingAffordCheck = { amount, what, zone: result.zone, title: result.title, date: todayISO() };
-}
-
 function saveDecision(action) {
   if (!state.pendingAffordCheck) { closeModal('affordModal'); return; }
   if (!canCreateFreeLimitedItem('decisions')) {
@@ -11400,33 +11420,6 @@ function saveDecision(action) {
   state.pendingAffordCheck = null;
   closeModal('affordModal');
   showToast(action === 'yes' ? 'Decision saved' : 'Saved — good restraint');
-}
-
-function renderDecisions() {
-  const list = document.getElementById('decisionList');
-  if (state.decisions.length === 0) {
-    list.innerHTML = emptyState('No decisions saved yet', 'Affordability checks you choose to save will appear here, so you can see what you bought, skipped, and why.', {
-      icon: 'tag',
-      actionLabel: 'Run affordability check',
-      action: 'openAffordabilityModal()',
-    });
-    return;
-  }
-  const sorted = [...state.decisions].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
-  list.innerHTML = sorted.map(d => `
-    <div class="decision-item">
-      <div class="decision-head">
-        <div>
-          <div class="decision-what">${escapeHtml(d.what || 'Unnamed purchase')} · ${fmt(d.amount)}</div>
-          <div class="decision-meta">${formatDateLabel(d.date)}</div>
-        </div>
-        <span class="decision-verdict-dot ${d.zone}">${d.action === 'yes' ? 'Bought' : 'Skipped'}</span>
-      </div>
-      <div class="decision-outcome">
-        ${d.zone === 'green' ? 'Green zone' : d.zone === 'yellow' ? 'Yellow zone' : 'Red zone'} verdict at the time
-      </div>
-    </div>
-  `).join('');
 }
 
 function renderAffordabilityResult(result, amount, what) {
@@ -12474,20 +12467,15 @@ function restoreFromRecovery() {
   
   try {
     const migrated = runMigrations(found.data);
-    state.transactions = migrated.transactions || [];
-    state.budgets = migrated.budgets || {};
-    state.loans = migrated.loans || [];
-    state.customCategories = migrated.customCategories || { income: [], expense: [] };
-    state.incomeSources = migrated.incomeSources || [];
-    state.decisions = migrated.decisions || [];
-    state.recurringExpenses = migrated.recurringExpenses || [];
-    state.currency = migrated.currency || 'AUD';
+    if (!validateAppDataShape(migrated)) throw new Error('Recovery data failed validation');
+    hydrateStateFromData(migrated);
     saveData();
     const banner = document.getElementById('recoveryBanner');
     if (banner) banner.remove();
-    renderAll();
+    renderAllSafely('restore-recovery');
     showToast('Data restored!');
   } catch (e) {
+    console.error('Recovery restore failed:', e);
     showToast('Restore failed', '⚠');
   }
 }
@@ -12515,12 +12503,12 @@ function restoreLastGoodData() {
   }
 }
 
-function exportEmergencyBackup() {
+async function exportEmergencyBackup() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
       || localStorage.getItem(LAST_GOOD_STORAGE_KEY)
       || JSON.stringify(buildAppDataPayload({ exportedAt: new Date().toISOString(), emergencyExport: true }), null, 2);
-    downloadTextFile(`ledger-emergency-backup-${todayISO()}.json`, raw, 'application/json');
+    await downloadTextFile(`ledger-emergency-backup-${todayISO()}.json`, raw, 'application/json');
     showToast('Emergency backup saved');
   } catch (e) {
     console.error('Emergency export failed:', e);
@@ -12533,6 +12521,7 @@ function removeLaunchRecoveryUI() {
   if (existing) existing.remove();
   launchRecoveryIssue = null;
   crashGuardActive = false;
+  crashGuardRuntimeErrors = [];
 }
 
 function showLaunchRecoveryUI(issue) {
@@ -12559,6 +12548,7 @@ function showLaunchRecoveryUI(issue) {
       <div style="display:grid;gap:10px;">
         <button type="button" onclick="exportEmergencyBackup()" style="padding:12px;border:0;border-radius:8px;background:#a3e635;color:#111827;font-weight:800;">Export emergency backup</button>
         <button type="button" onclick="restoreLastGoodData()" style="padding:12px;border:1px solid rgba(255,255,255,.18);border-radius:8px;background:#1f2937;color:#f8fafc;font-weight:700;">Restore last-good data</button>
+        <button type="button" onclick="removeLaunchRecoveryUI()" style="padding:12px;border:1px solid rgba(255,255,255,.18);border-radius:8px;background:#1f2937;color:#f8fafc;font-weight:700;">Continue anyway</button>
         <button type="button" onclick="location.reload()" style="padding:12px;border:1px solid rgba(255,255,255,.18);border-radius:8px;background:transparent;color:#f8fafc;font-weight:700;">Reload app</button>
       </div>
     </div>
@@ -12572,11 +12562,21 @@ function checkLaunchRecoveryIssue() {
 
 function installCrashGuard() {
   window.addEventListener('error', event => {
-    showCrashRecovery(event.error || event.message || 'Unexpected app error');
+    noteRuntimeError(event.error || event.message || 'Unexpected app error');
   });
   window.addEventListener('unhandledrejection', event => {
-    showCrashRecovery(event.reason || 'Unexpected async app error');
+    noteRuntimeError(event.reason || 'Unexpected async app error');
   });
+}
+
+function noteRuntimeError(reason) {
+  console.error('Runtime error captured:', reason);
+  const now = Date.now();
+  crashGuardRuntimeErrors = crashGuardRuntimeErrors.filter(ts => now - ts < 30000);
+  crashGuardRuntimeErrors.push(now);
+  if (crashGuardRuntimeErrors.length >= 3) {
+    showCrashRecovery(reason);
+  }
 }
 
 function showCrashRecovery(reason) {
@@ -12622,18 +12622,14 @@ function renderBackupWarnBanner() {
   
   const isRed = daysSince >= 14;
   const zone = isRed ? 'red' : 'yellow';
-  const title = isRed 
-    ? `${daysSince === 999 ? 'No backups yet' : daysSince + ' days since backup'} — please export now`
-    : `${daysSince} days since last backup`;
-  const sub = isRed
-    ? 'iOS can clear PWA data. Tap to export JSON.'
-    : 'Tap to download a backup to your Files app.';
   const displayTitle = isRed
     ? `${daysSince === 999 ? 'No encrypted backup yet' : daysSince + ' days since encrypted backup'} - please back up now`
     : `${daysSince} days since last encrypted backup`;
-  const displaySub = isRed
-    ? 'iOS can clear PWA data. Tap to save an encrypted backup.'
-    : 'Tap to download an encrypted backup to your Files app.';
+  const displaySub = isNativeAndroidApp()
+    ? 'Tap to save or share an encrypted backup file.'
+    : isRed
+      ? 'Browser storage can be cleared. Tap to save an encrypted backup.'
+      : 'Tap to download an encrypted backup to your Files app.';
   
   el.innerHTML = `
     <div class="backup-warn ${zone}" onclick="exportData()">
@@ -12693,6 +12689,7 @@ function refreshApp() {
 // Auto-bust the cache if we're loading without a version query parameter
 // This catches the case where the PWA opens a stale cached page
 function autoCacheBust() {
+  if (isNativeAndroidApp()) return;
   const params = new URLSearchParams(window.location.search);
   const hasVerParam = params.has('v') || params.has('update');
   if (hasVerParam) return; // already busted this session
@@ -13394,15 +13391,22 @@ function showFirstLaunchWarningIfNeeded() {
     return;
   }
   setTimeout(() => {
-    alert(
-      '👋 Welcome to CapAhead!\n\n' +
-      'IMPORTANT — Data Safety:\n\n' +
-      '• Your data is stored ONLY on this device.\n' +
-      '• Removing the app from your home screen on iPhone may wipe your data.\n' +
-      '• Export a backup (Settings → Export JSON) at least weekly.\n' +
-      '• The app will remind you if you haven\'t backed up recently.\n\n' +
-      'Tap OK to continue.'
-    );
+    const message = isNativeAndroidApp()
+      ? 'Welcome to CapAhead!\n\n' +
+        'IMPORTANT - Data Safety:\n\n' +
+        '- Your data is stored only on this device.\n' +
+        '- Save an encrypted backup from Profile -> Data & Backup at least weekly.\n' +
+        '- Keep your recovery key somewhere safe so backups can be restored later.\n' +
+        '- The app will remind you if you have not backed up recently.\n\n' +
+        'Tap OK to continue.'
+      : 'Welcome to CapAhead!\n\n' +
+        'IMPORTANT - Data Safety:\n\n' +
+        '- Your data is stored only on this device/browser.\n' +
+        '- Browser or PWA storage can be cleared by the OS.\n' +
+        '- Save an encrypted backup from Profile -> Data & Backup at least weekly.\n' +
+        '- The app will remind you if you have not backed up recently.\n\n' +
+        'Tap OK to continue.';
+    alert(message);
     localStorage.setItem('first_launch_warning_shown', 'yes');
   }, 800);
 }
@@ -13458,18 +13462,19 @@ function init() {
     runAutoLog();
   }, 3600000);
   
-  // v2.5.1: Detect when PWA wakes from background and check for stale cache
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') return;
-    const lastBust = parseInt(localStorage.getItem('ledger_last_bust') || '0');
-    const hoursSinceLastBust = (Date.now() - lastBust) / 3600000;
-    // If the app has been backgrounded for >2 hours, force a fresh load
-    if (hoursSinceLastBust > 2) {
-      localStorage.setItem('ledger_last_bust', String(Date.now()));
-      const newUrl = window.location.origin + window.location.pathname + '?v=' + APP_VERSION + '&t=' + Date.now();
-      window.location.replace(newUrl);
-    }
-  });
+  // v2.5.1: Detect when the browser PWA wakes from background and check for stale cache.
+  if (!isNativeAndroidApp()) {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      const lastBust = parseInt(localStorage.getItem('ledger_last_bust') || '0');
+      const hoursSinceLastBust = (Date.now() - lastBust) / 3600000;
+      if (hoursSinceLastBust > 2) {
+        localStorage.setItem('ledger_last_bust', String(Date.now()));
+        const newUrl = window.location.origin + window.location.pathname + '?v=' + APP_VERSION + '&t=' + Date.now();
+        window.location.replace(newUrl);
+      }
+    });
+  }
 }
 
 try {

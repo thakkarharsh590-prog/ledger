@@ -16,10 +16,10 @@ function check(name, pass) {
 const appVersion = (web.match(/const APP_VERSION = '([^']+)'/) || [])[1];
 const androidVersion = (gradle.match(/versionName "([^"]+)"/) || [])[1];
 
-check('APP_VERSION is 2.9.6', appVersion === '2.9.6');
+check('APP_VERSION is 2.9.7', appVersion === '2.9.7');
 check('package version matches APP_VERSION', pkg.version === appVersion);
 check('Android versionName matches APP_VERSION', androidVersion === appVersion);
-check('Android versionCode is 9', /versionCode 9\b/.test(gradle));
+check('Android versionCode is 10', /versionCode 10\b/.test(gradle));
 check('Android auto backup disabled', /android:allowBackup="false"/.test(manifest));
 
 check('last-good storage key exists', web.includes("const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1'"));
@@ -33,6 +33,7 @@ check('crash guard installs rejection handler', web.includes("window.addEventLis
 check('recovery overlay exists', web.includes('launchRecoveryOverlay'));
 check('emergency export exists', web.includes('function exportEmergencyBackup()'));
 check('last-good restore exists', web.includes('function restoreLastGoodData()'));
+check('native Android export plugins declared', !!pkg.dependencies['@capacitor/filesystem'] && !!pkg.dependencies['@capacitor/share']);
 
 check('QA Pro simulation requires localhost', web.includes('function allowQaProSimulation()') && web.includes('isLocalQaHost()'));
 check('GitHub/browser purchase fallback is not broad', !web.includes('if (!isNativeAndroidApp()) {\n      localStorage.setItem(PRO_DEV_UNLOCK_KEY'));
