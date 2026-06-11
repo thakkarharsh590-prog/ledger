@@ -31,9 +31,10 @@ test.describe('Savings & goals', () => {
     // progress shows on savings page
     await expect(page.locator('#goalsList')).toContainText('Emergency fund');
     await expect(page.locator('#goalsList')).toContainText('20%');
+    await expect(page.locator('#savingsTotalCard')).toContainText('200');
   });
 
-  test('editing a savings entry preserves createdAt (known-bug probe)', async ({ page }) => {
+  test('editing a savings entry preserves createdAt', async ({ page }) => {
     await seedApp(page, {
       data: dataPayload({
         savings: [{ id: 's1', type: 'deposit', amount: 50, note: '', goalId: null, date: isoDaysFromToday(-1), affectsBalance: false, createdAt: 1234567 }],
@@ -46,7 +47,6 @@ test.describe('Savings & goals', () => {
     await page.click('#savingsModal .btn-primary');
     const data = await readAppData(page);
     expect(data.savings[0].amount).toBe(75);
-    // KNOWN BUG #7 (review): edit spreads createdAt: undefined over the record
     expect(data.savings[0].createdAt, 'BUG: editing a savings entry wipes createdAt').toBe(1234567);
   });
 

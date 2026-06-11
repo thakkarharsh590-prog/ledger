@@ -84,6 +84,63 @@ async function seedApp(page, opts = {}) {
   return { consoleErrors, failedRequests };
 }
 
+async function installCapacitorMocks(page, options = {}) {
+  const {
+    native = true,
+    failShare = false,
+    failWrite = false,
+    notificationPermission = 'granted',
+    failNotificationSchedule = false,
+  } = options;
+
+  await page.addInitScript(opts => {
+    window.__nativeExportCalls = [];
+    window.__notificationCalls = [];
+    window.Capacitor = {
+      isNativePlatform: () => opts.native,
+      Plugins: {
+        Filesystem: {
+          async writeFile(writeOptions) {
+            window.__nativeExportCalls.push({ plugin: 'Filesystem', method: 'writeFile', options: writeOptions });
+            if (opts.failWrite) throw new Error('mock write failed');
+            return { uri: `file:///cache/${writeOptions.path}` };
+          },
+        },
+        Share: {
+          async share(shareOptions) {
+            window.__nativeExportCalls.push({ plugin: 'Share', method: 'share', options: shareOptions });
+            if (opts.failShare) throw new Error('mock share failed');
+            return { activityType: 'mock' };
+          },
+        },
+        LocalNotifications: {
+          async requestPermissions() {
+            window.__notificationCalls.push({ method: 'requestPermissions' });
+            return { display: opts.notificationPermission };
+          },
+          async checkPermissions() {
+            window.__notificationCalls.push({ method: 'checkPermissions' });
+            return { display: opts.notificationPermission };
+          },
+          async createChannel(channel) {
+            window.__notificationCalls.push({ method: 'createChannel', channel });
+            return {};
+          },
+          async schedule(payload) {
+            window.__notificationCalls.push({ method: 'schedule', payload });
+            if (opts.failNotificationSchedule) throw new Error('mock notification schedule failed');
+            return {};
+          },
+          async cancel(payload) {
+            window.__notificationCalls.push({ method: 'cancel', payload });
+            return {};
+          },
+        },
+      },
+    };
+  }, { native, failShare, failWrite, notificationPermission, failNotificationSchedule });
+}
+
 /** Read parsed app data back out of localStorage. */
 async function readAppData(page) {
   return page.evaluate(() => JSON.parse(localStorage.getItem('ledger_data_v1') || 'null'));
@@ -95,4 +152,4 @@ async function goPage(page, name) {
   await page.waitForSelector(`#page-${name}.active`);
 }
 
-module.exports = { APP_URL, baseFlags, dataPayload, isoDaysFromToday, seedApp, readAppData, goPage };
+module.exports = { APP_URL, baseFlags, dataPayload, isoDaysFromToday, seedApp, readAppData, goPage, installCapacitorMocks };

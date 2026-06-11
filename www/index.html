@@ -4,12 +4,19 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        HAC Labs
-  Version:      2.8.5
-  Last edited:  2026-05-28
+  Version:      2.9.7
+  Last edited:  2026-06-11
   Storage:      localStorage (device-local, never sent to cloud)
-  Schema ver:   9
+  Schema ver:   10
 
   NAMED: CapAhead
+
+  v2.9.7 - ANDROID DATA SAFETY FIXES (schema v10 unchanged):
+  - Native Android exports use Capacitor Filesystem + Share instead of blob downloads
+  - Clear All Data now resets the full state shape so auto-log cannot repopulate wiped data
+  - Recovery restore hydrates all current schema fields
+  - PWA-only reload/install prompts are gated out of the native Android app
+  - Currency formatting preserves negative values
 
   v2.8.5 — LAUNCH UX POLISH (schema v9 unchanged):
   - Profile reorganized into collapsible setup/settings groups with saved UI preferences
@@ -181,8 +188,8 @@
 
     /* Text */
     --text: #E8E8ED;
-    --text-dim: #9A9AA5;
-    --text-muted: #81818D;
+    --text-dim: #B0B0BA;
+    --text-muted: #A0A0AA;
 
     /* Accent */
     --accent: #C9FF3D;
@@ -2851,14 +2858,19 @@
     background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(168,85,247,0.02));
     border-color: rgba(168,85,247,0.3);
   }
-  .milestone.locked { opacity: 0.55; }
+  .milestone.locked {
+    background: rgba(255,255,255,0.02);
+    border-color: var(--border);
+  }
   .milestone-emoji {
     font-size: 26px;
     line-height: 1;
     margin-bottom: 6px;
     filter: grayscale(0%);
   }
-  .milestone.locked .milestone-emoji { filter: grayscale(100%); opacity: 0.6; }
+  .milestone.locked .milestone-emoji { filter: grayscale(100%); opacity: 0.72; }
+  .milestone.locked .milestone-title { color: var(--text-dim); }
+  .milestone.locked .milestone-desc { color: var(--text-muted); }
   .milestone-title {
     font-size: 10px;
     line-height: 1.3;
@@ -4315,6 +4327,9 @@ const FREE_LIMITS = {
 };
 const AUTO_SNAPSHOT_PREFIX = 'ledger_snap_';
 const MAX_AUTO_SNAPSHOTS = 7;
+const MAX_INTERNAL_BACKUPS = 3;
+const PRO_ALERT_CHANNEL_ID = 'forecast_alerts';
+const PRO_ALERT_ID_BASE = 7000;
 const RECOVERY_KEY_STORAGE_KEY = 'ledger_recovery_key_v1';
 const LAST_ENCRYPTED_BACKUP_KEY = 'ledger_last_encrypted_backup';
 const ENCRYPTED_BACKUP_FORMAT = 'ledger-compass-encrypted-backup';
@@ -4326,6 +4341,7 @@ let pendingRestoreData = null;
 let launchRecoveryIssue = null;
 let crashGuardActive = false;
 let crashGuardRuntimeErrors = [];
+let alertRescheduleTimer = null;
 let billingState = {
   isPro: false,
   source: 'free',
@@ -4622,16 +4638,7 @@ function runMigrations(data) {
   const fromVersion = data.schemaVersion || 0;
   if (fromVersion >= SCHEMA_VERSION) return data;
   
-  // Backup before migrating
-  const backupKey = BACKUP_PREFIX + Date.now();
-  try {
-    localStorage.setItem(backupKey, JSON.stringify(data));
-    // Keep only last 3 backups
-    const allKeys = Object.keys(localStorage).filter(k => k.startsWith(BACKUP_PREFIX)).sort();
-    while (allKeys.length > 3) {
-      localStorage.removeItem(allKeys.shift());
-    }
-  } catch (e) {}
+  createBackup('', data);
   
   let migrated = { ...data };
   
@@ -4767,7 +4774,31 @@ function runMigrations(data) {
   return migrated;
 }
 
-function saveData() {
+function pruneInternalBackups() {
+  try {
+    const allKeys = Object.keys(localStorage).filter(k => k.startsWith(BACKUP_PREFIX)).sort();
+    while (allKeys.length > MAX_INTERNAL_BACKUPS) {
+      localStorage.removeItem(allKeys.shift());
+    }
+  } catch (e) {}
+}
+
+function createBackup(suffix = '', customData = null) {
+  try {
+    const key = BACKUP_PREFIX + Date.now() + suffix;
+    const raw = customData !== null
+      ? (typeof customData === 'string' ? customData : JSON.stringify(customData))
+      : (localStorage.getItem(STORAGE_KEY) || '{}');
+    localStorage.setItem(key, raw);
+    pruneInternalBackups();
+    return key;
+  } catch (e) {
+    console.warn('Internal backup failed:', e);
+    return null;
+  }
+}
+
+function saveData(options = {}) {
   const previousRaw = localStorage.getItem(STORAGE_KEY);
   try {
     const payload = buildAppDataPayload({ lastSaved: Date.now() });
@@ -4791,6 +4822,7 @@ function saveData() {
       appVersion: APP_VERSION,
       savedAt: payload.lastSaved,
     }));
+    if (options.rescheduleAlerts !== false) queueProAlertReschedule('data-save');
     return true;
   } catch (e) {
     console.error('Save error:', e);
@@ -5072,6 +5104,7 @@ function renderAll() {
   renderBudgets();
   renderLoans();
   renderCompass();
+  renderSavingsPage();
   renderProfile();
   
   const sym = getCurrencySymbol();
@@ -5438,6 +5471,41 @@ function alertSettingsSummary() {
   return settings.permission === 'granted' ? 'On' : 'Fallback';
 }
 
+function normalizeNotificationPermission(result) {
+  return result?.display || result?.receive || result?.permission || 'denied';
+}
+
+function localNineFromISO(dateISO, offsetDays = 0) {
+  const d = parseISODateLocal(dateISO);
+  if (!d) return null;
+  d.setDate(d.getDate() + offsetDays);
+  d.setHours(9, 0, 0, 0);
+  return d;
+}
+
+function nextMondayAtNine() {
+  const d = new Date();
+  d.setHours(9, 0, 0, 0);
+  const day = d.getDay();
+  const daysUntilMonday = day === 0 ? 1 : 8 - day;
+  d.setDate(d.getDate() + daysUntilMonday);
+  return d;
+}
+
+function firstOfNextMonthAtNine() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1, 9, 0, 0, 0);
+}
+
+function dueBillAlertTime(dateISO) {
+  if (dateISO === todayISO()) return new Date(Date.now() + 15 * 60000);
+  return localNineFromISO(dateISO, -1);
+}
+
+function isFutureAlertTime(at) {
+  return at instanceof Date && !Number.isNaN(at.getTime()) && at.getTime() > Date.now() + 30000;
+}
+
 function buildProAlertCandidates() {
   const alerts = [];
   const forecast = computeForecastSummary(60);
@@ -5446,6 +5514,7 @@ function buildProAlertCandidates() {
       id: 'cash_squeeze',
       title: 'Cash squeeze ahead',
       body: `You may be tight around ${formatDateLabel(forecast.firstNegative.date)}.`,
+      at: localNineFromISO(forecast.firstNegative.date, -1),
     });
   }
   const upcomingBills = getUpcomingBills(7);
@@ -5455,6 +5524,7 @@ function buildProAlertCandidates() {
       id: 'bill_due',
       title: 'Bill due soon',
       body: `${bill.name} is due ${formatDateLabel(bill.date)}. Check your set-aside before it hits.`,
+      at: dueBillAlertTime(bill.date),
     });
   }
   const behindGoal = (state.savingsGoals || []).map(g => ({ goal: g, pace: computeGoalPace(g) })).find(x => x.pace?.onTrackStatus === 'behind');
@@ -5463,6 +5533,7 @@ function buildProAlertCandidates() {
       id: 'goal_coach',
       title: 'Goal needs attention',
       body: `${behindGoal.goal.name} needs about ${fmt(behindGoal.pace.weeklyPace)}/week to stay on track.`,
+      at: nextMondayAtNine(),
     });
   }
   const subTotal = state.transactions.filter(t => t.type === 'expense' && t.category === 'subs').reduce((sum, t) => sum + t.amount, 0);
@@ -5471,56 +5542,147 @@ function buildProAlertCandidates() {
       id: 'subscription_watch',
       title: 'Subscription check',
       body: `Your subscription spending is worth reviewing before the next renewal cycle.`,
+      at: firstOfNextMonthAtNine(),
     });
   }
-  return alerts.slice(0, 4);
+  return alerts.filter(alert => isFutureAlertTime(alert.at)).slice(0, 4);
 }
 
-async function scheduleProAlerts() {
+async function ensureProAlertChannel(plugin) {
+  if (!plugin || typeof plugin.createChannel !== 'function') return;
+  try {
+    await plugin.createChannel({
+      id: PRO_ALERT_CHANNEL_ID,
+      name: 'Forecast alerts',
+      description: 'Cashflow, bill, goal, and subscription reminders from CapAhead.',
+      importance: 4,
+      visibility: 1,
+    });
+  } catch (err) {
+    console.warn('Notification channel setup failed:', err);
+  }
+}
+
+async function cancelScheduledProAlerts(plugin, ids = []) {
+  if (!plugin || typeof plugin.cancel !== 'function' || !ids.length) return;
+  try {
+    await plugin.cancel({ notifications: ids.map(id => ({ id })) });
+  } catch (err) {
+    console.warn('Notification cancel failed:', err);
+  }
+}
+
+async function scheduleProAlerts(options = {}) {
+  const requestPermission = options.requestPermission !== false;
+  const silent = options.silent === true;
   const plugin = getLocalNotificationsPlugin();
   const alerts = buildProAlertCandidates();
   if (!plugin || typeof plugin.schedule !== 'function') {
-    state.alertSettings = { enabled: true, permission: 'unavailable', inAppOnly: true, lastScheduledAt: Date.now() };
-    saveData();
-    showToast('Alerts enabled in-app');
+    state.alertSettings = { enabled: true, permission: 'unavailable', inAppOnly: true, lastScheduledAt: Date.now(), scheduledIds: [] };
+    saveData({ rescheduleAlerts: false });
+    if (!silent) showToast('Alerts enabled in-app');
     renderProfile();
     return false;
   }
   try {
     let permission = 'granted';
-    if (typeof plugin.requestPermissions === 'function') {
+    if (requestPermission && typeof plugin.requestPermissions === 'function') {
       const result = await plugin.requestPermissions();
-      permission = result?.display || result?.receive || result?.permission || 'denied';
+      permission = normalizeNotificationPermission(result);
+    } else if (typeof plugin.checkPermissions === 'function') {
+      const result = await plugin.checkPermissions();
+      permission = normalizeNotificationPermission(result);
     }
     if (permission !== 'granted') {
-      state.alertSettings = { enabled: true, permission: 'denied', inAppOnly: true, lastScheduledAt: Date.now() };
-      saveData();
-      showToast('Alerts enabled in-app');
+      await cancelScheduledProAlerts(plugin, state.alertSettings?.scheduledIds || []);
+      state.alertSettings = { enabled: true, permission, inAppOnly: true, lastScheduledAt: Date.now(), scheduledIds: [] };
+      saveData({ rescheduleAlerts: false });
+      if (!silent) showToast('Alerts enabled in-app');
       renderProfile();
       return false;
     }
-    if (alerts.length) {
+
+    await ensureProAlertChannel(plugin);
+    await cancelScheduledProAlerts(plugin, state.alertSettings?.scheduledIds || []);
+    const notifications = alerts.map((alert, index) => ({
+      id: PRO_ALERT_ID_BASE + index,
+      title: alert.title,
+      body: alert.body,
+      schedule: { at: alert.at, allowWhileIdle: false },
+      channelId: PRO_ALERT_CHANNEL_ID,
+      smallIcon: 'ic_stat_capahead',
+    }));
+    if (notifications.length) {
       await plugin.schedule({
-        notifications: alerts.map((alert, index) => ({
-          id: 7000 + index,
-          title: alert.title,
-          body: alert.body,
-          schedule: { at: new Date(Date.now() + (index + 1) * 60000) },
-        })),
+        notifications,
       });
     }
-    state.alertSettings = { enabled: true, permission: 'granted', inAppOnly: false, lastScheduledAt: Date.now() };
-    saveData();
-    showToast('Forecast alerts enabled');
+    state.alertSettings = {
+      enabled: true,
+      permission: 'granted',
+      inAppOnly: false,
+      lastScheduledAt: Date.now(),
+      scheduledIds: notifications.map(n => n.id),
+    };
+    saveData({ rescheduleAlerts: false });
+    if (!silent) showToast('Forecast alerts enabled');
     renderProfile();
     return true;
   } catch (err) {
-    state.alertSettings = { enabled: true, permission: 'error', inAppOnly: true, lastScheduledAt: Date.now() };
-    saveData();
-    showToast('Alerts enabled in-app');
+    state.alertSettings = { enabled: true, permission: 'error', inAppOnly: true, lastScheduledAt: Date.now(), scheduledIds: [] };
+    saveData({ rescheduleAlerts: false });
+    if (!silent) showToast('Alerts enabled in-app');
     renderProfile();
     return false;
   }
+}
+
+async function refreshProAlertPermissionAndSchedule(options = {}) {
+  const settings = state.alertSettings || {};
+  if (!settings.enabled || !isPro()) return false;
+  const plugin = getLocalNotificationsPlugin();
+  if (!plugin || typeof plugin.schedule !== 'function') {
+    state.alertSettings = { ...settings, permission: 'unavailable', inAppOnly: true, scheduledIds: [] };
+    saveData({ rescheduleAlerts: false });
+    renderProfile();
+    return false;
+  }
+  try {
+    let permission = 'granted';
+    if (typeof plugin.checkPermissions === 'function') {
+      permission = normalizeNotificationPermission(await plugin.checkPermissions());
+    }
+    if (permission !== 'granted') {
+      await cancelScheduledProAlerts(plugin, settings.scheduledIds || []);
+      state.alertSettings = { ...settings, permission, inAppOnly: true, scheduledIds: [] };
+      saveData({ rescheduleAlerts: false });
+      renderProfile();
+      return false;
+    }
+    if (options.reschedule !== false) {
+      return scheduleProAlerts({ requestPermission: false, silent: true });
+    }
+    state.alertSettings = { ...settings, permission: 'granted', inAppOnly: false };
+    saveData({ rescheduleAlerts: false });
+    renderProfile();
+    return true;
+  } catch (err) {
+    console.warn('Notification permission refresh failed:', err);
+    state.alertSettings = { ...settings, permission: 'error', inAppOnly: true };
+    saveData({ rescheduleAlerts: false });
+    renderProfile();
+    return false;
+  }
+}
+
+function queueProAlertReschedule(reason = 'data-change') {
+  const settings = state.alertSettings || {};
+  if (!settings.enabled || settings.inAppOnly || settings.permission !== 'granted' || !isPro()) return;
+  if (alertRescheduleTimer) clearTimeout(alertRescheduleTimer);
+  alertRescheduleTimer = setTimeout(() => {
+    alertRescheduleTimer = null;
+    refreshProAlertPermissionAndSchedule({ reschedule: true });
+  }, 1200);
 }
 
 async function toggleProAlerts() {
@@ -5529,8 +5691,10 @@ async function toggleProAlerts() {
     return;
   }
   if (state.alertSettings?.enabled) {
-    state.alertSettings = { enabled: false, permission: state.alertSettings.permission || 'unknown', inAppOnly: true, lastScheduledAt: Date.now() };
-    saveData();
+    const plugin = getLocalNotificationsPlugin();
+    await cancelScheduledProAlerts(plugin, state.alertSettings?.scheduledIds || []);
+    state.alertSettings = { enabled: false, permission: state.alertSettings.permission || 'unknown', inAppOnly: true, lastScheduledAt: Date.now(), scheduledIds: [] };
+    saveData({ rescheduleAlerts: false });
     showToast('Forecast alerts off');
     renderProfile();
     return;
@@ -7598,7 +7762,7 @@ function confirmEncryptedRestore() {
   if (!pendingRestoreData) return;
   if (hasCurrentFinanceData() && !confirm('This will replace everything currently in CapAhead with this backup. Continue?')) return;
   try {
-    localStorage.setItem(BACKUP_PREFIX + Date.now() + '_pre_restore', localStorage.getItem(STORAGE_KEY) || '{}');
+    createBackup('_pre_restore');
     hydrateStateFromData(pendingRestoreData);
     saveData();
     closeRestoreModal();
@@ -7637,8 +7801,7 @@ function importData(event) {
 function confirmClearAll() {
   if (!confirm('Delete ALL CapAhead data on this device? This cannot be undone.')) return;
   if (!confirm('Are you SURE? This clears transactions, income, bills, savings, goals, decisions, snapshots, and profile details.')) return;
-  // Backup first
-  localStorage.setItem(BACKUP_PREFIX + Date.now() + '_pre_wipe', localStorage.getItem(STORAGE_KEY) || '{}');
+  createBackup('_pre_wipe');
   hydrateStateFromData({});
   saveData();
   renderAll();
@@ -11687,6 +11850,9 @@ function saveSavingsEntry() {
   
   if (!amount || amount <= 0) { showToast('Enter a valid amount', '⚠'); return; }
   
+  const existingEntry = state.editingSavingsId
+    ? state.savings.find(s => s.id === state.editingSavingsId)
+    : null;
   const entry = {
     id: state.editingSavingsId || uid('sav'),
     type: state.currentSavingsType,
@@ -11695,7 +11861,7 @@ function saveSavingsEntry() {
     goalId,
     date,
     affectsBalance: state.savingsAffectsBalance,
-    createdAt: state.editingSavingsId ? undefined : Date.now(),
+    createdAt: existingEntry?.createdAt || Date.now(),
   };
   
   if (state.editingSavingsId) {
@@ -13436,7 +13602,10 @@ function init() {
 
   ensureSavingsCategory();  // v2.4: register savings category
   loadData();
-  initBilling().then(() => renderAllSafely('billing-init')); // Google Play Pro entitlement, with browser QA fallback
+  initBilling().then(async () => {
+    await refreshProAlertPermissionAndSchedule({ reschedule: true });
+    renderAllSafely('billing-init');
+  }); // Google Play Pro entitlement, with browser QA fallback
   takeAutoSnapshot();      // Snapshot AFTER load (preserves loaded state)
   checkVersionChange();    // Toast if updated
   setupManifest();
@@ -13462,10 +13631,11 @@ function init() {
     runAutoLog();
   }, 3600000);
   
-  // v2.5.1: Detect when the browser PWA wakes from background and check for stale cache.
-  if (!isNativeAndroidApp()) {
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState !== 'visible') return;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    refreshProAlertPermissionAndSchedule({ reschedule: true });
+    // v2.5.1: Detect when the browser PWA wakes from background and check for stale cache.
+    if (!isNativeAndroidApp()) {
       const lastBust = parseInt(localStorage.getItem('ledger_last_bust') || '0');
       const hoursSinceLastBust = (Date.now() - lastBust) / 3600000;
       if (hoursSinceLastBust > 2) {
@@ -13473,8 +13643,8 @@ function init() {
         const newUrl = window.location.origin + window.location.pathname + '?v=' + APP_VERSION + '&t=' + Date.now();
         window.location.replace(newUrl);
       }
-    });
-  }
+    }
+  });
 }
 
 try {
