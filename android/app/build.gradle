@@ -1,5 +1,17 @@
 apply plugin: 'com.android.application'
 
+def releaseSigning = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { releaseSigning.load(it) }
+}
+
+def releaseStoreFile = System.getenv('CAPAHEAD_UPLOAD_STORE_FILE') ?: releaseSigning.getProperty('capahead.upload.storeFile')
+def releaseStorePassword = System.getenv('CAPAHEAD_UPLOAD_STORE_PASSWORD') ?: releaseSigning.getProperty('capahead.upload.storePassword')
+def releaseKeyAlias = System.getenv('CAPAHEAD_UPLOAD_KEY_ALIAS') ?: releaseSigning.getProperty('capahead.upload.keyAlias')
+def releaseKeyPassword = System.getenv('CAPAHEAD_UPLOAD_KEY_PASSWORD') ?: releaseSigning.getProperty('capahead.upload.keyPassword')
+def hasReleaseSigning = releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
 android {
     namespace = "com.haclabs.capahead"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +28,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.warn("Release signing is not configured. Set CAPAHEAD_UPLOAD_* env vars or capahead.upload.* in android/local.properties.")
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

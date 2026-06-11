@@ -22,6 +22,19 @@ npm-debug.log*
 # Environment files (secrets)
 .env
 .env.local
+*.jks
+*.keystore
+android/keystores/
+android/upload-keystore.jks
 
 # Private owner-only local builds
 owner-private-ios/
+
+# QA / Playwright
+test-results/
+qa/*.png
+qa/*.pdf
+qa/*.json
+qa/full-qa/
+qa/encrypted-backup-downloads/
+android/.idea/
