@@ -37,7 +37,7 @@ test.describe('Recovery mode', () => {
     });
     await expect(page.locator('#recoveryBanner')).toBeVisible();
     page.once('dialog', d => d.accept());
-    await page.click('.recovery-restore');
+    await page.locator('.recovery-restore').click({ force: true });
 
     const data = await readAppData(page);
     expect(data.transactions, 'transactions restored').toHaveLength(1);

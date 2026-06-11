@@ -13,6 +13,7 @@ module.exports = defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:4173',
     actionTimeout: 10 * 1000,
+    acceptDownloads: true,
     trace: 'off',
     screenshot: 'only-on-failure',
     video: 'off',

@@ -27,6 +27,8 @@ async function installNativeExportMocks(page, { failShare = false, failWrite = f
 }
 
 test.describe('Native Android exports', () => {
+  test.skip(({ browserName }) => browserName === 'webkit', 'Native Android export coverage targets the Chromium WebView runtime.');
+
   test('encrypted backup writes and shares a real native file before recording success', async ({ page }) => {
     await installNativeExportMocks(page);
     await seedApp(page, {
