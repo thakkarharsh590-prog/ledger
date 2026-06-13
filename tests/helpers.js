@@ -67,6 +67,12 @@ async function seedApp(page, opts = {}) {
     }
   });
 
+  // Keep boot deterministic if a page or cached artifact references Google Font hosts.
+  // Current app source is offline-first, but this prevents no-egress CI from stalling on
+  // network font requests if they are accidentally reintroduced.
+  await page.route(/fonts\.(googleapis|gstatic)\.com/i, route =>
+    route.fulfill({ status: 200, contentType: 'text/css', body: '' }));
+
   const flags = opts.firstRun ? {} : baseFlags();
   const storage = { ...flags, ...(opts.flags || {}) };
   if (opts.data) storage.ledger_data_v1 = JSON.stringify(opts.data);

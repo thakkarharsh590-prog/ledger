@@ -169,9 +169,6 @@
 <link rel="manifest" id="manifestLink">
 <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230a0a0f'/><circle cx='90' cy='90' r='62' fill='none' stroke='%23c9ff3d' stroke-width='3' opacity='0.4'/><path d='M 90 38 L 100 90 L 90 142 L 80 90 Z' fill='%23c9ff3d'/><circle cx='90' cy='90' r='5' fill='%230a0a0f'/></svg>">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   
@@ -1428,7 +1425,6 @@
   }
   .pro-preview-content {
     filter: blur(3px);
-    opacity: 0.55;
     pointer-events: none;
     user-select: none;
   }
@@ -2033,19 +2029,6 @@
     height: 160px;
     position: relative;
     margin: 12px 0;
-  }
-  .forecast-svg {
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-  }
-  .forecast-legend {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10px;
-    color: var(--text-muted);
-    font-family: 'Geist Mono', monospace;
-    margin-top: 6px;
   }
   .forecast-event {
     position: absolute;
@@ -3892,14 +3875,14 @@
       <div class="pro-plan">
         <div class="pro-plan-head">
           <span class="pro-plan-name">Monthly</span>
-          <span class="pro-plan-price">A$4.99/mo</span>
+          <span class="pro-plan-price">Local price in Google Play</span>
         </div>
         <button class="btn-primary" type="button" onclick="purchasePro('monthly')">Start monthly Pro</button>
       </div>
       <div class="pro-plan">
         <div class="pro-plan-head">
           <span class="pro-plan-name">Annual</span>
-          <span class="pro-plan-price">A$39.99/yr</span>
+          <span class="pro-plan-price">Local price in Google Play</span>
         </div>
         <button class="btn-secondary" type="button" onclick="purchasePro('yearly')">Start annual Pro</button>
       </div>
@@ -4309,8 +4292,8 @@ const PRO_PRODUCT_ID = 'capahead_pro';
 const PRO_MONTHLY_BASE_PLAN = 'pro_monthly';
 const PRO_YEARLY_BASE_PLAN = 'pro_yearly';
 const PRO_ENTITLEMENT_TIMEOUT_MS = 3500;
-const PRO_PRICE_MONTHLY = 'A$4.99/month';
-const PRO_PRICE_YEARLY = 'A$39.99/year';
+const PRO_PRICE_MONTHLY = 'Google Play local price';
+const PRO_PRICE_YEARLY = 'Google Play local price';
 const PRO_TRIAL_TEXT = '7-day free trial';
 const OWNER_INSTALL_ID_KEY = 'capahead_owner_install_id_v1';
 const OWNER_LICENSE_KEY = 'capahead_owner_license_v1';
@@ -4956,10 +4939,13 @@ function fmt(n) {
 
 function fmtShort(n) {
   const sym = getCurrencySymbol();
-  const abs = Math.abs(n);
-  if (abs >= 1000000) return sym + (abs/1000000).toFixed(1) + 'M';
-  if (abs >= 10000) return sym + (abs/1000).toFixed(1) + 'k';
-  return sym + abs.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const value = Number(n);
+  const safe = Number.isFinite(value) ? value : 0;
+  const abs = Math.abs(safe);
+  const sign = safe < 0 ? '-' : '';
+  if (abs >= 1000000) return sign + sym + (abs/1000000).toFixed(1) + 'M';
+  if (abs >= 10000) return sign + sym + (abs/1000).toFixed(1) + 'k';
+  return sign + sym + abs.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 function todayISO() {
@@ -5758,7 +5744,7 @@ function renderProfile() {
       `
         <div class="pro-card">
           <div class="pro-card-title">${isPro() ? 'Your Pro plan is active' : 'Unlock foresight planning'}</div>
-          <div class="pro-card-sub">${isPro() ? 'What-if scenarios, forecast alerts, goal coaching, trends, loan strategy, and monthly reviews are available.' : `Free includes core tracking, complete loan recording, basic forecast, and encrypted backup. Pro starts with a ${PRO_TRIAL_TEXT}, then ${PRO_PRICE_MONTHLY} or ${PRO_PRICE_YEARLY}.`}</div>
+          <div class="pro-card-sub">${isPro() ? 'What-if scenarios, forecast alerts, goal coaching, trends, loan strategy, and monthly reviews are available.' : `Free includes core tracking, complete loan recording, basic forecast, and encrypted backup. Pro starts with a ${PRO_TRIAL_TEXT}; Google Play shows your local price before checkout.`}</div>
         </div>
         <div class="setting-row" onclick="restorePurchase()">
           <span class="setting-label">Restore purchase</span>
@@ -6008,12 +5994,16 @@ function renderTxItem(t) {
   const colorClass = t.type === 'income' ? 'income-text' : 'expense-text';
   const autoBadge = t.autoLogged ? '<span class="tx-auto-badge">auto</span>' : '';
   const oneTimeBadge = t.oneTime ? '<span class="tx-auto-badge" style="background:rgba(167,139,250,0.15);color:#a78bfa;">one-time</span>' : '';
+  const savingsBadge = t.category === 'savings' ? '<span class="tx-auto-badge" style="background:rgba(201,255,61,0.12);color:var(--accent);">transfer</span>' : '';
+  const metaLabel = t.category === 'savings'
+    ? (t.type === 'expense' ? 'Transferred to savings' : 'Transferred from savings')
+    : cat.name;
   return `
     <div class="tx" onclick="openEditModal('${t.id}')">
       <div class="tx-icon" style="background:${cat.color}22;color:${cat.color};">${categoryIcon(cat)}</div>
       <div class="tx-main">
-        <div class="tx-title">${escapeHtml(t.description || cat.name)}${autoBadge}${oneTimeBadge}</div>
-        <div class="tx-meta">${cat.name}${t.note ? ' · ' + escapeHtml(t.note) : ''}</div>
+        <div class="tx-title">${escapeHtml(t.description || cat.name)}${autoBadge}${oneTimeBadge}${savingsBadge}</div>
+        <div class="tx-meta">${escapeHtml(metaLabel)}${t.note ? ' · ' + escapeHtml(t.note) : ''}</div>
       </div>
       <div class="tx-amount ${colorClass}">${sign}${fmt(t.amount)}</div>
     </div>
@@ -6028,7 +6018,7 @@ function emptyState(title, sub, opts = {}) {
   return `<div class="empty">
     <div class="empty-icon">${categoryIconSvg(icon, title)}</div>
     <h3>${escapeHtml(title)}</h3>
-    <p>${sub}</p>
+    <p>${escapeHtml(sub)}</p>
     ${action}
   </div>`;
 }
@@ -6150,7 +6140,7 @@ function buildMonthlySnapshot(monthKey) {
   const incomeTotal = monthlyTx.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
   const expenseTotal = monthlyTx.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
   const categoryTotals = {};
-  monthlyTx.filter(t => t.type === 'expense').forEach(t => {
+  monthlyTx.filter(t => t.type === 'expense' && t.category !== 'savings').forEach(t => {
     categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
   });
   const balance = state.transactions
@@ -6203,7 +6193,7 @@ function renderAheadTrends() {
   if (!isPro()) {
     el.innerHTML = `
       <div class="pro-preview-wrap">
-        <div class="pro-preview-content">
+        <div class="pro-preview-content" aria-hidden="true">
           <div class="trend-grid">
             ${forecastSummaryCard('Net progress', fmtSigned(currentNet))}
             ${forecastSummaryCard('Snapshots', `${snapshots.length} saved`)}
@@ -6247,7 +6237,7 @@ function renderForecastSummaryCards() {
   if (!isPro()) {
     el.innerHTML = `
       <div class="forecast-summary-grid pro-preview-wrap">
-        <div class="pro-preview-content">
+        <div class="pro-preview-content" aria-hidden="true">
           ${forecastSummaryCard('Lowest point', summary.lowest ? `${fmt(summary.lowest.balance)} on ${formatDateLabel(summary.lowest.date)}` : 'Needs more data')}
           ${forecastSummaryCard('Risk date', summary.firstNegative ? formatDateLabel(summary.firstNegative.date) : 'No negative dip projected')}
           ${forecastSummaryCard('Next pressure', summary.nextBill ? `${escapeHtml(summary.nextBill.name)} ${fmt(summary.nextBill.amount)}` : 'No bill pressure set')}
@@ -6278,7 +6268,7 @@ function renderMonthlyReportCard() {
   if (!isPro()) {
     el.innerHTML = `
       <div class="pro-preview-wrap">
-        <div class="pro-preview-content">
+        <div class="pro-preview-content" aria-hidden="true">
           <div class="report-summary-grid">
             ${reportSummaryCard('Month', data.monthLabel)}
             ${reportSummaryCard('Spare cash', fmtSigned(data.net))}
@@ -6475,7 +6465,7 @@ function renderForecastChart() {
 function renderForecastPreviewLock() {
   return `
     <div class="pro-preview-wrap">
-      <div class="pro-preview-content">
+      <div class="pro-preview-content" aria-hidden="true">
         ${renderForecastLine()}
       </div>
       <div class="pro-preview-lock">
@@ -6684,7 +6674,7 @@ function renderCategoryBreakdown() {
   const totals = {};
   let grandTotal = 0;
   state.transactions.forEach(t => {
-    if (t.type === 'expense' && t.date >= mStart) {
+    if (t.type === 'expense' && t.date >= mStart && t.category !== 'savings') {
       totals[t.category] = (totals[t.category] || 0) + t.amount;
       grandTotal += t.amount;
     }
@@ -6710,7 +6700,7 @@ function renderCategoryBreakdown() {
         </div>
       `;
     }).join('');
-  document.getElementById('categoryBreakdown').innerHTML = rows || emptyState('No spending breakdown yet', 'Once you log expenses, this shows which categories are taking the most money this month.', {
+  document.getElementById('categoryBreakdown').innerHTML = rows || emptyState('No spending breakdown yet', 'Once you log spending expenses, this shows which categories are taking the most money this month. Savings transfers stay out of this chart.', {
     icon: 'receipt',
     actionLabel: 'Add expense',
     action: "openAddModal('expense')",
@@ -7677,18 +7667,23 @@ function exportData() {
   createEncryptedBackup();
 }
 
+function escapeCSVCell(value) {
+  const str = String(value ?? '');
+  return /[",\n\r]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
 async function exportCSV() {
   const rows = [['Date','Type','Category','Description','Amount','Note']];
   state.transactions.forEach(t => {
     rows.push([
       t.date, t.type,
       getCat(t.category, t.type).name,
-      (t.description||'').replace(/,/g,';').replace(/\n/g,' '),
+      t.description || '',
       t.amount,
-      (t.note||'').replace(/,/g,';').replace(/\n/g,' '),
+      t.note || '',
     ]);
   });
-  const csv = rows.map(r => r.join(',')).join('\n');
+  const csv = '\uFEFF' + rows.map(r => r.map(escapeCSVCell).join(',')).join('\r\n');
   try {
     await downloadTextFile(`ledger-${todayISO()}.csv`, csv, 'text/csv');
     showToast('Exported CSV');
@@ -11169,7 +11164,7 @@ function renderSmartInsights() {
   if (!isPro()) {
     list.innerHTML = `
       <div class="pro-preview-wrap">
-        <div class="pro-preview-content">
+        <div class="pro-preview-content" aria-hidden="true">
           <div class="insight-item">
             <div class="insight-icon">${categoryIconSvg('play-square', 'Subscriptions')}</div>
             <div class="insight-body"><strong>Subscription pattern:</strong> recurring spending and cash buffer notes appear here.</div>
@@ -11468,7 +11463,7 @@ function renderScenarioResult(result) {
   if (!isPro()) {
     return `
       <div class="pro-preview-wrap">
-        <div class="pro-preview-content">
+        <div class="pro-preview-content" aria-hidden="true">
           <div class="scenario-result-card">
             <strong>${escapeHtml(result.what)}</strong>
             <div class="scenario-note">Basic check complete. Pro shows the full 60-day scenario impact, risk date change, and goal movement.</div>
@@ -11633,7 +11628,7 @@ function renderAffordabilityResult(result, amount, what) {
             <div class="afford-metric">
               <div class="afford-metric-label">${escapeHtml(item.label)}</div>
               <div class="afford-metric-value" style="color:${item.color};">${escapeHtml(item.value)}</div>
-              <div class="afford-metric-detail">${item.detail}</div>
+              <div class="afford-metric-detail">${escapeHtml(item.detail)}</div>
             </div>
           `).join('')}
         </div>
@@ -12396,6 +12391,7 @@ function runAutoLog() {
   const today = todayISO();
   const todayDate = new Date(today + 'T00:00:00');
   const created = [];
+  const loggedAutoIds = new Set(state.transactions.map(t => t.autoLogId).filter(Boolean));
   let advancedAny = false;
   
   // --- Income sources with autoLog enabled ---
@@ -12415,8 +12411,7 @@ function runAutoLog() {
       if (cd <= todayDate) {
         // Check if already logged for this date+source
         const dupId = 'auto_inc_' + src.id + '_' + checkDate;
-        const exists = state.transactions.some(t => t.autoLogId === dupId);
-        if (!exists) {
+        if (!loggedAutoIds.has(dupId)) {
           state.transactions.push({
             id: uid('tx'),
             type: 'income',
@@ -12429,6 +12424,7 @@ function runAutoLog() {
             autoLogId: dupId,
             createdAt: Date.now(),
           });
+          loggedAutoIds.add(dupId);
           created.push({ name: src.name, amount: src.amount, type: 'income', date: checkDate });
         }
         latestLoggedDate = checkDate;
@@ -12464,8 +12460,7 @@ function runAutoLog() {
       const cd = parseISODateLocal(checkDate);
       if (cd <= todayDate) {
         const dupId = 'auto_exp_' + rec.id + '_' + checkDate;
-        const exists = state.transactions.some(t => t.autoLogId === dupId);
-        if (!exists) {
+        if (!loggedAutoIds.has(dupId)) {
           state.transactions.push({
             id: uid('tx'),
             type: 'expense',
@@ -12478,6 +12473,7 @@ function runAutoLog() {
             autoLogId: dupId,
             createdAt: Date.now(),
           });
+          loggedAutoIds.add(dupId);
           created.push({ name: rec.name, amount: rec.amount, type: 'expense', date: checkDate });
         }
         latestLoggedDate = checkDate;
