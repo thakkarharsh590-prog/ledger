@@ -86,3 +86,33 @@ Recommended fix: Add `aria-hidden="true"` to all `.pro-preview-content` wrapper 
 Effort estimate: Small (adding `aria-hidden="true"` attributes to 6 elements)
 Risk if unfixed: Low/Medium accessibility compliance.
 
+### Iteration 5 — full-suite re-run, all 3 projects (2026-06-13)
+
+Builds on Iteration 4. The prior run reported "WebKit timed out/hung on Windows"; root cause
+identified and fixed at the harness level so all three projects now run.
+
+**Environment blocker (not an app bug):** this sandbox has no outbound network
+(`fonts.googleapis.com` → HTTP 000). The app loads Google Fonts from the network, so
+`page.goto(waitUntil:'load')` stalled past the 20s timeout — that is the WebKit "hang."
+
+**Test-infra fix (helpers.js only — NO app source touched):** `seedApp` now adds a
+`page.route` that fulfills `fonts.(googleapis|gstatic).com` with empty CSS (200). No
+@font-face rules are emitted → no gstatic requests → no aborted-request console error;
+app degrades to system fonts. Single chokepoint (every spec uses `seedApp`). This is the
+only file changed this run. Pre-existing app defect #9 (network fonts) is the underlying cause.
+
+**Result: 90 passed · 3 failed · 11 skipped (2.6 min)** — full suite, chromium (Pixel 7) +
+webkit (iPhone 13) + chromium-desktop. WebKit now completes cleanly.
+
+- The 3 failures are the SAME single test (`axe.spec` stats color-contrast) on all 3
+  projects — confirms Iteration 4's finding cross-browser, including WebKit which couldn't
+  run before. Exact nodes: summary-card labels `#61616a`/`#1a1a21` = 2.82:1; legend+caption
+  `#6a6a73`/`#15151c` = 3.39:1; dim-red expense `#8d2f32`/`#15151c` = 2.23:1 (req 4.5:1).
+  All inside `.pro-preview-content` → Iteration 4's `aria-hidden="true"` fix stands.
+- 11 skipped = deliberate `test.skip(browserName==='webkit')` guards (native-export,
+  notifications, blob-download specs target the Android Chromium WebView). Not failures.
+- Confirmed FIXED vs v2.9.6 baseline (probes green on chromium + webkit): #1 native export
+  bridge, #2 clear-all (+ no auto-log resurrection), #3 recovery full-field restore,
+  #8 savings createdAt, #11 savings re-render, #10 milestone-contrast (Compass a11y passes),
+  notifications (5 new specs). Net: 73/15 → 90/3, one residual a11y defect.
+

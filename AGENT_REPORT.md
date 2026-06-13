@@ -41,11 +41,11 @@ This report represents the updated status after the owner implemented the recomm
 
 Accessibility testing was performed via `@axe-core/playwright` scanning all active bottom-navigation pages. 
 
-- **Home, Compass, Loans, and Profile pages**: **0 serious / critical Axe violations.**
-- **Stats page**: **2 violations found (on chromium & chromium-desktop)**:
-  - **Rule ID**: `color-contrast` (impact: serious)
-  - **Affected Elements**: `.forecast-legend > span` ("Actual", "Projected", "Zero" legends), `.pro-preview-content` text spans ("Today: A$1,920.00", "In 60d: −A$2,880.00"), and `.forecast-summary-card > span` titles.
-  - **Cause**: All affected nodes are children of the Pro preview container, which is styled with `opacity: 0.55` to represent locked/unpurchased content.
+- **Home, Compass, Loans, and Profile pages**: **0 serious / critical Axe violations** (on all 3 projects).
+- **Stats page**: **fails on all 3 projects** (chromium, webkit, chromium-desktop):
+  - **Rule ID**: `color-contrast` (impact: serious, WCAG 1.4.3) — 13–15 nodes
+  - **Affected Elements**: `.forecast-legend > span` ("Actual", "Projected", "Zero" legends, `#6a6a73`/`#15151c` = 3.39:1), `.pro-preview-content` caption spans ("Today: A$1,920.00", "In 60d: −A$2,880.00") incl. dim-red expense (`#8d2f32`/`#15151c` = 2.23:1), and `.forecast-summary-card > span` titles (`#61616a`/`#1a1a21` = 2.82:1). Required 4.5:1.
+  - **Cause**: All affected nodes are children of the Pro preview container, styled with `opacity: 0.55` + `filter: blur(3px)` and `pointer-events:none` to represent locked/unpurchased content — obscured by design.
 
 ---
 
@@ -64,24 +64,31 @@ Accessibility testing was performed via `@axe-core/playwright` scanning all acti
 ## 7. Final Test Results
 
 ```
-Browsers tested : Chromium (Pixel 7) · Chromium-Desktop (Visual/A11y)
-Total tests     : 56
-Passed          : 54
-Failed          : 2  (Axe color contrast violations on Stats preview)
-Duration        : 1.7 minutes (102 seconds)
+Browsers tested : Chromium (Pixel 7) · WebKit (iPhone 13) · Chromium-Desktop (Visual/A11y)
+Total runnable  : 93
+Passed          : 90
+Failed          : 3  (same Axe color-contrast test on Stats, across all 3 projects)
+Skipped         : 11 (deliberate test.skip(webkit) for Android-native/blob-download specs)
+Duration        : 2.6 minutes
 ```
-*(Note: WebKit is configured, but was excluded due to execution hangs / timeouts on the local host environment. Running Chromium + Chromium-desktop covers all E2E logic and visual checks).*
+*(Update 2026-06-13, full re-run: the earlier "WebKit hangs" was diagnosed — this sandbox has no
+network egress, and the app's Google-Fonts `<link>` stalled the page `load` event past the 20s
+timeout. Fixed at the harness layer only (`tests/helpers.js` `seedApp` now stubs the font request
+with empty CSS; app degrades to system fonts). WebKit now completes cleanly and reproduces the
+identical single failure. No app source modified.)*
 
 ---
 
 ## 8. Screenshot Gallery
 
-All visual layout snapshots are captured and stored in:
-- `test-results/screenshots/home__mobile.png`
-- `test-results/screenshots/compass__tablet.png`
-- `test-results/screenshots/stats__desktop.png`
-- `test-results/screenshots/loans__mobile.png`
-- `test-results/screenshots/profile__desktop.png`
+All 15 visual snapshots (5 pages × 3 viewports) regenerated in `test-results/screenshots/`:
+- **Home:** `home__mobile.png` · `home__tablet.png` · `home__desktop.png`
+- **Stats:** `stats__mobile.png` · `stats__tablet.png` · `stats__desktop.png`
+- **Compass:** `compass__mobile.png` · `compass__tablet.png` · `compass__desktop.png`
+- **Loans:** `loans__mobile.png` · `loans__tablet.png` · `loans__desktop.png`
+- **Profile:** `profile__mobile.png` · `profile__tablet.png` · `profile__desktop.png`
+
+Failure artifacts (screenshot + axe context): `test-results/artifacts/a11y-axe-*-stats-*`.
 
 ---
 
