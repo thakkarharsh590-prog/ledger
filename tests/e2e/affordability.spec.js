@@ -91,4 +91,26 @@ test.describe('Affordability & decisions', () => {
     const data = await readAppData(page);
     expect(data.decisions.some(d => d.action === 'scenario')).toBe(true);
   });
+
+  test('what-if CTA is clean and negative lowest point keeps its minus sign', async ({ page }) => {
+    await seedApp(page, {
+      flags: { ledger_pro_dev_unlocked_v1: 'yes' },
+      data: dataPayload({
+        transactions: [
+          { id: 't1', type: 'income', amount: 100, description: 'Starting cash', category: 'salary', date: isoDaysFromToday(0), note: '', createdAt: 1 },
+        ],
+      }),
+    });
+    await page.waitForTimeout(500); // billing init
+    await goPage(page, 'compass');
+
+    await expect(page.locator('.compass-cta').nth(1)).toHaveText('What if?');
+    await page.click('.compass-cta >> nth=1');
+    await page.fill('#inpScenarioName', 'Large purchase');
+    await page.fill('#inpScenarioAmount', '500');
+    await page.click('#scenarioInputView .btn-primary');
+
+    const lowestAfter = page.locator('.forecast-summary-card').filter({ hasText: 'Lowest point after' }).locator('strong');
+    await expect(lowestAfter).toContainText('-');
+  });
 });

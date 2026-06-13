@@ -85,7 +85,7 @@ async function seedApp(page, opts = {}) {
     localStorage.setItem('__qa_seeded', '1');
   }, storage);
 
-  await page.goto(APP_URL);
+  await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.bottom-nav');
   return { consoleErrors, failedRequests };
 }

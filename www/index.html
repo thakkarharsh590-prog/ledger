@@ -4,12 +4,17 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        HAC Labs
-  Version:      2.9.7
-  Last edited:  2026-06-11
+  Version:      2.9.8
+  Last edited:  2026-06-14
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   10
 
   NAMED: CapAhead
+
+  v2.9.8 - LAUNCH FOLLOW-UP POLISH (schema v10 unchanged):
+  - Savings transfers no longer inflate home or monthly income/spending totals
+  - Premium typography restored with bundled local fonts for offline/private use
+  - What-if CTA cleaned up and signed negative forecast values covered by regression tests
 
   v2.9.7 - ANDROID DATA SAFETY FIXES (schema v10 unchanged):
   - Native Android exports use Capacitor Filesystem + Share instead of blob downloads
@@ -170,6 +175,28 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230a0a0f'/><circle cx='90' cy='90' r='62' fill='none' stroke='%23c9ff3d' stroke-width='3' opacity='0.4'/><path d='M 90 38 L 100 90 L 90 142 L 80 90 Z' fill='%23c9ff3d'/><circle cx='90' cy='90' r='5' fill='%230a0a0f'/></svg>">
 
 <style>
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('./fonts/inter-latin-wght-normal.woff2') format('woff2-variations');
+  }
+  @font-face {
+    font-family: 'Fraunces';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('./fonts/fraunces-latin-wght-normal.woff2') format('woff2-variations');
+  }
+  @font-face {
+    font-family: 'Geist Mono';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('./fonts/geist-mono-latin-wght-normal.woff2') format('woff2-variations');
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   
   :root {
@@ -3328,7 +3355,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">CapAhead</span>
-    <span class="version-tag" id="versionTag">v2.9.7</span>
+    <span class="version-tag" id="versionTag">v2.9.8</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme" aria-label="Dark theme">
@@ -3498,7 +3525,7 @@
   </button>
 
   <button class="compass-cta" onclick="openScenarioModal()" style="background:linear-gradient(135deg,rgba(201,255,61,0.16),rgba(96,165,250,0.12));color:var(--text);border:1px solid rgba(201,255,61,0.28);">
-    <span style="font-size:18px;">?</span> What if?
+    <span>What if?</span>
   </button>
   
   <!-- v2.6: MOMENTUM SECTION (streaks + milestones) -->
@@ -3579,7 +3606,7 @@
       <span class="profile-name" id="profileName">Set your name</span>
       <button class="profile-edit-btn" onclick="openNameModal()" title="Edit name">✏</button>
     </div>
-    <div class="profile-version">CapAhead v<span id="profileVersion">2.9.7</span></div>
+    <div class="profile-version">CapAhead v<span id="profileVersion">2.9.8</span></div>
   </div>
 
   <div id="profileContent"></div>
@@ -4279,7 +4306,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.9.7';
+const APP_VERSION = '2.9.8';
 const SCHEMA_VERSION = 10;
 const STORAGE_KEY = 'ledger_data_v1';
 const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1';
@@ -5915,12 +5942,14 @@ function updateSavingsCount() {
 
 
 function renderHome() {
-  let income = 0, expense = 0;
+  let income = 0, expense = 0, balance = 0;
   state.transactions.forEach(t => {
+    balance += t.type === 'income' ? t.amount : -t.amount;
+    if (t.category === 'savings') return;
     if (t.type === 'income') income += t.amount;
     else expense += t.amount;
   });
-  const bal = income - expense;
+  const bal = balance;
   document.getElementById('balance').textContent = bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   document.getElementById('totalIncome').textContent = fmt(income);
   document.getElementById('totalExpense').textContent = fmt(expense);
@@ -6137,8 +6166,8 @@ function buildMonthlySnapshot(monthKey) {
   const startISO = isoOf(start);
   const endISO = isoOf(end);
   const monthlyTx = state.transactions.filter(t => t.date >= startISO && t.date <= endISO);
-  const incomeTotal = monthlyTx.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-  const expenseTotal = monthlyTx.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  const incomeTotal = monthlyTx.filter(t => t.type === 'income' && t.category !== 'savings').reduce((sum, t) => sum + t.amount, 0);
+  const expenseTotal = monthlyTx.filter(t => t.type === 'expense' && t.category !== 'savings').reduce((sum, t) => sum + t.amount, 0);
   const categoryTotals = {};
   monthlyTx.filter(t => t.type === 'expense' && t.category !== 'savings').forEach(t => {
     categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
@@ -6308,11 +6337,11 @@ function buildMonthlyReviewData() {
   const monthLabel = now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   const daysIntoMonth = Math.max(1, now.getDate());
   const monthlyTx = state.transactions.filter(t => t.date >= monthStartISO);
-  const income = monthlyTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const expenses = monthlyTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const income = monthlyTx.filter(t => t.type === 'income' && t.category !== 'savings').reduce((s, t) => s + t.amount, 0);
+  const expenses = monthlyTx.filter(t => t.type === 'expense' && t.category !== 'savings').reduce((s, t) => s + t.amount, 0);
   const net = income - expenses;
   const categoryTotals = {};
-  monthlyTx.filter(t => t.type === 'expense').forEach(t => {
+  monthlyTx.filter(t => t.type === 'expense' && t.category !== 'savings').forEach(t => {
     categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
   });
   const topCategories = Object.entries(categoryTotals)

@@ -16,6 +16,24 @@ test.describe('App boot', () => {
     await expect(page.locator('#tourOverlay')).toBeHidden();
   });
 
+  test('loads premium fonts locally without Google font requests', async ({ page }) => {
+    const fontRequests = [];
+    page.on('request', req => {
+      const url = req.url();
+      if (url.includes('/www/fonts/') || url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com')) {
+        fontRequests.push(url);
+      }
+    });
+
+    await seedApp(page, { data: dataPayload() });
+    await page.waitForTimeout(800);
+
+    expect(fontRequests.filter(url => url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com'))).toHaveLength(0);
+    expect(fontRequests.some(url => url.endsWith('/www/fonts/inter-latin-wght-normal.woff2'))).toBe(true);
+    expect(fontRequests.some(url => url.endsWith('/www/fonts/fraunces-latin-wght-normal.woff2'))).toBe(true);
+    expect(fontRequests.some(url => url.endsWith('/www/fonts/geist-mono-latin-wght-normal.woff2'))).toBe(true);
+  });
+
   test('first run on empty install opens the setup wizard', async ({ page }) => {
     await seedApp(page, { firstRun: true, flags: { ledger_last_bust: String(Date.now()) } });
     await expect(page.locator('#setupWizard')).toBeVisible({ timeout: 5000 });

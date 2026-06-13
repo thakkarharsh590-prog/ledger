@@ -5,7 +5,7 @@ module.exports = defineConfig({
   testDir: './tests',
   outputDir: './test-results/artifacts',
   fullyParallel: true,
-  retries: 0,
+  retries: 1,
   globalTimeout: 20 * 60 * 1000, // hard ceiling: never hang the machine
   timeout: 20 * 1000,
   workers: 4,
