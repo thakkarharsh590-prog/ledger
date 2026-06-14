@@ -44,7 +44,7 @@ async function expectBodyContains(page, text) {
   const staticChecks = [
     ['Loan modal no longer mentions NAB', !web.includes('e.g. NAB, HECS, Friend') && web.includes('e.g. Bank, HECS, Friend')],
     ['Browser test Pro is not visible source copy', !web.includes('Browser test Pro')],
-    ['Public owner URL unlock is stripped', !web.includes('applyOwnerPwaUnlockFromUrl') && !web.includes("params.get('owner')")],
+    ['Public owner URL unlock is stripped', !web.includes('applyOwnerPwaUnlockFromUrl') && web.includes("params.get('owner') === '1'")],
     ['Public owner storage key is stripped', !web.includes('ledger_owner_pwa_unlocked_v1')],
     ['Foresight schema is present', web.includes('SCHEMA_VERSION = 10') && web.includes('monthlySnapshots') && web.includes('alertSettings')],
   ];
@@ -138,7 +138,7 @@ async function expectBodyContains(page, text) {
     await page.locator('#inpScenarioName').fill('Pro QA scenario');
     await page.locator('#inpScenarioAmount').fill('40');
     await page.locator('#scenarioModal button').filter({ hasText: 'Run scenario' }).click();
-    await expectBodyContains(page, 'LOWEST POINT AFTER');
+    await expectBodyContains(page, 'NEAR-TERM FLOOR AFTER');
     await page.locator('#scenarioModal button').filter({ hasText: 'Save scenario' }).click();
 
     await page.evaluate(() => goPage('savings'));

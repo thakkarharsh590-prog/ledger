@@ -110,7 +110,145 @@ test.describe('Affordability & decisions', () => {
     await page.fill('#inpScenarioAmount', '500');
     await page.click('#scenarioInputView .btn-primary');
 
-    const lowestAfter = page.locator('.forecast-summary-card').filter({ hasText: 'Lowest point after' }).locator('strong');
+    const lowestAfter = page.locator('.forecast-summary-card').filter({ hasText: 'Near-term floor after' }).locator('strong');
     await expect(lowestAfter).toContainText('-');
+  });
+
+  test('what-if loan adds borrowed cash and does not delay funded goal', async ({ page }) => {
+    await seedApp(page, {
+      flags: { ledger_pro_dev_unlocked_v1: 'yes' },
+      data: dataPayload({
+        transactions: [
+          { id: 't1', type: 'income', amount: 300, description: 'Starting cash', category: 'salary', date: isoDaysFromToday(0), note: '', createdAt: 1 },
+        ],
+        savingsGoals: [
+          { id: 'tr', name: 'TR', target: 4600, deadline: isoDaysFromToday(84), createdAt: Date.now() - 86400000 * 14 },
+        ],
+      }),
+    });
+    await page.waitForTimeout(500);
+    await goPage(page, 'compass');
+    await page.click('.compass-cta >> nth=1');
+    await page.locator('.scenario-type').filter({ hasText: 'Take a loan' }).click();
+    await page.fill('#inpScenarioName', '5000');
+    await page.fill('#inpScenarioAmount', '5000');
+    await page.click('#scenarioInputView .btn-primary');
+
+    const text = await page.locator('#scenarioResult').innerText();
+    expect(text).toContain('borrowed cash');
+    expect(text).toContain('estimated repayments');
+    expect(text).toContain('TR would be funded now');
+    expect(text).not.toContain('move back by about 84');
+    const cashDelta = await page.evaluate(() => state.pendingScenario.cashDelta60);
+    expect(cashDelta).toBeGreaterThan(4500);
+  });
+
+  test('what-if cancel bill removes recurring bill occurrences and avoids zero-day copy', async ({ page }) => {
+    await seedApp(page, {
+      flags: { ledger_pro_dev_unlocked_v1: 'yes' },
+      data: dataPayload({
+        transactions: [
+          { id: 't1', type: 'income', amount: 1000, description: 'Starting cash', category: 'salary', date: isoDaysFromToday(0), note: '', createdAt: 1 },
+        ],
+        recurringExpenses: [
+          { id: 'amazon', name: 'Amazon', amount: 9.99, category: 'subs', cycle: 'monthly', nextDue: isoDaysFromToday(1), startDate: isoDaysFromToday(-29), active: true, createdAt: 1 },
+        ],
+        savingsGoals: [
+          { id: 'tr', name: 'TR', target: 4600, deadline: isoDaysFromToday(30), createdAt: Date.now() - 86400000 * 30 },
+        ],
+      }),
+    });
+    await page.waitForTimeout(500);
+    await goPage(page, 'compass');
+    await page.click('.compass-cta >> nth=1');
+    await page.locator('.scenario-type').filter({ hasText: 'Cancel bill' }).click();
+    await page.selectOption('#inpScenarioBill', 'amazon');
+    await page.click('#scenarioInputView .btn-primary');
+
+    const text = await page.locator('#scenarioResult').innerText();
+    expect(text).toContain('Removes Amazon');
+    expect(text).toContain('date is unchanged, but this frees');
+    expect(text).not.toContain('about 0 days');
+    const pending = await page.evaluate(() => ({
+      cashDelta60: state.pendingScenario.cashDelta60,
+      removed: state.pendingScenario.scenarioExplanation,
+    }));
+    expect(pending.cashDelta60).toBeGreaterThanOrEqual(19.9);
+    expect(pending.removed).toContain('Amazon');
+  });
+
+  test('what-if reduce spend caps savings at current average spend', async ({ page }) => {
+    await seedApp(page, {
+      flags: { ledger_pro_dev_unlocked_v1: 'yes' },
+      data: dataPayload({
+        transactions: [
+          { id: 't1', type: 'income', amount: 1000, description: 'Starting cash', category: 'salary', date: isoDaysFromToday(0), note: '', createdAt: 1 },
+          { id: 't2', type: 'expense', amount: 10, description: 'Snack', category: 'food', date: isoDaysFromToday(-1), note: '', createdAt: 2 },
+        ],
+      }),
+    });
+    await page.waitForTimeout(500);
+    await goPage(page, 'compass');
+    await page.click('.compass-cta >> nth=1');
+    await page.locator('.scenario-type').filter({ hasText: 'Reduce spend' }).click();
+    await page.fill('#inpScenarioName', 'Cut everything');
+    await page.fill('#inpScenarioAmount', '100');
+    await page.click('#scenarioInputView .btn-primary');
+
+    const pending = await page.evaluate(() => ({
+      cashDelta60: state.pendingScenario.cashDelta60,
+      explanation: state.pendingScenario.scenarioExplanation,
+    }));
+    expect(pending.explanation).toContain('capped at your current average spending');
+    expect(pending.cashDelta60).toBeCloseTo(600, 1);
+  });
+
+  test('what-if boost goal compares amounts against the same goal', async ({ page }) => {
+    await seedApp(page, {
+      flags: { ledger_pro_dev_unlocked_v1: 'yes' },
+      data: dataPayload({
+        transactions: [
+          { id: 't1', type: 'income', amount: 2000, description: 'Starting cash', category: 'salary', date: isoDaysFromToday(0), note: '', createdAt: 1 },
+        ],
+        savingsGoals: [
+          { id: 'tr', name: 'TR', target: 1000, deadline: isoDaysFromToday(70), createdAt: Date.now() - 86400000 * 10 },
+        ],
+      }),
+    });
+    await page.waitForTimeout(500);
+    await goPage(page, 'compass');
+    await page.click('.compass-cta >> nth=1');
+    await page.locator('.scenario-type').filter({ hasText: 'Boost goal' }).click();
+    await page.selectOption('#inpScenarioGoal', 'tr');
+    await page.fill('#inpScenarioName', 'Boost TR');
+    await page.fill('#inpScenarioAmount', '50');
+    await page.click('#scenarioInputView .btn-primary');
+    const fifty = await page.evaluate(() => state.pendingScenario.goalImpact.days);
+    await page.locator('#scenarioResultView .btn-secondary').filter({ hasText: 'Try another' }).click();
+    await page.locator('.scenario-type').filter({ hasText: 'Boost goal' }).click();
+    await page.selectOption('#inpScenarioGoal', 'tr');
+    await page.fill('#inpScenarioName', 'Boost TR');
+    await page.fill('#inpScenarioAmount', '100');
+    await page.click('#scenarioInputView .btn-primary');
+    const hundred = await page.evaluate(() => state.pendingScenario.goalImpact.days);
+    expect(hundred).toBeGreaterThan(fifty);
+  });
+
+  test('old saved scenario decisions render safely', async ({ page }) => {
+    await seedApp(page, {
+      data: dataPayload({
+        decisions: [{
+          id: 'legacy-scenario', amount: 40, what: 'Legacy scenario', zone: 'green',
+          title: 'Reduce spend scenario', date: isoDaysFromToday(-1), action: 'scenario',
+          scenarioType: 'reduce_spend', createdAt: 1,
+          projectionSnapshot: { lowPointDate: isoDaysFromToday(1), lowPointBalance: 100, firstNegativeDate: null, fourteenDayBalance: 200 },
+          goalImpact: { goalName: 'TR', improveDays: 7 },
+        }],
+      }),
+    });
+    await goPage(page, 'decisions');
+    await expect(page.locator('.decision-item')).toHaveCount(1);
+    await expect(page.locator('.decision-item')).toContainText('Legacy scenario');
+    await expect(page.locator('.decision-item')).toContainText('Scenario');
   });
 });

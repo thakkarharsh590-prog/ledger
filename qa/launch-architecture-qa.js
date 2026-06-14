@@ -16,10 +16,10 @@ function check(name, pass) {
 const appVersion = (web.match(/const APP_VERSION = '([^']+)'/) || [])[1];
 const androidVersion = (gradle.match(/versionName "([^"]+)"/) || [])[1];
 
-check('APP_VERSION is 2.9.8', appVersion === '2.9.8');
+check('APP_VERSION is 2.9.9', appVersion === '2.9.9');
 check('package version matches APP_VERSION', pkg.version === appVersion);
 check('Android versionName matches APP_VERSION', androidVersion === appVersion);
-check('Android versionCode is 11', /versionCode 11\b/.test(gradle));
+check('Android versionCode is 12', /versionCode 12\b/.test(gradle));
 check('Android auto backup disabled', /android:allowBackup="false"/.test(manifest));
 
 check('last-good storage key exists', web.includes("const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1'"));

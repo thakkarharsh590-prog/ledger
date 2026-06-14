@@ -245,8 +245,9 @@ function reportHtml(summary, metadata) {
       await page.waitForTimeout(1000);
       const title = await page.title();
       const version = await page.locator('#versionTag').textContent();
+      const appVersion = await page.evaluate(() => typeof APP_VERSION !== 'undefined' ? APP_VERSION : null);
       if (title !== 'CapAhead') throw new Error('bad title ' + title);
-      if (version !== 'v2.9.6') throw new Error('bad version ' + version);
+      if (!appVersion || version !== 'v' + appVersion) throw new Error('bad version ' + version);
       await expectText(page, 'Recent Activity');
       await assertNoHorizontalScroll(page);
       await snap(page, '01-home-empty');

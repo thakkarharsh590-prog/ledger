@@ -4,12 +4,17 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        HAC Labs
-  Version:      2.9.8
+  Version:      2.9.9
   Last edited:  2026-06-14
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   10
 
   NAMED: CapAhead
+
+  v2.9.9 - WHAT-IF FORECAST REPAIR (schema v10 unchanged):
+  - What-if scenarios now compare baseline and after with the same shared forward forecast engine
+  - 60-day forecasts include all recurring bill occurrences inside the horizon
+  - Loan, cancel bill, reduce spend, and boost goal scenarios explain cash and goal impact clearly
 
   v2.9.8 - LAUNCH FOLLOW-UP POLISH (schema v10 unchanged):
   - Savings transfers no longer inflate home or monthly income/spending totals
@@ -3355,7 +3360,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">CapAhead</span>
-    <span class="version-tag" id="versionTag">v2.9.8</span>
+    <span class="version-tag" id="versionTag">v2.9.9</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme" aria-label="Dark theme">
@@ -3606,7 +3611,7 @@
       <span class="profile-name" id="profileName">Set your name</span>
       <button class="profile-edit-btn" onclick="openNameModal()" title="Edit name">✏</button>
     </div>
-    <div class="profile-version">CapAhead v<span id="profileVersion">2.9.8</span></div>
+    <div class="profile-version">CapAhead v<span id="profileVersion">2.9.9</span></div>
   </div>
 
   <div id="profileContent"></div>
@@ -4106,8 +4111,12 @@
           <input type="number" inputmode="decimal" id="inpScenarioAmount" class="amount-input" placeholder="0.00" step="0.01">
         </div>
       </div>
-      <div class="field" id="scenarioGoalField">
-        <label>Goal to boost (optional)</label>
+      <div class="field" id="scenarioBillField" style="display:none;">
+        <label>Recurring bill to cancel</label>
+        <select id="inpScenarioBill" onchange="onScenarioBillChanged()"></select>
+      </div>
+      <div class="field" id="scenarioGoalField" style="display:none;">
+        <label>Goal to boost</label>
         <select id="inpScenarioGoal"></select>
       </div>
       <button class="btn-primary" onclick="runScenarioPlanner()">Run scenario</button>
@@ -4306,7 +4315,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.9.8';
+const APP_VERSION = '2.9.9';
 const SCHEMA_VERSION = 10;
 const STORAGE_KEY = 'ledger_data_v1';
 const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1';
@@ -9219,6 +9228,58 @@ function checkAndPersistMilestones() {
 }
 
 // === FORECAST CHART DATA ===
+function computeForwardCashProjection(daysAhead = 60, scenario = null) {
+  const today = new Date(todayISO() + 'T00:00:00');
+  const incomeEvents = getUpcomingPayEvents(daysAhead);
+  const bills = getRecurringBillEvents(daysAhead);
+  const loanEvents = getUpcomingLoanPayments(daysAhead);
+  const avgDaily = getAvgDailyExpense();
+  const type = scenario?.type || null;
+  const amount = Number(scenario?.amount || 0);
+  const billId = scenario?.billId || null;
+  const loanRepayment = type === 'loan' ? Math.max(50, amount / 24) : 0;
+  const dailyCut = type === 'reduce_spend' ? Math.min(avgDaily, amount / 7) : 0;
+  const customMonthlyBillCut = type === 'cancel_expense' && !billId ? amount / 30 : 0;
+  const weeklyGoalBoost = type === 'increase_saving' ? amount : 0;
+  let balance = getCurrentBalance();
+  const points = [];
+  const meta = {
+    avgDaily,
+    dailyCut,
+    loanRepayment,
+    removedBills: [],
+    customMonthlyBillCut,
+    weeklyGoalBoost,
+  };
+
+  for (let i = 1; i <= daysAhead; i++) {
+    const d = addDays(today, i);
+    const dISO = isoOf(d);
+    const incomeToday = incomeEvents.filter(e => e.date === dISO).reduce((s, e) => s + e.amount, 0);
+    let billsTodayEvents = bills.filter(b => b.date === dISO);
+    if (type === 'cancel_expense' && billId) {
+      const removed = billsTodayEvents.filter(b => String(b.id) === String(billId));
+      if (removed.length) meta.removedBills.push(...removed);
+      billsTodayEvents = billsTodayEvents.filter(b => String(b.id) !== String(billId));
+    }
+    const billsToday = billsTodayEvents.reduce((s, b) => s + b.amount, 0);
+    const loansToday = loanEvents.filter(e => e.date === dISO).reduce((s, e) => s + e.amount, 0);
+    let scenarioDelta = 0;
+    if (type === 'purchase' && i === 1) scenarioDelta -= amount;
+    if (type === 'loan') {
+      if (i === 1) scenarioDelta += amount;
+      if (i === 30 || i === 60) scenarioDelta -= loanRepayment;
+    }
+    if (type === 'cancel_expense' && !billId) scenarioDelta += customMonthlyBillCut;
+    if (type === 'increase_saving' && i % 7 === 0) scenarioDelta -= weeklyGoalBoost;
+    balance += incomeToday - billsToday - loansToday - Math.max(0, avgDaily - dailyCut) + scenarioDelta;
+    points.push({ date: dISO, balance, isProjection: true });
+  }
+
+  meta.removedBillTotal = meta.removedBills.reduce((sum, bill) => sum + bill.amount, 0);
+  return { points, meta };
+}
+
 // Returns array of {date, balance, isProjection} for next N days
 function computeBalanceForecast(daysAhead = 60) {
   const today = new Date(todayISO() + 'T00:00:00');
@@ -9249,27 +9310,7 @@ function computeBalanceForecast(daysAhead = 60) {
   pastPoints.reverse();
   points.push(...pastPoints);
   
-  // Future projection
-  const incomeEvents = getUpcomingPayEvents(daysAhead);
-  const bills = getUpcomingBills(daysAhead);
-  const loanEvents = getUpcomingLoanPayments(daysAhead);
-  const avgDaily = getAvgDailyExpense();
-  
-  let projBalance = currentBalance;
-  for (let i = 1; i <= daysAhead; i++) {
-    const d = addDays(today, i);
-    const dISO = isoOf(d);
-    
-    // Add incomes due today
-    const incomeToday = incomeEvents.filter(e => e.date === dISO).reduce((s,e) => s + e.amount, 0);
-    // Subtract bills due today
-    const billsToday = bills.filter(b => b.date === dISO).reduce((s,b) => s + b.amount, 0);
-    const loansToday = loanEvents.filter(e => e.date === dISO).reduce((s,e) => s + e.amount, 0);
-    // Subtract average daily variable spend
-    projBalance += incomeToday - billsToday - loansToday - avgDaily;
-    
-    points.push({ date: dISO, balance: projBalance, isProjection: true });
-  }
+  points.push(...computeForwardCashProjection(daysAhead).points);
   
   return points;
 }
@@ -11348,11 +11389,13 @@ function openScenarioModal(prefill = {}) {
   state.pendingScenario = null;
   renderScenarioTypeGrid();
   populateScenarioGoals(prefill.goalId || '');
+  populateScenarioBills(prefill.billId || '');
   document.getElementById('inpScenarioName').value = prefill.name || '';
   document.getElementById('inpScenarioAmount').value = prefill.amount ? String(prefill.amount) : '';
   document.getElementById('scenarioInputView').style.display = 'block';
   document.getElementById('scenarioResultView').style.display = 'none';
   document.getElementById('scenarioResult').innerHTML = '';
+  updateScenarioFieldVisibility();
   openModal('scenarioModal', '#inpScenarioName');
 }
 
@@ -11361,6 +11404,7 @@ function resetScenarioModal() {
   document.getElementById('scenarioInputView').style.display = 'block';
   document.getElementById('scenarioResultView').style.display = 'none';
   document.getElementById('scenarioResult').innerHTML = '';
+  updateScenarioFieldVisibility();
 }
 
 function renderScenarioTypeGrid() {
@@ -11377,13 +11421,42 @@ function renderScenarioTypeGrid() {
 function selectScenarioType(type) {
   state.selectedScenarioType = type;
   renderScenarioTypeGrid();
+  updateScenarioFieldVisibility();
 }
 
 function populateScenarioGoals(selectedId = '') {
   const select = document.getElementById('inpScenarioGoal');
   if (!select) return;
-  select.innerHTML = '<option value="">No specific goal</option>' +
+  select.innerHTML = '<option value="">Select a goal</option>' +
     (state.savingsGoals || []).map(g => `<option value="${g.id}" ${g.id === selectedId ? 'selected' : ''}>${escapeHtml(g.name)}</option>`).join('');
+}
+
+function activeScenarioBills() {
+  return (state.recurringExpenses || []).filter(rec => rec.active && rec.nextDue && rec.amount > 0);
+}
+
+function populateScenarioBills(selectedId = '') {
+  const select = document.getElementById('inpScenarioBill');
+  if (!select) return;
+  const bills = activeScenarioBills();
+  select.innerHTML = '<option value="">Custom / Enter manually</option>' +
+    bills.map(b => `<option value="${b.id}" ${String(b.id) === String(selectedId) ? 'selected' : ''}>${escapeHtml(b.name)} - ${fmt(b.amount)}</option>`).join('');
+}
+
+function onScenarioBillChanged() {
+  const billId = document.getElementById('inpScenarioBill')?.value || '';
+  if (!billId) return;
+  const bill = activeScenarioBills().find(b => String(b.id) === String(billId));
+  if (!bill) return;
+  document.getElementById('inpScenarioName').value = bill.name;
+  document.getElementById('inpScenarioAmount').value = String(bill.amount);
+}
+
+function updateScenarioFieldVisibility() {
+  const billField = document.getElementById('scenarioBillField');
+  const goalField = document.getElementById('scenarioGoalField');
+  if (billField) billField.style.display = state.selectedScenarioType === 'cancel_expense' ? 'block' : 'none';
+  if (goalField) goalField.style.display = state.selectedScenarioType === 'increase_saving' ? 'block' : 'none';
 }
 
 function scenarioTypeLabel(type) {
@@ -11398,77 +11471,176 @@ function summarizeScenarioForecast(points) {
 }
 
 function computeScenarioForecast(type, amount, daysAhead = 60) {
-  const today = new Date(todayISO() + 'T00:00:00');
-  const incomeEvents = getUpcomingPayEvents(daysAhead);
-  const bills = getUpcomingBills(daysAhead);
-  const loanEvents = getUpcomingLoanPayments(daysAhead);
-  const avgDaily = getAvgDailyExpense();
-  let balance = getCurrentBalance();
-  const points = [];
-  const loanMonthly = type === 'loan' ? Math.max(50, amount / 24) : 0;
-  const dailyBoost = type === 'cancel_expense' ? amount / 30 : type === 'reduce_spend' ? amount / 7 : 0;
-  const dailyCost = type === 'increase_saving' ? amount / 7 : 0;
-
-  for (let i = 1; i <= daysAhead; i++) {
-    const d = addDays(today, i);
-    const dISO = isoOf(d);
-    const incomeToday = incomeEvents.filter(e => e.date === dISO).reduce((s, e) => s + e.amount, 0);
-    const billsToday = bills.filter(b => b.date === dISO).reduce((s, b) => s + b.amount, 0);
-    const loansToday = loanEvents.filter(e => e.date === dISO).reduce((s, e) => s + e.amount, 0);
-    let scenarioDelta = dailyBoost - dailyCost;
-    if (type === 'purchase' && i === 1) scenarioDelta -= amount;
-    if (type === 'loan' && (i === 30 || i === 60)) scenarioDelta -= loanMonthly;
-    balance += incomeToday - billsToday - loansToday - avgDaily + scenarioDelta;
-    points.push({ date: dISO, balance, isProjection: true });
-  }
-  return points;
+  return computeForwardCashProjection(daysAhead, { type, amount }).points;
 }
 
-function computeScenarioGoalImpact(type, amount, goalId) {
-  const goal = goalId
-    ? (state.savingsGoals || []).find(g => g.id === goalId)
-    : (state.savingsGoals || []).filter(g => g.deadline && g.target > 0).sort((a, b) => a.deadline.localeCompare(b.deadline))[0];
+function resolveScenarioGoal(type, goalId) {
+  if (goalId) return (state.savingsGoals || []).find(g => String(g.id) === String(goalId)) || null;
+  if (type === 'increase_saving') return null;
+  return (state.savingsGoals || [])
+    .filter(g => g.deadline && g.target > 0)
+    .sort((a, b) => a.deadline.localeCompare(b.deadline))[0] || null;
+}
+
+function computeScenarioGoalImpact(type, amount, goalId, meta = {}) {
+  const goal = resolveScenarioGoal(type, goalId);
   if (!goal) return null;
+  const progress = getGoalProgress(goal);
+  const remainingRaw = Math.max(0, (goal.target || 0) - progress);
+  if (remainingRaw <= 0) {
+    return { goalId: goal.id, goalName: goal.name, mode: 'achieved', days: 0, text: `${escapeHtml(goal.name)} is already achieved.` };
+  }
+  if (!goal.deadline) {
+    return { goalId: goal.id, goalName: goal.name, mode: 'no_deadline', days: 0, text: `${escapeHtml(goal.name)} has no deadline set.` };
+  }
   const pace = computeGoalPace(goal);
-  if (!pace) return null;
+  if (!pace || !Number.isFinite(pace.weeklyPace) || pace.weeklyPace <= 0) {
+    return { goalId: goal.id, goalName: goal.name, mode: 'no_pace', days: 0, text: `${escapeHtml(goal.name)} needs a clearer deadline or target before timing can be estimated.` };
+  }
+  const currentWeeks = remainingRaw / pace.weeklyPace;
+  const currentDays = currentWeeks * 7;
+  let remaining = remainingRaw;
+  let newWeekly = pace.weeklyPace;
+  let extraWeekly = 0;
+  let repaymentWeekly = 0;
+
   if (type === 'increase_saving' || type === 'reduce_spend' || type === 'cancel_expense') {
-    const extraWeekly = type === 'cancel_expense' ? cycleToWeekly(amount, 'monthly') : amount;
-    const currentWeeks = pace.weeksLeft;
-    const newWeeks = Math.max(1, Math.ceil(pace.remaining / Math.max(1, pace.weeklyPace + extraWeekly)));
+    if (type === 'increase_saving') extraWeekly = amount;
+    if (type === 'reduce_spend') extraWeekly = (meta.dailyCut || 0) * 7;
+    if (type === 'cancel_expense') {
+      const selectedBill = meta.billId ? activeScenarioBills().find(b => String(b.id) === String(meta.billId)) : null;
+      extraWeekly = selectedBill ? cycleToWeekly(selectedBill.amount, selectedBill.cycle) : cycleToWeekly(amount, 'monthly');
+    }
+    newWeekly = pace.weeklyPace + extraWeekly;
+    const newDays = (remaining / Math.max(0.01, newWeekly)) * 7;
+    const days = Math.max(0, Math.round(currentDays - newDays));
+    const freedOverTimeline = Math.max(0, extraWeekly * (pace.daysLeft / 7));
     return {
       goalId: goal.id,
       goalName: goal.name,
       mode: 'improve',
-      days: Math.max(0, (currentWeeks - newWeeks) * 7),
+      days,
       currentWeekly: pace.weeklyPace,
-      newWeekly: pace.weeklyPace + extraWeekly,
+      newWeekly,
+      freedOverTimeline,
+      extraWeekly,
     };
   }
-  const extraWeeks = Math.ceil(amount / Math.max(1, pace.weeklyPace));
+
+  if (type === 'loan') {
+    const repayment = meta.loanRepayment || Math.max(50, amount / 24);
+    repaymentWeekly = repayment * 12 / 52;
+    if (amount >= remaining) {
+      return {
+        goalId: goal.id,
+        goalName: goal.name,
+        mode: 'funded_now',
+        days: Math.round(currentDays),
+        currentWeekly: pace.weeklyPace,
+        newWeekly: Math.max(0, pace.weeklyPace - repaymentWeekly),
+        repaymentWeekly,
+      };
+    }
+    remaining = Math.max(0, remaining - amount);
+    newWeekly = Math.max(0, pace.weeklyPace - repaymentWeekly);
+    if (newWeekly <= 0) {
+      return {
+        goalId: goal.id,
+        goalName: goal.name,
+        mode: 'slower',
+        days: 0,
+        currentWeekly: pace.weeklyPace,
+        newWeekly,
+        repaymentWeekly,
+      };
+    }
+    const newDays = (remaining / newWeekly) * 7;
+    const deltaDays = Math.round(currentDays - newDays);
+    return {
+      goalId: goal.id,
+      goalName: goal.name,
+      mode: deltaDays >= 0 ? 'improve_debt' : 'delay',
+      days: Math.abs(deltaDays),
+      currentWeekly: pace.weeklyPace,
+      newWeekly,
+      repaymentWeekly,
+    };
+  }
+
+  const newDays = ((remaining + amount) / pace.weeklyPace) * 7;
   return {
     goalId: goal.id,
     goalName: goal.name,
     mode: 'delay',
-    days: extraWeeks * 7,
+    days: Math.max(0, Math.round(newDays - currentDays)),
     currentWeekly: pace.weeklyPace,
-    newWeekly: pace.weeklyPace,
+    newWeekly,
   };
+}
+
+function buildScenarioExplanation(type, amount, name, meta = {}) {
+  if (type === 'loan') {
+    return `Adds ${fmt(amount)} borrowed cash now, then subtracts estimated repayments of ${fmt(meta.loanRepayment || Math.max(50, amount / 24))}/month (~2 yr, no interest).`;
+  }
+  if (type === 'cancel_expense') {
+    if (meta.removedBills?.length) {
+      const dates = meta.removedBills.slice(0, 3).map(b => formatDateLabel(b.date)).join(', ');
+      return `Removes ${name} ${fmt(amount)} on ${dates}${meta.removedBills.length > 3 ? ', and later dates' : ''}.`;
+    }
+    return `Estimates cancelling a monthly ${fmt(amount)} bill by spreading that saving across the forecast.`;
+  }
+  if (type === 'reduce_spend') {
+    return `Cuts usual spending by ${fmt((meta.dailyCut || 0) * 7)}/week, capped at your current average spending.`;
+  }
+  if (type === 'increase_saving') {
+    return `Moves ${fmt(amount)}/week from spendable cash into your selected goal.`;
+  }
+  return `Subtracts ${fmt(amount)} from cash now and compares the next 60 days.`;
+}
+
+function scenarioGoalText(goalImpact) {
+  if (!goalImpact) return 'No deadline goal selected.';
+  if (goalImpact.text) return goalImpact.text;
+  const name = escapeHtml(goalImpact.goalName);
+  if (goalImpact.mode === 'funded_now') {
+    return `${name} would be funded now with borrowed money, but repayments slow real saving by about ${fmt(goalImpact.repaymentWeekly || 0)}/week.`;
+  }
+  if (goalImpact.mode === 'slower') {
+    return `${name} gets some borrowed cash now, but estimated repayments may pause real saving until income improves.`;
+  }
+  if (goalImpact.mode === 'improve_debt') {
+    return `${name} could move forward by about ${goalImpact.days} day${goalImpact.days === 1 ? '' : 's'}, with debt repayments reducing real saving by about ${fmt(goalImpact.repaymentWeekly || 0)}/week.`;
+  }
+  if (goalImpact.mode === 'improve') {
+    if (goalImpact.days > 0) return `${name} could move forward by about ${goalImpact.days} day${goalImpact.days === 1 ? '' : 's'}.`;
+    return `${name} date is unchanged, but this frees about ${fmt(goalImpact.freedOverTimeline || 0)} over the goal timeline.`;
+  }
+  return `${name} could move back by about ${goalImpact.days} day${goalImpact.days === 1 ? '' : 's'}.`;
 }
 
 function runScenarioPlanner() {
   const amount = parseFloat(document.getElementById('inpScenarioAmount').value);
   const name = document.getElementById('inpScenarioName').value.trim() || scenarioTypeLabel(state.selectedScenarioType);
   const goalId = document.getElementById('inpScenarioGoal').value || null;
+  const billId = document.getElementById('inpScenarioBill')?.value || null;
+  if (state.selectedScenarioType === 'increase_saving' && !goalId) { showToast('Select a goal to boost', 'warning'); return; }
   if (!amount || amount <= 0) { showToast('Enter a valid amount', 'warning'); return; }
 
-  const baseline = computeBalanceForecast(60).filter(p => p.isProjection);
-  const scenarioPoints = computeScenarioForecast(state.selectedScenarioType, amount, 60);
+  const baselineResult = computeForwardCashProjection(60);
+  const scenarioInput = { type: state.selectedScenarioType, amount, billId, goalId };
+  const scenarioResult = computeForwardCashProjection(60, scenarioInput);
+  const baseline = baselineResult.points;
+  const scenarioPoints = scenarioResult.points;
   const baseSummary = summarizeScenarioForecast(baseline);
   const scenarioSummary = summarizeScenarioForecast(scenarioPoints);
-  const goalImpact = computeScenarioGoalImpact(state.selectedScenarioType, amount, goalId);
+  const goalImpact = computeScenarioGoalImpact(state.selectedScenarioType, amount, goalId, { ...scenarioResult.meta, billId });
+  const lowestDelta = scenarioSummary.lowest.balance - baseSummary.lowest.balance;
+  const cashDelta60 = scenarioSummary.final.balance - baseSummary.final.balance;
+  const scenarioExplanation = buildScenarioExplanation(state.selectedScenarioType, amount, name, scenarioResult.meta);
   state.pendingScenario = {
     id: uid('scenario'),
     scenarioType: state.selectedScenarioType,
+    scenarioSourceId: billId || goalId || null,
     what: name,
     amount,
     date: todayISO(),
@@ -11476,6 +11648,9 @@ function runScenarioPlanner() {
     title: `${scenarioTypeLabel(state.selectedScenarioType)} scenario`,
     baseline: baseSummary,
     scenario: scenarioSummary,
+    scenarioExplanation,
+    cashDelta60,
+    lowestCashDelta: lowestDelta,
     goalImpact,
     createdAt: Date.now(),
   };
@@ -11487,8 +11662,8 @@ function runScenarioPlanner() {
 function renderScenarioResult(result) {
   const base = result.baseline;
   const after = result.scenario;
-  const lowestDelta = after.lowest.balance - base.lowest.balance;
-  const finalDelta = after.final.balance - base.final.balance;
+  const lowestDelta = result.lowestCashDelta ?? (after.lowest.balance - base.lowest.balance);
+  const finalDelta = result.cashDelta60 ?? (after.final.balance - base.final.balance);
   if (!isPro()) {
     return `
       <div class="pro-preview-wrap">
@@ -11498,8 +11673,8 @@ function renderScenarioResult(result) {
             <div class="scenario-note">Basic check complete. Pro shows the full 60-day scenario impact, risk date change, and goal movement.</div>
           </div>
           <div class="scenario-compare">
-            ${forecastSummaryCard('Current lowest', `${fmt(base.lowest.balance)} on ${formatDateLabel(base.lowest.date)}`)}
-            ${forecastSummaryCard('Scenario lowest', 'Pro detail')}
+            ${forecastSummaryCard('Near-term floor now', `${fmt(base.lowest.balance)} on ${formatDateLabel(base.lowest.date)}`)}
+            ${forecastSummaryCard('60-day cash change', 'Pro detail')}
           </div>
         </div>
         <div class="pro-preview-lock">
@@ -11508,21 +11683,17 @@ function renderScenarioResult(result) {
       </div>
     `;
   }
-  const goalText = result.goalImpact
-    ? result.goalImpact.mode === 'improve'
-      ? `${escapeHtml(result.goalImpact.goalName)} could move forward by about ${result.goalImpact.days} day${result.goalImpact.days === 1 ? '' : 's'}.`
-      : `${escapeHtml(result.goalImpact.goalName)} could move back by about ${result.goalImpact.days} day${result.goalImpact.days === 1 ? '' : 's'}.`
-    : 'No deadline goal selected.';
+  const goalText = scenarioGoalText(result.goalImpact);
   return `
     <div class="scenario-result-card">
       <strong>${escapeHtml(result.what)} · ${fmt(result.amount)}</strong>
-      <div class="scenario-note">${escapeHtml(scenarioTypeLabel(result.scenarioType))}. Your decision stays yours; this is the cash-flow view before you choose.</div>
+      <div class="scenario-note">${escapeHtml(result.scenarioExplanation || scenarioTypeLabel(result.scenarioType))}</div>
     </div>
     <div class="scenario-compare">
-      ${forecastSummaryCard('Lowest point now', `${fmt(base.lowest.balance)} on ${formatDateLabel(base.lowest.date)}`)}
-      ${forecastSummaryCard('Lowest point after', `${fmt(after.lowest.balance)} on ${formatDateLabel(after.lowest.date)}`)}
-      ${forecastSummaryCard('Lowest change', fmtSigned(lowestDelta))}
-      ${forecastSummaryCard('60-day change', fmtSigned(finalDelta))}
+      ${forecastSummaryCard('60-day cash change', fmtSigned(finalDelta))}
+      ${forecastSummaryCard('Near-term floor change', fmtSigned(lowestDelta))}
+      ${forecastSummaryCard('Near-term floor now', `${fmt(base.lowest.balance)} on ${formatDateLabel(base.lowest.date)}`)}
+      ${forecastSummaryCard('Near-term floor after', `${fmt(after.lowest.balance)} on ${formatDateLabel(after.lowest.date)}`)}
       ${forecastSummaryCard('Risk date now', base.firstNegative ? formatDateLabel(base.firstNegative.date) : 'None projected')}
       ${forecastSummaryCard('Risk date after', after.firstNegative ? formatDateLabel(after.firstNegative.date) : 'None projected')}
     </div>
@@ -11550,6 +11721,10 @@ function saveScenarioDecision() {
     zone: s.zone,
     title: s.title,
     scenarioType: s.scenarioType,
+    scenarioSourceId: s.scenarioSourceId || null,
+    scenarioExplanation: s.scenarioExplanation || '',
+    cashDelta60: s.cashDelta60 ?? null,
+    lowestCashDelta: s.lowestCashDelta ?? null,
     projectionSnapshot: {
       lowPointDate: s.scenario.lowest.date,
       lowPointBalance: s.scenario.lowest.balance,
@@ -11560,7 +11735,10 @@ function saveScenarioDecision() {
       goalId: s.goalImpact.goalId,
       goalName: s.goalImpact.goalName,
       delayDays: s.goalImpact.mode === 'delay' ? s.goalImpact.days : 0,
-      improveDays: s.goalImpact.mode === 'improve' ? s.goalImpact.days : 0,
+      improveDays: ['improve', 'improve_debt', 'funded_now'].includes(s.goalImpact.mode) ? s.goalImpact.days : 0,
+      mode: s.goalImpact.mode,
+      freedOverTimeline: s.goalImpact.freedOverTimeline || 0,
+      repaymentWeekly: s.goalImpact.repaymentWeekly || 0,
       newWeeklyPace: s.goalImpact.newWeekly,
     } : null,
     createdAt: Date.now(),
@@ -11758,6 +11936,16 @@ function renderDecisions() {
   const sorted = [...state.decisions].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
   list.innerHTML = sorted.map(d => {
     const snapshot = d.projectionSnapshot;
+    const isScenario = d.action === 'scenario';
+    const timelineLabel = isScenario ? '60-day cash' : '14 days';
+    const timelineValue = isScenario && d.cashDelta60 !== null && d.cashDelta60 !== undefined
+      ? fmtSigned(d.cashDelta60)
+      : fmtSigned(snapshot?.fourteenDayBalance);
+    const floorLabel = isScenario ? 'Near-term floor' : 'Lowest point';
+    const goalDays = d.goalImpact?.improveDays || d.goalImpact?.delayDays || 0;
+    const goalLabel = d.goalImpact?.mode === 'funded_now'
+      ? 'Goal funded'
+      : d.goalImpact?.improveDays ? 'Goal boost' : 'Goal delay';
     const legacyTitle = d.zone === 'green' ? 'Green zone' : d.zone === 'yellow' ? 'Yellow zone' : 'Red zone';
     return `
       <div class="decision-item">
@@ -11769,13 +11957,14 @@ function renderDecisions() {
           <span class="decision-verdict-dot ${d.zone}">${d.action === 'scenario' ? 'Scenario' : d.action === 'yes' ? 'Bought' : 'Skipped'}</span>
         </div>
         <div class="decision-outcome">${escapeHtml(d.title || legacyTitle)}</div>
+        ${isScenario && d.scenarioExplanation ? `<div class="decision-meta">${escapeHtml(d.scenarioExplanation)}</div>` : ''}
         ${snapshot ? `
           <div class="decision-snapshot">
             <span>Next pay<strong>${snapshot.nextPayBalance !== null && snapshot.nextPayBalance !== undefined ? fmtSigned(snapshot.nextPayBalance) : 'Not set'}</strong></span>
-            <span>14 days<strong>${fmtSigned(snapshot.fourteenDayBalance)}</strong></span>
-            <span>Lowest point<strong>${fmtSigned(snapshot.lowPointBalance)}${snapshot.lowPointDate ? ' - ' + formatDateLabel(snapshot.lowPointDate) : ''}</strong></span>
+            <span>${timelineLabel}<strong>${timelineValue}</strong></span>
+            <span>${floorLabel}<strong>${fmtSigned(snapshot.lowPointBalance)}${snapshot.lowPointDate ? ' - ' + formatDateLabel(snapshot.lowPointDate) : ''}</strong></span>
             <span>Negative date<strong>${snapshot.firstNegativeDate ? formatDateLabel(snapshot.firstNegativeDate) : 'None projected'}</strong></span>
-            ${d.goalImpact ? `<span>${d.goalImpact.improveDays ? 'Goal boost' : 'Goal delay'}<strong>${d.goalImpact.improveDays || d.goalImpact.delayDays || 0} day${(d.goalImpact.improveDays || d.goalImpact.delayDays || 0) === 1 ? '' : 's'}</strong></span>` : ''}
+            ${d.goalImpact ? `<span>${goalLabel}<strong>${goalDays} day${goalDays === 1 ? '' : 's'}</strong></span>` : ''}
           </div>
         ` : ''}
       </div>
