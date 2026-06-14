@@ -102,8 +102,7 @@ async function expectBodyContains(page, text) {
     await page.locator('#page-savings.active .link').filter({ hasText: '+ New goal' }).click();
     await expectBodyContains(page, 'Free includes 2 savings goals');
     await expectBodyContains(page, '7 days free');
-    await expectBodyContains(page, 'A$4.99/mo');
-    await expectBodyContains(page, 'A$39.99/yr');
+    await expectBodyContains(page, 'Local price in Google Play');
     await page.locator('#proModal button').filter({ hasText: 'Not now' }).click();
 
     await page.locator('.nav-item').filter({ hasText: 'Compass' }).click();
@@ -131,7 +130,7 @@ async function expectBodyContains(page, text) {
     await page.locator('#inpScenarioName').fill('QA scenario');
     await page.locator('#inpScenarioAmount').fill('35');
     await page.locator('#scenarioModal button').filter({ hasText: 'Run scenario' }).click();
-    await expectBodyContains(page, 'LOWEST POINT AFTER');
+    await expectBodyContains(page, 'Cash safety');
     await page.locator('#scenarioModal button').filter({ hasText: 'Save scenario' }).click();
     const scenarioSaved = await page.evaluate(() => state.decisions.some(d => d.action === 'scenario'));
     if (!scenarioSaved) throw new Error('Pro should save scenario into decision history');

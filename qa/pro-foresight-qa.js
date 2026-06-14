@@ -138,7 +138,7 @@ async function expectBodyContains(page, text) {
     await page.locator('#inpScenarioName').fill('Pro QA scenario');
     await page.locator('#inpScenarioAmount').fill('40');
     await page.locator('#scenarioModal button').filter({ hasText: 'Run scenario' }).click();
-    await expectBodyContains(page, "Lowest you'll dip");
+    await expectBodyContains(page, 'Cash safety');
     await page.locator('#scenarioModal button').filter({ hasText: 'Save scenario' }).click();
 
     await page.evaluate(() => goPage('savings'));

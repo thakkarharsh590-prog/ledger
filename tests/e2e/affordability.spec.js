@@ -114,6 +114,63 @@ test.describe('Affordability & decisions', () => {
     await expect(lowestAfter).toContainText('-');
   });
 
+  test('forecast summary includes today as the possible lowest point', async ({ page }) => {
+    await seedApp(page, {
+      data: dataPayload({
+        transactions: [
+          { id: 't1', type: 'income', amount: 180, description: 'Current cash', category: 'salary', date: isoDaysFromToday(0), note: '', createdAt: 1 },
+        ],
+        incomeSources: [
+          { id: 'inc1', name: 'Tomorrow pay', amount: 500, cycle: 'weekly', nextPay: isoDaysFromToday(1), startDate: isoDaysFromToday(1), autoLog: false, createdAt: 1 },
+        ],
+      }),
+    });
+    await goPage(page, 'compass');
+    const summary = await page.evaluate(() => computeForecastSummary(60).lowest);
+    expect(summary.balance).toBeCloseTo(180, 2);
+    expect(summary.date).toBe(isoDaysFromToday(0));
+  });
+
+  test('what-if purchase and loan apply immediate cash on day zero only once', async ({ page }) => {
+    await seedApp(page, {
+      flags: { ledger_pro_dev_unlocked_v1: 'yes' },
+      data: dataPayload({
+        transactions: [
+          { id: 't1', type: 'income', amount: 3000, description: 'Starting cash', category: 'salary', date: isoDaysFromToday(0), note: '', createdAt: 1 },
+        ],
+      }),
+    });
+    await page.waitForTimeout(500);
+    await goPage(page, 'compass');
+    await page.click('.compass-cta >> nth=1');
+    await page.fill('#inpScenarioName', 'Laptop');
+    await page.fill('#inpScenarioAmount', '500');
+    await page.click('#scenarioInputView .btn-primary');
+    const purchase = await page.evaluate(() => ({
+      delta: state.pendingScenario.cashDelta60,
+      low: state.pendingScenario.scenario.lowest.balance,
+      lowDate: state.pendingScenario.scenario.lowest.date,
+    }));
+    expect(purchase.delta).toBeCloseTo(-500, 2);
+    expect(purchase.low).toBeCloseTo(2500, 2);
+    expect(purchase.lowDate).toBe(isoDaysFromToday(0));
+
+    await page.locator('#scenarioResultView .btn-secondary').filter({ hasText: 'Try another' }).click();
+    await page.locator('.scenario-type').filter({ hasText: 'Take a loan' }).click();
+    await page.fill('#inpScenarioName', 'Loan');
+    await page.fill('#inpScenarioAmount', '5000');
+    await page.click('#scenarioInputView .btn-primary');
+    const loan = await page.evaluate(() => ({
+      delta: state.pendingScenario.cashDelta60,
+      low: state.pendingScenario.scenario.lowest.balance,
+      text: document.getElementById('scenarioResult').innerText,
+    }));
+    expect(loan.delta).toBeCloseTo(5000 - (Math.max(50, 5000 / 24) * 2), 2);
+    expect(loan.low).toBeGreaterThan(2900);
+    expect(loan.text).toContain('Debt committed');
+    expect(loan.text).not.toContain('Safe to do');
+  });
+
   test('what-if loan adds borrowed cash and does not delay funded goal', async ({ page }) => {
     await seedApp(page, {
       flags: { ledger_pro_dev_unlocked_v1: 'yes' },
@@ -136,8 +193,10 @@ test.describe('Affordability & decisions', () => {
 
     const text = await page.locator('#scenarioResult').innerText();
     expect(text).toContain('borrowed cash');
+    expect(text).toContain('Debt committed');
     expect(text).toContain('estimated repayments');
     expect(text).toContain('TR would be funded now');
+    expect(text).not.toContain('Safe to do');
     expect(text).not.toContain('move back by about 84');
     const cashDelta = await page.evaluate(() => state.pendingScenario.cashDelta60);
     expect(cashDelta).toBeGreaterThan(4500);
@@ -148,10 +207,13 @@ test.describe('Affordability & decisions', () => {
       flags: { ledger_pro_dev_unlocked_v1: 'yes' },
       data: dataPayload({
         transactions: [
-          { id: 't1', type: 'income', amount: 1000, description: 'Starting cash', category: 'salary', date: isoDaysFromToday(0), note: '', createdAt: 1 },
+          { id: 't1', type: 'income', amount: 100, description: 'Starting cash', category: 'salary', date: isoDaysFromToday(0), note: '', createdAt: 1 },
+        ],
+        incomeSources: [
+          { id: 'pay1', name: 'Pay', amount: 1000, cycle: 'weekly', nextPay: isoDaysFromToday(1), startDate: isoDaysFromToday(1), autoLog: false, createdAt: 1 },
         ],
         recurringExpenses: [
-          { id: 'amazon', name: 'Amazon', amount: 9.99, category: 'subs', cycle: 'monthly', nextDue: isoDaysFromToday(1), startDate: isoDaysFromToday(-29), active: true, createdAt: 1 },
+          { id: 'amazon', name: 'Amazon', amount: 9.99, category: 'subs', cycle: 'monthly', nextDue: isoDaysFromToday(7), startDate: isoDaysFromToday(-23), active: true, createdAt: 1 },
         ],
         savingsGoals: [
           { id: 'tr', name: 'TR', target: 4600, deadline: isoDaysFromToday(30), createdAt: Date.now() - 86400000 * 30 },
@@ -167,6 +229,9 @@ test.describe('Affordability & decisions', () => {
 
     const text = await page.locator('#scenarioResult').innerText();
     expect(text).toContain('Removes Amazon');
+    expect(text).toContain('Bill cut helps');
+    expect(text).toContain('Lowest cash unchanged because this bill is after your lowest day');
+    expect(text).not.toContain('dips into your reserve');
     expect(text).toContain('date is unchanged, but this frees');
     expect(text).not.toContain('about 0 days');
     const pending = await page.evaluate(() => ({
@@ -198,8 +263,12 @@ test.describe('Affordability & decisions', () => {
     const pending = await page.evaluate(() => ({
       cashDelta60: state.pendingScenario.cashDelta60,
       explanation: state.pendingScenario.scenarioExplanation,
+      text: document.getElementById('scenarioResult').innerText,
     }));
     expect(pending.explanation).toContain('capped at your current average spending');
+    expect(pending.text).toContain('Spending cut helps');
+    expect(pending.text).toContain('Lowest cash improves');
+    expect(pending.text).not.toContain('dips into your reserve');
     expect(pending.cashDelta60).toBeCloseTo(600, 1);
   });
 
@@ -224,6 +293,7 @@ test.describe('Affordability & decisions', () => {
     await page.fill('#inpScenarioAmount', '50');
     await page.click('#scenarioInputView .btn-primary');
     const fifty = await page.evaluate(() => state.pendingScenario.goalImpact.days);
+    await expect(page.locator('#scenarioResult')).toContainText('Moved to savings');
     await page.locator('#scenarioResultView .btn-secondary').filter({ hasText: 'Try another' }).click();
     await page.locator('.scenario-type').filter({ hasText: 'Boost goal' }).click();
     await page.selectOption('#inpScenarioGoal', 'tr');
