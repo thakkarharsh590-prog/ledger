@@ -4,14 +4,14 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        HAC Labs
-  Version:      2.9.9
+  Version:      2.9.10
   Last edited:  2026-06-14
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   10
 
   NAMED: CapAhead
 
-  v2.9.9 - WHAT-IF FORECAST REPAIR (schema v10 unchanged):
+  v2.9.10 - WHAT-IF RESULT CLARITY PASS (schema v10 unchanged):
   - What-if scenarios now compare baseline and after with the same shared forward forecast engine
   - 60-day forecasts include all recurring bill occurrences inside the horizon
   - Loan, cancel bill, reduce spend, and boost goal scenarios explain cash and goal impact clearly
@@ -2207,6 +2207,35 @@
   .scenario-compare .forecast-summary-card {
     min-height: 72px;
   }
+  .scenario-headline {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .scenario-headline-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--surface-overlay);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .scenario-headline-row strong {
+    text-align: right;
+    font-size: 14px;
+  }
+  .scenario-details {
+    margin-top: 10px;
+  }
+  .scenario-details summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 10px 0;
+  }
   .scenario-note {
     font-size: 12px;
     color: var(--text-dim);
@@ -3360,7 +3389,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">CapAhead</span>
-    <span class="version-tag" id="versionTag">v2.9.9</span>
+    <span class="version-tag" id="versionTag">v2.9.10</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme" aria-label="Dark theme">
@@ -3611,7 +3640,7 @@
       <span class="profile-name" id="profileName">Set your name</span>
       <button class="profile-edit-btn" onclick="openNameModal()" title="Edit name">✏</button>
     </div>
-    <div class="profile-version">CapAhead v<span id="profileVersion">2.9.9</span></div>
+    <div class="profile-version">CapAhead v<span id="profileVersion">2.9.10</span></div>
   </div>
 
   <div id="profileContent"></div>
@@ -4315,7 +4344,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '2.9.9';
+const APP_VERSION = '2.9.10';
 const SCHEMA_VERSION = 10;
 const STORAGE_KEY = 'ledger_data_v1';
 const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1';
@@ -11673,7 +11702,7 @@ function renderScenarioResult(result) {
             <div class="scenario-note">Basic check complete. Pro shows the full 60-day scenario impact, risk date change, and goal movement.</div>
           </div>
           <div class="scenario-compare">
-            ${forecastSummaryCard('Near-term floor now', `${fmt(base.lowest.balance)} on ${formatDateLabel(base.lowest.date)}`)}
+            ${forecastSummaryCard('Lowest point now', `${fmt(base.lowest.balance)} on ${formatDateLabel(base.lowest.date)}`)}
             ${forecastSummaryCard('60-day cash change', 'Pro detail')}
           </div>
         </div>
@@ -11684,24 +11713,81 @@ function renderScenarioResult(result) {
     `;
   }
   const goalText = scenarioGoalText(result.goalImpact);
+  const verdict = scenarioVerdict(result);
   return `
     <div class="scenario-result-card">
       <strong>${escapeHtml(result.what)} · ${fmt(result.amount)}</strong>
       <div class="scenario-note">${escapeHtml(result.scenarioExplanation || scenarioTypeLabel(result.scenarioType))}</div>
     </div>
-    <div class="scenario-compare">
-      ${forecastSummaryCard('60-day cash change', fmtSigned(finalDelta))}
-      ${forecastSummaryCard('Near-term floor change', fmtSigned(lowestDelta))}
-      ${forecastSummaryCard('Near-term floor now', `${fmt(base.lowest.balance)} on ${formatDateLabel(base.lowest.date)}`)}
-      ${forecastSummaryCard('Near-term floor after', `${fmt(after.lowest.balance)} on ${formatDateLabel(after.lowest.date)}`)}
-      ${forecastSummaryCard('Risk date now', base.firstNegative ? formatDateLabel(base.firstNegative.date) : 'None projected')}
-      ${forecastSummaryCard('Risk date after', after.firstNegative ? formatDateLabel(after.firstNegative.date) : 'None projected')}
+    <div class="verdict-card ${verdict.cssClass}">
+      <div class="verdict-label">What-if verdict</div>
+      <div class="verdict-title">${escapeHtml(verdict.label)}</div>
+      <div class="verdict-reasoning">${escapeHtml(verdict.sub)}</div>
+    </div>
+    <div class="scenario-headline">
+      <div class="scenario-headline-row">
+        <span>60-day cash change</span>
+        <strong>${fmtSigned(finalDelta)}</strong>
+      </div>
+      <div class="scenario-headline-row">
+        <span>Lowest you'll dip</span>
+        <strong>${dipSummaryLine(base, after, lowestDelta, result.scenarioType)}</strong>
+      </div>
     </div>
     <div class="scenario-result-card" style="margin-top:10px;">
       <strong>Goal impact</strong>
       <span>${goalText}</span>
     </div>
+    <details class="scenario-details">
+      <summary>Show 60-day details</summary>
+      <div class="scenario-compare">
+        ${forecastSummaryCard('60-day cash change', fmtSigned(finalDelta))}
+        ${forecastSummaryCard('Lowest cash change', fmtSigned(lowestDelta))}
+        ${forecastSummaryCard('Lowest point now', `${fmt(base.lowest.balance)} on ${formatDateLabel(base.lowest.date)}`)}
+        ${forecastSummaryCard('Lowest point after', `${fmt(after.lowest.balance)} on ${formatDateLabel(after.lowest.date)}`)}
+        ${forecastSummaryCard('Risk date now', base.firstNegative ? formatDateLabel(base.firstNegative.date) : 'None projected')}
+        ${forecastSummaryCard('Risk date after', after.firstNegative ? formatDateLabel(after.firstNegative.date) : 'None projected')}
+      </div>
+    </details>
   `;
+}
+
+function scenarioVerdict(result) {
+  const zone = result?.zone || 'green';
+  if (zone === 'red') {
+    const riskDate = result?.scenario?.firstNegative?.date;
+    return {
+      label: 'Risky',
+      sub: riskDate ? `You'd run low on ${formatDateLabel(riskDate)}.` : `You'd run low in this forecast.`,
+      cssClass: 'red',
+    };
+  }
+  if (zone === 'yellow') {
+    return {
+      label: 'Doable but tight',
+      sub: 'This dips into your reserve.',
+      cssClass: 'yellow',
+    };
+  }
+  return {
+    label: 'Safe to do',
+    sub: 'Your cash stays positive.',
+    cssClass: 'green',
+  };
+}
+
+function dipSummaryLine(base, after, delta, type) {
+  const start = base?.lowest || {};
+  const next = after?.lowest || {};
+  const startBalance = Number.isFinite(start.balance) ? start.balance : 0;
+  const nextBalance = Number.isFinite(next.balance) ? next.balance : 0;
+  const change = Number.isFinite(delta) ? delta : nextBalance - startBalance;
+  let tag = 'unchanged';
+  if (Math.abs(change) >= 0.005) {
+    tag = type === 'loan' ? '' : `${fmtSigned(change)} ${change > 0 ? 'better' : 'worse'}`;
+  }
+  const date = next.date || start.date;
+  return `${fmt(startBalance)} &rarr; ${fmt(nextBalance)}${tag ? ` &middot; ${tag}` : ''}${date ? ` &middot; ${formatDateLabel(date)}` : ''}`;
 }
 
 function saveScenarioDecision() {
@@ -11941,7 +12027,7 @@ function renderDecisions() {
     const timelineValue = isScenario && d.cashDelta60 !== null && d.cashDelta60 !== undefined
       ? fmtSigned(d.cashDelta60)
       : fmtSigned(snapshot?.fourteenDayBalance);
-    const floorLabel = isScenario ? 'Near-term floor' : 'Lowest point';
+    const floorLabel = isScenario ? 'Lowest cash' : 'Lowest point';
     const goalDays = d.goalImpact?.improveDays || d.goalImpact?.delayDays || 0;
     const goalLabel = d.goalImpact?.mode === 'funded_now'
       ? 'Goal funded'

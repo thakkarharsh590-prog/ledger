@@ -110,7 +110,7 @@ test.describe('Affordability & decisions', () => {
     await page.fill('#inpScenarioAmount', '500');
     await page.click('#scenarioInputView .btn-primary');
 
-    const lowestAfter = page.locator('.forecast-summary-card').filter({ hasText: 'Near-term floor after' }).locator('strong');
+    const lowestAfter = page.locator('.forecast-summary-card').filter({ hasText: 'Lowest point after' }).locator('strong');
     await expect(lowestAfter).toContainText('-');
   });
 
