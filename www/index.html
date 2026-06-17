@@ -4,7 +4,7 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        HAC Labs
-  Version:      3.0.1
+  Version:      3.0.2
   Last edited:  2026-06-18
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   10
@@ -3029,6 +3029,7 @@
       background: #ffffff !important;
       color: #111827 !important;
       padding: 0 !important;
+      color-scheme: light !important;
     }
     .topbar,
     .bottom-nav,
@@ -3041,6 +3042,9 @@
     }
     .monthly-report-page {
       display: block !important;
+      color-scheme: light !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
   }
   
@@ -3342,7 +3346,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">CapAhead</span>
-    <span class="version-tag" id="versionTag">v3.0.1</span>
+    <span class="version-tag" id="versionTag">v3.0.2</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme" aria-label="Dark theme">
@@ -3593,7 +3597,7 @@
       <span class="profile-name" id="profileName">Set your name</span>
       <button class="profile-edit-btn" onclick="openNameModal()" title="Edit name">✏</button>
     </div>
-    <div class="profile-version">CapAhead v<span id="profileVersion">3.0.1</span></div>
+    <div class="profile-version">CapAhead v<span id="profileVersion">3.0.2</span></div>
   </div>
 
   <div id="profileContent"></div>
@@ -4297,7 +4301,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '3.0.1';
+const APP_VERSION = '3.0.2';
 const SCHEMA_VERSION = 10;
 const STORAGE_KEY = 'ledger_data_v1';
 const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1';
@@ -6696,7 +6700,7 @@ function renderMonthlyReviewReportHtml(data) {
         </div>
       </div>
       <div class="report-privacy-note">This report contains personal finance data. Keep this file somewhere safe.</div>
-      <div class="report-print-grid hero">
+      <div class="report-print-grid report-hero">
         ${reportPrintMetric('Net worth', fmt(data.netWorth), 'Cash + Savings - Debt')}
         ${reportPrintMetric('Spare cash', fmtSigned(data.net), 'Income minus expenses this month', data.net >= 0 ? 'good' : 'watch')}
         ${reportPrintMetric('Cash buffer', data.cashBufferDays === null ? 'n/a' : `${data.cashBufferDays} days`, 'Based on average daily spend')}
@@ -6860,9 +6864,9 @@ function getCapAheadPrintPlugin() {
 
 function getMonthlyReportPrintCss() {
   return `
-    *{box-sizing:border-box}
+    *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#111827;background:#fff;margin:0}
-    .monthly-report-page{max-width:780px;margin:0 auto;padding:0;background:#fff}
+    .monthly-report-page{max-width:780px;margin:0 auto;padding:0;background:#fff;color-scheme:light;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .report-sheet{break-after:page;page-break-after:always}
     .report-sheet:last-child{break-after:auto;page-break-after:avoid}
     .report-cover,.report-panel,.report-print-card,.report-pill,.report-mini-card,.report-baseline,.report-week-bars,.report-sparkline{break-inside:avoid;page-break-inside:avoid}
@@ -6882,7 +6886,7 @@ function getMonthlyReportPrintCss() {
     .report-score-track,.report-bar-track{height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden}.report-score-track{background:#e5e7eb;margin:8px 0}
     .report-score-track span,.report-bar-track span{display:block;height:100%;background:#b7ff2a;border-radius:999px}
     .report-privacy-note{border:1px solid #fde68a;background:#fffbeb;color:#78350f;border-radius:10px;padding:10px 12px;font-size:12px;margin:18px 0 0}
-    .report-print-grid,.report-trend-grid,.report-pill-grid{display:grid;gap:10px}.report-print-grid.hero{grid-template-columns:repeat(4,1fr);margin:18px 0 0}.report-trend-grid{grid-template-columns:repeat(3,1fr);margin-bottom:10px}.report-pill-grid{grid-template-columns:repeat(2,1fr)}.report-pill-grid.momentum{grid-template-columns:repeat(4,1fr);margin-top:12px}
+    .report-print-grid,.report-trend-grid,.report-pill-grid{display:grid;gap:10px}.report-print-grid.report-hero{grid-template-columns:repeat(4,1fr);margin:18px 0 0}.report-trend-grid{grid-template-columns:repeat(3,1fr);margin-bottom:10px}.report-pill-grid{grid-template-columns:repeat(2,1fr)}.report-pill-grid.momentum{grid-template-columns:repeat(4,1fr);margin-top:12px}
     .report-print-card,.report-pill,.report-panel,.report-baseline{border:1px solid #d9e1ea;border-radius:12px;background:#fff;padding:10px}
     .report-print-card span,.report-pill span{display:block;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
     .report-print-card strong{display:block;color:#0f172a;font-size:18px;line-height:1.18}.report-print-card em{display:block;color:#64748b;font-style:normal;font-size:11px;margin-top:6px;line-height:1.35}
