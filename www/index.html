@@ -6267,14 +6267,19 @@ function renderAheadTrends() {
   const snapshots = [...(state.monthlySnapshots || [])].sort((a, b) => a.month.localeCompare(b.month));
   const latest = snapshots[snapshots.length - 1] || null;
   const prev = snapshots[snapshots.length - 2] || null;
-  const currentDebt = state.loans.reduce((sum, l) => sum + Math.max(0, (l.total || 0) - getLoanPaid(l)), 0);
-  const currentNet = getCurrentBalance() + getSavingsBalance() - currentDebt;
+  const money = value => fmt(Number(value) || 0);
+  const monthLabel = key => {
+    const match = /^(\d{4})-(\d{2})$/.exec(String(key || ''));
+    if (!match) return key || 'this month';
+    return new Date(Number(match[1]), Number(match[2]) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+  const netWorthOf = snapshot => (Number(snapshot?.balance) || 0) + (Number(snapshot?.savingsTotal) || 0) - (Number(snapshot?.debtTotal) || 0);
   if (!isPro()) {
     el.innerHTML = `
       <div class="pro-preview-wrap">
         <div class="pro-preview-content" aria-hidden="true">
           <div class="trend-grid">
-            ${forecastSummaryCard('Net progress', fmtSigned(currentNet))}
+            ${forecastSummaryCard('Monthly trend', snapshots.length >= 2 ? 'Compare completed months' : 'Baseline first')}
             ${forecastSummaryCard('Snapshots', `${snapshots.length} saved`)}
           </div>
         </div>
@@ -6289,22 +6294,39 @@ function renderAheadTrends() {
     el.innerHTML = emptyState('Trends start after one full month', 'CapAhead will save a local month-end snapshot the next time a month completes.', { icon: 'trend-up' });
     return;
   }
-  const latestNet = latest.balance + latest.savingsTotal - latest.debtTotal;
-  const prevNet = prev ? prev.balance + prev.savingsTotal - prev.debtTotal : null;
-  const netChange = prev ? latestNet - prevNet : null;
-  const spendChange = prev ? latest.expenseTotal - prev.expenseTotal : null;
-  const debtChange = prev ? latest.debtTotal - prev.debtTotal : null;
+  if (!prev) {
+    el.innerHTML = `
+      <div class="trend-grid">
+        <div class="trend-card"><span>Latest snapshot</span><strong>${escapeHtml(monthLabel(latest.month))}</strong></div>
+        <div class="trend-card"><span>Baseline</span><strong>Trend starts next month</strong></div>
+      </div>
+      <div class="scenario-note">Baseline set for ${escapeHtml(monthLabel(latest.month))}. Your trend appears next month once there's a month to compare.</div>
+      <div class="scenario-note">Snapshots stay on this device and are included in encrypted backups.</div>
+    `;
+    return;
+  }
+  const latestNet = netWorthOf(latest);
+  const prevNet = netWorthOf(prev);
+  const netChange = latestNet - prevNet;
+  const savingsChange = (Number(latest.savingsTotal) || 0) - (Number(prev.savingsTotal) || 0);
+  const spendChange = (Number(latest.expenseTotal) || 0) - (Number(prev.expenseTotal) || 0);
+  const debtChange = (Number(latest.debtTotal) || 0) - (Number(prev.debtTotal) || 0);
+  const savingsText = savingsChange >= 0 ? `Up ${money(savingsChange)}` : `Down ${money(Math.abs(savingsChange))}`;
+  const debtText = debtChange > 0 ? `Borrowed ${money(debtChange)} this month` : debtChange < 0 ? `Paid down ${money(Math.abs(debtChange))} - nice.` : 'No debt change';
+  const spendingText = spendChange <= 0 ? `Down ${money(Math.abs(spendChange))}` : `Up ${money(spendChange)}`;
+  const netBreakdown = `Cash ${money(latest.balance)} · Savings ${money(latest.savingsTotal)} · Debt -${money(latest.debtTotal)}`;
   const bestCategory = Object.entries(latest.categoryTotals || {}).sort((a, b) => b[1] - a[1])[0];
   const bestCatName = bestCategory ? getCat(bestCategory[0], 'expense').name : 'No spend';
   el.innerHTML = `
     <div class="trend-grid">
-      <div class="trend-card"><span>Latest snapshot</span><strong>${escapeHtml(latest.month)}</strong></div>
-      <div class="trend-card"><span>Net progress</span><strong style="color:${latestNet >= 0 ? 'var(--income)' : 'var(--expense)'};">${fmtSigned(latestNet)}</strong></div>
-      <div class="trend-card"><span>Vs previous month</span><strong style="color:${netChange === null || netChange >= 0 ? 'var(--income)' : 'var(--expense)'};">${netChange === null ? 'First month' : fmtSigned(netChange)}</strong></div>
-      <div class="trend-card"><span>Spending change</span><strong style="color:${spendChange === null || spendChange <= 0 ? 'var(--income)' : 'var(--expense)'};">${spendChange === null ? 'First month' : fmtSigned(spendChange)}</strong></div>
-      <div class="trend-card"><span>Debt change</span><strong style="color:${debtChange === null || debtChange <= 0 ? 'var(--income)' : 'var(--expense)'};">${debtChange === null ? 'First month' : fmtSigned(debtChange)}</strong></div>
+      <div class="trend-card"><span>Savings</span><strong style="color:${savingsChange >= 0 ? 'var(--income)' : 'var(--expense)'};">${escapeHtml(savingsText)}</strong></div>
+      <div class="trend-card"><span>Debt</span><strong style="color:${debtChange <= 0 ? 'var(--income)' : 'var(--expense)'};">${escapeHtml(debtText)}</strong></div>
+      <div class="trend-card"><span>Spending</span><strong style="color:${spendChange <= 0 ? 'var(--income)' : 'var(--expense)'};">${escapeHtml(spendingText)}</strong></div>
+      <div class="trend-card"><span>Latest snapshot</span><strong>${escapeHtml(monthLabel(latest.month))}</strong></div>
+      <div class="trend-card"><span>Net worth</span><strong style="color:${netChange >= 0 ? 'var(--income)' : 'var(--expense)'};">${fmtSigned(latestNet)}</strong></div>
       <div class="trend-card"><span>Top category</span><strong>${escapeHtml(bestCatName)}${bestCategory ? ' ' + fmt(bestCategory[1]) : ''}</strong></div>
     </div>
+    <div class="scenario-note">${escapeHtml(netBreakdown)}</div>
     <div class="scenario-note">Snapshots stay on this device and are included in encrypted backups.</div>
   `;
 }

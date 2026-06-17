@@ -118,6 +118,68 @@ async function expectBodyContains(page, text) {
       throw new Error(`Monthly snapshots did not backfill safely: ${JSON.stringify(snapshotCheck)}`);
     }
 
+    const lockedAheadPreview = await page.evaluate(async () => {
+      localStorage.removeItem('ledger_pro_dev_unlocked_v1');
+      await syncProEntitlement();
+      state.monthlySnapshots = [
+        { month: '2026-05', balance: 1000, savingsTotal: 500, debtTotal: 9000, incomeTotal: 4000, expenseTotal: 900, categoryTotals: {}, createdAt: Date.now() },
+      ];
+      renderAheadTrends();
+      return document.getElementById('aheadTrends').innerText;
+    });
+    if (lockedAheadPreview.includes('Net progress') || lockedAheadPreview.includes('-A$') || lockedAheadPreview.includes('−A$')) {
+      throw new Error(`Locked ahead preview should not expose scary net progress copy/value: ${lockedAheadPreview}`);
+    }
+
+    const oneSnapshotAhead = await page.evaluate(async () => {
+      localStorage.setItem('ledger_pro_dev_unlocked_v1', 'yes');
+      await syncProEntitlement();
+      state.monthlySnapshots = [
+        { month: '2026-05', balance: 1000, savingsTotal: 500, debtTotal: 9000, incomeTotal: 4000, expenseTotal: 900, categoryTotals: {}, createdAt: Date.now() },
+      ];
+      renderAheadTrends();
+      return document.getElementById('aheadTrends').innerText;
+    });
+    if (!oneSnapshotAhead.includes('Baseline set for May 2026') || !oneSnapshotAhead.includes("Your trend appears next month once there's a month to compare.")) {
+      throw new Error(`One-snapshot ahead card should show baseline copy: ${oneSnapshotAhead}`);
+    }
+    if (oneSnapshotAhead.includes('Net progress') || oneSnapshotAhead.includes('Net worth') || oneSnapshotAhead.includes('-A$') || oneSnapshotAhead.includes('−A$')) {
+      throw new Error(`One-snapshot ahead card should not show net-worth headline/value: ${oneSnapshotAhead}`);
+    }
+
+    const positiveAhead = await page.evaluate(() => {
+      state.monthlySnapshots = [
+        { month: '2026-04', balance: 1000, savingsTotal: 500, debtTotal: 2000, incomeTotal: 4000, expenseTotal: 900, categoryTotals: { home: 500 }, createdAt: Date.now() - 1 },
+        { month: '2026-05', balance: 1200, savingsTotal: 800, debtTotal: 1800, incomeTotal: 4200, expenseTotal: 700, categoryTotals: { food: 300 }, createdAt: Date.now() },
+      ];
+      renderAheadTrends();
+      return {
+        text: document.getElementById('aheadTrends').innerText,
+        netWorth: state.monthlySnapshots[1].balance + state.monthlySnapshots[1].savingsTotal - state.monthlySnapshots[1].debtTotal,
+      };
+    });
+    for (const expected of ['Savings', 'Up A$300.00', 'Debt', 'Paid down A$200.00 - nice.', 'Spending', 'Down A$200.00', 'Net worth', 'A$200.00', 'Cash A$1,200.00', 'Savings A$800.00', 'Debt -A$1,800.00']) {
+      if (!positiveAhead.text.includes(expected)) throw new Error(`Positive ahead card missing "${expected}": ${positiveAhead.text}`);
+    }
+    if (positiveAhead.netWorth !== 200) throw new Error(`Net-worth math mismatch: ${JSON.stringify(positiveAhead)}`);
+
+    const borrowedAhead = await page.evaluate(() => {
+      state.monthlySnapshots = [
+        { month: '2026-05', balance: 1500, savingsTotal: 800, debtTotal: 1800, incomeTotal: 4200, expenseTotal: 700, categoryTotals: {}, createdAt: Date.now() - 1 },
+        { month: '2026-06', balance: 1500, savingsTotal: 850, debtTotal: 2700, incomeTotal: 4200, expenseTotal: 650, categoryTotals: {}, createdAt: Date.now() },
+      ];
+      renderAheadTrends();
+      return document.getElementById('aheadTrends').innerText;
+    });
+    if (!borrowedAhead.includes('Borrowed A$900.00 this month') || borrowedAhead.includes('fell behind')) {
+      throw new Error(`Debt increase should be framed as borrowed, not failure: ${borrowedAhead}`);
+    }
+    await page.evaluate(async () => {
+      localStorage.removeItem('ledger_pro_dev_unlocked_v1');
+      await syncProEntitlement();
+      renderAll();
+    });
+
     await page.locator('.nav-item').filter({ hasText: 'Compass' }).click();
     await page.locator('.compass-cta').filter({ hasText: 'What if?' }).click();
     await page.locator('#inpScenarioName').fill('Free QA scenario');
