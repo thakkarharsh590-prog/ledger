@@ -46,7 +46,7 @@ public class CapAheadBillingPlugin extends Plugin implements PurchasesUpdatedLis
   @PluginMethod
   public void purchase(PluginCall call) {
     String productId = call.getString("productId", PRO_PRODUCT_ID);
-    String basePlanId = call.getString("basePlanId", "pro_monthly");
+    String basePlanId = call.getString("basePlanId", "pro-monthly");
     if (!PRO_PRODUCT_ID.equals(productId)) {
       call.reject("Unknown product.");
       return;
