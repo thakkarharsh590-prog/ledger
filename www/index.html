@@ -3099,6 +3099,329 @@
       font-size: 12px;
       margin: 14px 0;
     }
+    .monthly-report-page * {
+      box-sizing: border-box;
+    }
+    .monthly-report-page .report-page {
+      break-after: page;
+      page-break-after: always;
+    }
+    .monthly-report-page .report-print-section,
+    .monthly-report-page .report-panel,
+    .monthly-report-page .report-print-card {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .monthly-report-page .report-cover {
+      background: #050912;
+      color: #f8fafc;
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+    .monthly-report-page .report-brand-row,
+    .monthly-report-page .report-bar-label,
+    .monthly-report-page .report-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .monthly-report-page .report-logo {
+      width: 190px;
+      height: auto;
+      display: block;
+    }
+    .monthly-report-page .report-logo-fallback {
+      font-size: 24px;
+      font-weight: 800;
+      color: #b7ff2a;
+    }
+    .monthly-report-page .report-brand-row span,
+    .monthly-report-page .report-eyebrow {
+      color: #b7ff2a;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .monthly-report-page .report-cover-grid,
+    .monthly-report-page .report-two-col,
+    .monthly-report-page .report-forecast-grid,
+    .monthly-report-page .report-breakdown {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    .monthly-report-page .report-cover-grid {
+      grid-template-columns: 1.6fr .8fr;
+      align-items: end;
+      gap: 18px;
+    }
+    .monthly-report-page h1 {
+      font-size: 36px;
+      line-height: 1.05;
+      margin: 0 0 12px;
+      letter-spacing: 0;
+    }
+    .monthly-report-page h2 {
+      color: #0f172a;
+      font-size: 20px;
+      line-height: 1.2;
+      margin: 0 0 12px;
+    }
+    .monthly-report-page h3 {
+      color: #111827;
+      font-size: 13px;
+      letter-spacing: .04em;
+      margin: 0 0 10px;
+      text-transform: uppercase;
+    }
+    .monthly-report-page .report-lede {
+      color: #dbeafe;
+      font-size: 14px;
+      margin: 0;
+    }
+    .monthly-report-page .report-score-card {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .monthly-report-page .report-score-card strong {
+      color: #b7ff2a;
+      display: block;
+      font-size: 46px;
+      line-height: 1;
+      margin: 8px 0;
+    }
+    .monthly-report-page .report-score-card span,
+    .monthly-report-page .report-score-card small {
+      color: #cbd5e1;
+      display: block;
+      font-size: 11px;
+    }
+    .monthly-report-page .report-score-track,
+    .monthly-report-page .report-bar-track {
+      background: #e5e7eb;
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .monthly-report-page .report-score-track {
+      background: rgba(255,255,255,.18);
+      margin: 8px 0;
+    }
+    .monthly-report-page .report-score-track span,
+    .monthly-report-page .report-bar-track span {
+      background: #b7ff2a;
+      border-radius: 999px;
+      display: block;
+      height: 100%;
+    }
+    .monthly-report-page .report-print-grid,
+    .monthly-report-page .report-trend-grid,
+    .monthly-report-page .report-pill-grid {
+      display: grid;
+      gap: 10px;
+    }
+    .monthly-report-page .report-print-grid.hero {
+      grid-template-columns: repeat(4, 1fr);
+      margin: 18px 0 0;
+    }
+    .monthly-report-page .report-trend-grid {
+      grid-template-columns: repeat(3, 1fr);
+      margin-bottom: 10px;
+    }
+    .monthly-report-page .report-pill-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .monthly-report-page .report-pill-grid.momentum {
+      grid-template-columns: repeat(4, 1fr);
+      margin-top: 12px;
+    }
+    .monthly-report-page .report-print-card,
+    .monthly-report-page .report-pill,
+    .monthly-report-page .report-panel,
+    .monthly-report-page .report-baseline {
+      background: #ffffff;
+      border: 1px solid #d9e1ea;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .monthly-report-page .report-print-card span,
+    .monthly-report-page .report-pill span {
+      color: #64748b;
+      display: block;
+      font-size: 10px;
+      letter-spacing: .05em;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+    .monthly-report-page .report-print-card strong {
+      color: #0f172a;
+      display: block;
+      font-size: 18px;
+      line-height: 1.18;
+    }
+    .monthly-report-page .report-print-card em {
+      color: #64748b;
+      display: block;
+      font-size: 11px;
+      font-style: normal;
+      line-height: 1.35;
+      margin-top: 6px;
+    }
+    .monthly-report-page .report-print-card.tone-good {
+      background: #f0fdf4;
+      border-color: #86efac;
+    }
+    .monthly-report-page .report-print-card.tone-watch {
+      background: #fffbeb;
+      border-color: #fcd34d;
+    }
+    .monthly-report-page .report-print-card.tone-neutral {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+    .monthly-report-page .report-print-section {
+      border-top: 4px solid #111827;
+      margin: 0 0 18px;
+      padding-top: 14px;
+    }
+    .monthly-report-page .report-big-number {
+      color: #111827;
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1.1;
+      margin: 0 0 6px;
+    }
+    .monthly-report-page .report-muted,
+    .monthly-report-page .report-pill small {
+      color: #64748b;
+      font-size: 11px;
+    }
+    .monthly-report-page .report-bars {
+      display: grid;
+      gap: 9px;
+    }
+    .monthly-report-page .report-pill strong {
+      color: #111827;
+      display: block;
+      font-size: 15px;
+    }
+    .monthly-report-page .report-sparkline {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      height: 118px;
+      margin-bottom: 10px;
+      width: 100%;
+    }
+    .monthly-report-page .report-footer {
+      border-top: 1px solid #e5e7eb;
+      color: #64748b;
+      font-size: 11px;
+      margin-top: 16px;
+      padding-top: 10px;
+    }
+    .monthly-report-page .report-secondary-grid {
+      margin-top: 12px;
+    }
+    .monthly-report-page .report-stack {
+      display: flex;
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      margin: 12px 0 8px;
+      background: #e5e7eb;
+    }
+    .monthly-report-page .report-stack span,
+    .monthly-report-page .report-stack-legend i {
+      display: block;
+    }
+    .monthly-report-page .report-stack .cash,
+    .monthly-report-page .report-stack-legend i.cash {
+      background: #38bdf8;
+    }
+    .monthly-report-page .report-stack .savings,
+    .monthly-report-page .report-stack-legend i.savings {
+      background: #b7ff2a;
+    }
+    .monthly-report-page .report-stack .debt,
+    .monthly-report-page .report-stack-legend i.debt {
+      background: #fb7185;
+    }
+    .monthly-report-page .report-stack-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: #64748b;
+      font-size: 10px;
+    }
+    .monthly-report-page .report-stack-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .monthly-report-page .report-stack-legend i {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .monthly-report-page .report-week-bars {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      height: 132px;
+      align-items: end;
+    }
+    .monthly-report-page .report-week-bar {
+      display: grid;
+      grid-template-rows: 1fr auto auto;
+      min-width: 0;
+      gap: 4px;
+      text-align: center;
+    }
+    .monthly-report-page .report-week-column {
+      display: flex;
+      align-items: end;
+      justify-content: center;
+      min-height: 82px;
+      border-radius: 8px;
+      background: #f1f5f9;
+      overflow: hidden;
+    }
+    .monthly-report-page .report-week-column span {
+      display: block;
+      width: 100%;
+      background: linear-gradient(180deg, #b7ff2a, #22c55e);
+      border-radius: 8px 8px 0 0;
+    }
+    .monthly-report-page .report-week-bar strong,
+    .monthly-report-page .report-week-bar small,
+    .monthly-report-page .report-mini-card small {
+      display: block;
+      color: #64748b;
+      font-size: 9px;
+      line-height: 1.25;
+    }
+    .monthly-report-page .report-week-bar strong {
+      color: #111827;
+      font-size: 10px;
+    }
+    .monthly-report-page .report-goal-list {
+      display: grid;
+      gap: 9px;
+    }
+    .monthly-report-page .report-mini-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px;
+      background: #f8fafc;
+    }
   }
   
   /* Weekly Plan card */
@@ -6402,6 +6725,218 @@ function reportSummaryCard(label, value) {
   return `<div class="report-summary-card"><span>${escapeHtml(label)}</span><strong>${value}</strong></div>`;
 }
 
+let monthlyReportLogoDataUri = null;
+
+async function getMonthlyReportLogoDataUri() {
+  if (monthlyReportLogoDataUri !== null) return monthlyReportLogoDataUri;
+  try {
+    const response = await fetch('assets/pdf-logo-header.png');
+    if (!response.ok) throw new Error('Logo asset not found');
+    const blob = await response.blob();
+    monthlyReportLogoDataUri = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.warn('Monthly report logo unavailable', err);
+    monthlyReportLogoDataUri = '';
+  }
+  return monthlyReportLogoDataUri;
+}
+
+function clampNumber(value, min, max) {
+  const safe = Number.isFinite(value) ? value : 0;
+  return Math.min(max, Math.max(min, safe));
+}
+
+function fmtPercent(value, digits = 0) {
+  if (!Number.isFinite(value)) return 'n/a';
+  return `${value.toFixed(digits)}%`;
+}
+
+function reportNetWorthFromSnapshot(snapshot) {
+  if (!snapshot) return 0;
+  return (snapshot.balance || 0) + (snapshot.savingsTotal || 0) - (snapshot.debtTotal || 0);
+}
+
+function reportMonthLabel(monthKey) {
+  if (!monthKey || !/^\d{4}-\d{2}$/.test(monthKey)) return 'recent month';
+  const [year, month] = monthKey.split('-').map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+}
+
+function reportTrendCopy(label, delta, goodWhen) {
+  const abs = fmtAbs(delta);
+  if (Math.abs(delta) < 0.005) {
+    return { label, value: fmt(0), tone: 'neutral', note: 'Held steady vs previous month' };
+  }
+  const isGood = goodWhen === 'up' ? delta > 0 : delta < 0;
+  const direction = delta > 0 ? 'up' : 'down';
+  return {
+    label,
+    value: `${direction === 'up' ? '+' : '-'}${abs}`,
+    tone: isGood ? 'good' : 'watch',
+    note: `${isGood ? 'Improved' : 'Needs attention'} vs previous month`,
+  };
+}
+
+function reportDebtTrendCopy(delta) {
+  if (Math.abs(delta) < 0.005) {
+    return { label: 'Debt', value: fmt(0), tone: 'neutral', note: 'Debt held steady' };
+  }
+  if (delta > 0) {
+    return { label: 'Debt', value: `+${fmtAbs(delta)}`, tone: 'watch', note: `Borrowed ${fmtAbs(delta)} this month` };
+  }
+  return { label: 'Debt', value: `-${fmtAbs(delta)}`, tone: 'good', note: `Paid down ${fmtAbs(delta)} - nice.` };
+}
+
+function reportHealthGrade(score) {
+  if (score >= 85) return 'A';
+  if (score >= 70) return 'B';
+  if (score >= 55) return 'C';
+  if (score >= 40) return 'D';
+  return 'F';
+}
+
+function reportSimpleHealthScore({ savingsRate, cashBufferDays, debtToIncome }) {
+  const savingsPoints = Math.max(0, Math.min(40, ((savingsRate || 0) / 20) * 40));
+  const bufferPoints = Math.max(0, Math.min(30, ((cashBufferDays || 0) / 90) * 30));
+  const debtPoints = 30 - Math.max(0, Math.min(30, ((debtToIncome || 0) / 2) * 30));
+  return Math.round(savingsPoints + bufferPoints + debtPoints);
+}
+
+function reportLargestByAmount(items) {
+  if (!items || !items.length) return null;
+  return [...items].sort((a, b) => (b.amount || 0) - (a.amount || 0))[0];
+}
+
+function reportBuildWeekdaySpend(transactions) {
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const totals = days.map(day => ({ day, amount: 0, count: 0 }));
+  transactions.filter(isVariableExpense).forEach(t => {
+    const date = new Date(`${t.date}T00:00:00`);
+    const index = Number.isFinite(date.getDay()) ? date.getDay() : 0;
+    totals[index].amount += t.amount || 0;
+    totals[index].count += 1;
+  });
+  const active = totals.filter(d => d.amount > 0);
+  const biggest = active.length ? [...active].sort((a, b) => b.amount - a.amount)[0] : null;
+  return { totals, biggest };
+}
+
+function reportSparklineSvg(points) {
+  const values = (points || []).map(p => p.balance).filter(Number.isFinite);
+  if (values.length < 2) {
+    return '<div class="report-empty-chart">Forecast trend appears after more data.</div>';
+  }
+  const sample = values.filter((_, index) => index % Math.max(1, Math.floor(values.length / 24)) === 0).slice(-28);
+  const min = Math.min(...sample);
+  const max = Math.max(...sample);
+  const span = max - min || 1;
+  const coords = sample.map((value, index) => {
+    const x = sample.length === 1 ? 0 : (index / (sample.length - 1)) * 100;
+    const y = 52 - ((value - min) / span) * 44;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `<svg class="report-sparkline" viewBox="0 0 100 60" role="img" aria-label="60-day forecast trend">
+    <polyline points="${coords}" fill="none" stroke="#b7ff2a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="0" y1="52" x2="100" y2="52" stroke="#d1d5db" stroke-width="1"/>
+  </svg>`;
+}
+
+function reportBarList(items, total) {
+  const safeTotal = Math.max(1, total || items.reduce((sum, item) => sum + (item.amount || 0), 0));
+  if (!items || !items.length) return '<p>No spending categories yet this month.</p>';
+  return `<div class="report-bars">${items.map(item => {
+    const pct = clampNumber(((item.amount || 0) / safeTotal) * 100, 0, 100);
+    return `<div class="report-bar-row">
+      <div class="report-bar-label"><span>${escapeHtml(item.name)}</span><strong>${fmt(item.amount)}</strong></div>
+      <div class="report-bar-track"><span style="width:${pct.toFixed(1)}%"></span></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function reportWeekdayBars(weekdaySpend) {
+  const totals = weekdaySpend?.totals || [];
+  const max = Math.max(1, ...totals.map(day => day.amount || 0));
+  if (!totals.some(day => day.amount > 0)) return '<div class="report-empty-chart">Day-of-week spending appears after more variable expenses.</div>';
+  return `<div class="report-week-bars">${totals.map(day => {
+    const height = clampNumber(((day.amount || 0) / max) * 100, 3, 100);
+    return `<div class="report-week-bar">
+      <div class="report-week-column"><span style="height:${height.toFixed(1)}%"></span></div>
+      <strong>${escapeHtml(day.day)}</strong>
+      <small>${fmt(day.amount)}</small>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function reportNetWorthStack(data) {
+  const cash = Math.max(0, data.balance || 0);
+  const savings = Math.max(0, data.savingsTotal || 0);
+  const debt = Math.max(0, data.debtTotal || 0);
+  const total = Math.max(1, cash + savings + debt);
+  const cashPct = (cash / total) * 100;
+  const savingsPct = (savings / total) * 100;
+  const debtPct = (debt / total) * 100;
+  return `<div class="report-stack" aria-label="Net worth components">
+    <span class="cash" style="width:${cashPct.toFixed(1)}%"></span>
+    <span class="savings" style="width:${savingsPct.toFixed(1)}%"></span>
+    <span class="debt" style="width:${debtPct.toFixed(1)}%"></span>
+  </div>
+  <div class="report-stack-legend">
+    <span><i class="cash"></i>Cash</span>
+    <span><i class="savings"></i>Savings</span>
+    <span><i class="debt"></i>Debt</span>
+  </div>`;
+}
+
+function reportGoalCards(goals) {
+  if (!goals || !goals.length) return '<p>No savings goals set.</p>';
+  return `<div class="report-goal-list">${goals.map(goal => {
+    const pct = goal.target > 0 ? clampNumber((goal.progress / goal.target) * 100, 0, 100) : 0;
+    const pace = goal.pace ? goal.pace.onTrackStatus.replace(/_/g, ' ') : 'no deadline';
+    return `<div class="report-mini-card">
+      <div class="report-bar-label"><span>${escapeHtml(goal.name)}</span><strong>${fmtPercent(pct)}</strong></div>
+      <div class="report-bar-track"><span style="width:${pct.toFixed(1)}%"></span></div>
+      <small>${fmt(goal.progress)} of ${fmt(goal.target)} - ${escapeHtml(pace)}</small>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function reportLoanCards(loans) {
+  if (!loans || !loans.length) return '<p>No active loans recorded.</p>';
+  return `<div class="report-goal-list">${loans.map(loan => {
+    const paid = getLoanPaid(loan);
+    const total = loan.total || 0;
+    const remaining = Math.max(0, total - paid);
+    const pct = total > 0 ? clampNumber((paid / total) * 100, 0, 100) : 0;
+    const rate = loan.interestRate !== undefined ? `${loan.interestRate}% APR` : 'Rate not set';
+    return `<div class="report-mini-card">
+      <div class="report-bar-label"><span>${escapeHtml(loan.name)}</span><strong>${fmt(remaining)}</strong></div>
+      <div class="report-bar-track"><span style="width:${pct.toFixed(1)}%"></span></div>
+      <small>${fmt(paid)} paid - ${escapeHtml(rate)}</small>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function reportPrintMetric(label, value, note = '', tone = '') {
+  return `<div class="report-print-card ${tone ? `tone-${tone}` : ''}">
+    <span>${escapeHtml(label)}</span>
+    <strong>${value}</strong>
+    ${note ? `<em>${escapeHtml(note)}</em>` : ''}
+  </div>`;
+}
+
+function reportInsightPill(label, value, note = '') {
+  return `<div class="report-pill">
+    <span>${escapeHtml(label)}</span>
+    <strong>${value}</strong>
+    ${note ? `<small>${escapeHtml(note)}</small>` : ''}
+  </div>`;
+}
+
 function buildMonthlyReviewData() {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -6409,17 +6944,19 @@ function buildMonthlyReviewData() {
   const monthLabel = now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   const daysIntoMonth = Math.max(1, now.getDate());
   const monthlyTx = state.transactions.filter(t => t.date >= monthStartISO);
-  const income = monthlyTx.filter(t => t.type === 'income' && t.category !== 'savings').reduce((s, t) => s + t.amount, 0);
-  const expenses = monthlyTx.filter(t => t.type === 'expense' && t.category !== 'savings').reduce((s, t) => s + t.amount, 0);
+  const monthlyIncomeTx = monthlyTx.filter(t => t.type === 'income' && t.category !== 'savings');
+  const monthlyExpenseTx = monthlyTx.filter(t => t.type === 'expense' && t.category !== 'savings');
+  const income = monthlyIncomeTx.reduce((s, t) => s + t.amount, 0);
+  const expenses = monthlyExpenseTx.reduce((s, t) => s + t.amount, 0);
   const net = income - expenses;
   const categoryTotals = {};
-  monthlyTx.filter(t => t.type === 'expense' && t.category !== 'savings').forEach(t => {
+  monthlyExpenseTx.forEach(t => {
     categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
   });
   const topCategories = Object.entries(categoryTotals)
     .map(([id, amount]) => ({ id, name: getCat(id, 'expense').name, amount }))
     .sort((a, b) => b.amount - a.amount)
-    .slice(0, 5);
+    .slice(0, 6);
   const activeBills = state.recurringExpenses.filter(r => r.active);
   const goals = (state.savingsGoals || []).map(goal => ({
     name: goal.name,
@@ -6430,23 +6967,80 @@ function buildMonthlyReviewData() {
   const activeLoans = state.loans.filter(l => getLoanPaid(l) < l.total);
   const decisions = state.decisions.filter(d => d.date >= monthStartISO);
   const forecast = computeForecastSummary(60);
+  const forecastPoints = computeBalanceForecast(60);
+  const balance = getCurrentBalance();
+  const savingsTotal = getSavingsBalance();
+  const debtTotal = activeLoans.reduce((sum, loan) => sum + Math.max(0, (loan.total || 0) - getLoanPaid(loan)), 0);
+  const netWorth = balance + savingsTotal - debtTotal;
+  const sortedSnapshots = [...(state.monthlySnapshots || [])].sort((a, b) => String(a.month).localeCompare(String(b.month)));
+  const latestSnapshot = sortedSnapshots[sortedSnapshots.length - 1] || null;
+  const previousSnapshot = sortedSnapshots[sortedSnapshots.length - 2] || null;
+  const netWorthDelta = latestSnapshot && previousSnapshot ? reportNetWorthFromSnapshot(latestSnapshot) - reportNetWorthFromSnapshot(previousSnapshot) : null;
+  const trendDeltas = latestSnapshot && previousSnapshot ? [
+    reportTrendCopy('Savings', (latestSnapshot.savingsTotal || 0) - (previousSnapshot.savingsTotal || 0), 'up'),
+    reportDebtTrendCopy((latestSnapshot.debtTotal || 0) - (previousSnapshot.debtTotal || 0)),
+    reportTrendCopy('Spending', (latestSnapshot.expenseTotal || 0) - (previousSnapshot.expenseTotal || 0), 'down'),
+  ] : [];
+  const savingsRate = income > 0 ? (net / income) * 100 : null;
+  const avgDaily = getAvgDailyExpense();
+  const cashBufferDays = avgDaily > 0 ? Math.floor(Math.max(0, balance) / avgDaily) : null;
+  const debtToIncome = income > 0 ? debtTotal / income : (debtTotal > 0 ? 2 : 0);
+  const healthScore = reportSimpleHealthScore({ savingsRate: savingsRate || 0, cashBufferDays: cashBufferDays || 0, debtToIncome });
+  const fixedMonthly = activeBills.reduce((sum, bill) => sum + cycleToMonthly(bill.amount || 0, bill.cycle), 0);
+  const variableSpend = Math.max(0, expenses - fixedMonthly);
+  const subscriptions = monthlyExpenseTx.filter(t => t.category === 'subs').reduce((sum, t) => sum + t.amount, 0);
+  const weekdaySpend = reportBuildWeekdaySpend(monthlyExpenseTx);
+  const biggestExpense = reportLargestByAmount(monthlyExpenseTx);
+  const streaks = computeAllStreaks();
+  const earnedMilestones = computeMilestoneStatuses().filter(m => m.earned).slice(0, 5);
+  const loanStrategy = computeLoanStrategy();
+  const smartInsights = collectSmartInsightTexts();
+  const interestYTD = getInterestPaidYTD();
+  const userName = String(state.userName || '').trim();
+  const headline = latestSnapshot && previousSnapshot
+    ? `${netWorthDelta >= 0 ? 'Net worth moved up' : 'Net worth moved down'} ${fmtAbs(netWorthDelta)} between completed months.`
+    : `Baseline set for ${monthLabel}. Your trend appears next month once there is a month to compare.`;
   return {
     monthLabel,
     periodLabel: daysIntoMonth < 25 ? 'This month so far' : 'Monthly review',
     generatedAt: new Date().toLocaleString(),
+    userName,
+    headline,
     income,
     expenses,
     net,
-    balance: getCurrentBalance(),
-    avgDaily: getAvgDailyExpense(),
+    balance,
+    savingsTotal,
+    debtTotal,
+    netWorth,
+    netWorthDelta,
+    avgDaily,
+    savingsRate,
+    cashBufferDays,
+    healthScore,
+    healthGrade: reportHealthGrade(healthScore),
+    fixedMonthly,
+    variableSpend,
+    subscriptions,
+    interestYTD,
+    weekdaySpend,
+    biggestExpense,
     topCategories,
     activeBills,
     goals,
     activeLoans,
     decisions,
-    smartInsights: collectSmartInsightTexts(),
+    smartInsights,
+    streaks,
+    earnedMilestones,
+    loanStrategy,
     backupStatus: encryptedBackupSummary(),
     forecast,
+    forecastPoints,
+    latestSnapshot,
+    previousSnapshot,
+    completedSnapshotCount: sortedSnapshots.length,
+    trendDeltas,
   };
 }
 
@@ -6463,29 +7057,140 @@ function renderListOrEmpty(items, emptyText, renderItem) {
 
 function renderMonthlyReviewReportHtml(data) {
   return `
-    <h1>CapAhead Monthly Review</h1>
-    <p>${escapeHtml(data.periodLabel)} - ${escapeHtml(data.monthLabel)} - Generated ${escapeHtml(data.generatedAt)}</p>
-    <div class="report-privacy-note">This report contains personal finance data. Keep this file somewhere safe.</div>
-    <div class="report-print-grid">
-      ${printCard('Income', fmt(data.income))}
-      ${printCard('Expenses', fmt(data.expenses))}
-      ${printCard('Spare', fmtSigned(data.net))}
-      ${printCard('Balance', fmt(data.balance))}
-      ${printCard('Avg daily spend', fmt(data.avgDaily))}
-      ${printCard('Forecast confidence', `${data.forecast.confidence.level}: ${data.forecast.confidence.detail}`)}
-    </div>
-    ${printSection('60-day forecast', `
-      <p>${escapeHtml(data.forecast.pressure)}</p>
-      <p>Next pay: ${data.forecast.nextPay ? `${escapeHtml(data.forecast.nextPay.name)} ${fmt(data.forecast.nextPay.amount)} on ${formatDateLabel(data.forecast.nextPay.date)}` : 'No upcoming pay event set.'}</p>
-      <p>Next pressure: ${data.forecast.nextBill ? `${escapeHtml(data.forecast.nextBill.name)} ${fmt(data.forecast.nextBill.amount)} on ${formatDateLabel(data.forecast.nextBill.date)}` : 'No upcoming bill or loan pressure set.'}</p>
-    `)}
-    ${printSection('Top spending categories', renderListOrEmpty(data.topCategories, 'No spending categories yet this month.', c => `<li>${escapeHtml(c.name)}: ${fmt(c.amount)}</li>`))}
-    ${printSection('Recurring bills', renderListOrEmpty(data.activeBills, 'No active recurring bills set.', b => `<li>${escapeHtml(b.name)}: ${fmt(cycleToMonthly(b.amount, b.cycle))}/month</li>`))}
-    ${printSection('Saved decisions', renderListOrEmpty(data.decisions, 'No saved decisions this month.', d => `<li>${escapeHtml(d.what || 'Decision')} - ${fmt(d.amount)} - ${escapeHtml(d.action || 'saved')}</li>`))}
-    ${printSection('Goals', renderListOrEmpty(data.goals, 'No savings goals set.', g => `<li>${escapeHtml(g.name)}: ${fmt(g.progress)} of ${fmt(g.target)}${g.pace ? ` (${escapeHtml(g.pace.onTrackStatus.replace(/_/g, ' '))})` : ''}</li>`))}
-    ${printSection('Loans', renderListOrEmpty(data.activeLoans, 'No active loans recorded.', l => `<li>${escapeHtml(l.name)}: ${fmt(Math.max(0, l.total - getLoanPaid(l)))} remaining</li>`))}
-    ${printSection('Smart insights', renderListOrEmpty(data.smartInsights, 'No smart insights yet.', text => `<li>${escapeHtml(text)}</li>`))}
-    ${printSection('Backup status', `<p>${escapeHtml(data.backupStatus)}</p>`)}
+    <section class="report-cover report-page">
+      <div class="report-brand-row">
+        ${data.logoDataUri ? `<img class="report-logo" src="${escapeHtml(data.logoDataUri)}" alt="CapAhead logo">` : '<div class="report-logo-fallback">CapAhead</div>'}
+        <span>Premium Monthly Review</span>
+      </div>
+      <div class="report-cover-grid">
+        <div>
+          <p class="report-eyebrow">CapAhead Monthly Review</p>
+          <h1>${escapeHtml(data.userName ? `${data.userName}'s ${data.monthLabel} Review` : `${data.monthLabel} Review`)}</h1>
+          <p class="report-lede">${escapeHtml(data.headline)}</p>
+        </div>
+        <div class="report-score-card">
+          <span>Financial pulse</span>
+          <strong>${data.healthGrade}</strong>
+          <div class="report-score-track"><span style="width:${clampNumber(data.healthScore, 0, 100)}%"></span></div>
+          <small>${data.healthScore}/100 based on savings rate, cash buffer, and debt load.</small>
+        </div>
+      </div>
+      <div class="report-privacy-note">This report contains personal finance data. Keep this file somewhere safe.</div>
+      <div class="report-print-grid hero">
+        ${reportPrintMetric('Net worth', fmt(data.netWorth), 'Cash + Savings - Debt')}
+        ${reportPrintMetric('Spare cash', fmtSigned(data.net), 'Income minus expenses this month', data.net >= 0 ? 'good' : 'watch')}
+        ${reportPrintMetric('Cash buffer', data.cashBufferDays === null ? 'n/a' : `${data.cashBufferDays} days`, 'Based on average daily spend')}
+        ${reportPrintMetric('Savings rate', fmtPercent(data.savingsRate), 'This month so far', (data.savingsRate || 0) >= 10 ? 'good' : 'watch')}
+      </div>
+    </section>
+
+    <section class="report-print-section report-page">
+      <h2>Money movement</h2>
+      ${data.completedSnapshotCount < 2 ? `
+        <div class="report-baseline">
+          <strong>Baseline set for ${escapeHtml(data.latestSnapshot ? reportMonthLabel(data.latestSnapshot.month) : data.monthLabel)}.</strong>
+          <p>Your trend appears next month once there is a completed month to compare.</p>
+        </div>
+      ` : `
+        <div class="report-trend-grid">
+          ${data.trendDeltas.map(delta => reportPrintMetric(delta.label, delta.value, delta.note, delta.tone)).join('')}
+        </div>
+        <p class="report-muted">Compared ${escapeHtml(reportMonthLabel(data.latestSnapshot.month))} with ${escapeHtml(reportMonthLabel(data.previousSnapshot.month))} using completed monthly snapshots.</p>
+      `}
+      <div class="report-breakdown">
+        <div>
+          <h3>Net worth context</h3>
+          <p class="report-big-number">${fmt(data.netWorth)}</p>
+          <p>Cash ${fmt(data.balance)} + Savings ${fmt(data.savingsTotal)} - Debt ${fmt(data.debtTotal)}</p>
+          ${reportNetWorthStack(data)}
+        </div>
+        <div class="report-pill-grid">
+          ${reportInsightPill('Income', fmt(data.income))}
+          ${reportInsightPill('Expenses', fmt(data.expenses))}
+          ${reportInsightPill('Fixed bills', fmt(data.fixedMonthly))}
+          ${reportInsightPill('Flexible spend', fmt(data.variableSpend))}
+        </div>
+      </div>
+    </section>
+
+    <section class="report-print-section report-page">
+      <h2>Spending intelligence</h2>
+      <div class="report-two-col">
+        <div class="report-panel">
+          <h3>Top categories</h3>
+          ${reportBarList(data.topCategories, data.expenses)}
+        </div>
+        <div class="report-panel">
+          <h3>Day-of-week spending</h3>
+          ${reportWeekdayBars(data.weekdaySpend)}
+          <p class="report-muted">${data.weekdaySpend.biggest ? `Highest variable spend: ${data.weekdaySpend.biggest.day} at ${fmt(data.weekdaySpend.biggest.amount)}.` : 'Track a few more expenses to see your spending rhythm.'}</p>
+        </div>
+      </div>
+      <div class="report-two-col report-secondary-grid">
+        <div class="report-panel">
+          <h3>Signals</h3>
+          ${reportInsightPill('Biggest purchase', data.biggestExpense ? fmt(data.biggestExpense.amount) : 'n/a', data.biggestExpense ? `${formatDateLabel(data.biggestExpense.date)} - ${getCat(data.biggestExpense.category, 'expense').name}` : 'No expenses yet')}
+          ${reportInsightPill('Subscriptions', fmt(data.subscriptions), `${fmt(data.subscriptions * 12)} annualized`)}
+          ${reportInsightPill('Interest paid YTD', fmt(data.interestYTD), 'Estimated across active loans')}
+          ${reportInsightPill('Highest spend day', data.weekdaySpend.biggest ? data.weekdaySpend.biggest.day : 'n/a', data.weekdaySpend.biggest ? fmt(data.weekdaySpend.biggest.amount) : 'No variable spending yet')}
+        </div>
+        <div class="report-panel">
+          <h3>Fixed vs flexible</h3>
+          ${reportBarList([
+            { name: 'Fixed bills', amount: data.fixedMonthly },
+            { name: 'Flexible spend', amount: data.variableSpend },
+          ], Math.max(1, data.fixedMonthly + data.variableSpend))}
+        </div>
+      </div>
+    </section>
+
+    <section class="report-print-section report-page">
+      <h2>60-day forecast</h2>
+      <div class="report-forecast-grid">
+        <div class="report-panel">
+          ${reportSparklineSvg(data.forecastPoints)}
+          <p>${escapeHtml(data.forecast.pressure)}</p>
+        </div>
+        <div class="report-panel">
+          ${reportInsightPill('Forecast confidence', escapeHtml(data.forecast.confidence.level), data.forecast.confidence.detail)}
+          ${reportInsightPill('Next pay', data.forecast.nextPay ? fmt(data.forecast.nextPay.amount) : 'Not set', data.forecast.nextPay ? `${data.forecast.nextPay.name} on ${formatDateLabel(data.forecast.nextPay.date)}` : 'No upcoming pay event set.')}
+          ${reportInsightPill('Next pressure', data.forecast.nextBill ? fmt(data.forecast.nextBill.amount) : 'Not set', data.forecast.nextBill ? `${data.forecast.nextBill.name} on ${formatDateLabel(data.forecast.nextBill.date)}` : 'No upcoming bill or loan pressure set.')}
+        </div>
+      </div>
+    </section>
+
+    <section class="report-print-section report-page">
+      <h2>Goals, debt, and momentum</h2>
+      <div class="report-two-col">
+        <div class="report-panel">
+          <h3>Goals</h3>
+          ${reportGoalCards(data.goals)}
+        </div>
+        <div class="report-panel">
+          <h3>Loans</h3>
+          ${reportLoanCards(data.activeLoans)}
+          ${data.loanStrategy ? `<p class="report-muted">${escapeHtml(stripHtml(data.loanStrategy.note))}</p>` : ''}
+        </div>
+      </div>
+      <div class="report-pill-grid momentum">
+        ${reportInsightPill('Savings streak', `${data.streaks.savings || 0} weeks`)}
+        ${reportInsightPill('Bills on time', `${data.streaks.billsOnTime || 0} weeks`)}
+        ${reportInsightPill('Under budget', `${data.streaks.underBudget || 0} weeks`)}
+        ${reportInsightPill('Milestones', `${data.earnedMilestones.length} earned`, data.earnedMilestones.map(m => m.title).join(', ') || 'Keep tracking to unlock milestones')}
+      </div>
+    </section>
+
+    <section class="report-print-section">
+      <h2>Smart insights and saved decisions</h2>
+      <div class="report-two-col">
+        <div class="report-panel">${renderListOrEmpty(data.smartInsights.slice(0, 5), 'No smart insights yet.', text => `<li>${escapeHtml(text)}</li>`)}</div>
+        <div class="report-panel">${renderListOrEmpty(data.decisions, 'No saved decisions this month.', d => `<li><strong>${escapeHtml(d.what || 'Decision')}</strong>: ${fmt(d.amount)} - ${escapeHtml(d.action || 'saved')}</li>`)}</div>
+      </div>
+      <div class="report-footer">
+        <span>Backup status: ${escapeHtml(data.backupStatus)}</span>
+        <span>Generated ${escapeHtml(data.generatedAt)}</span>
+      </div>
+    </section>
   `;
 }
 
@@ -6503,6 +7208,7 @@ async function openMonthlyReviewReport() {
     return;
   }
   const data = buildMonthlyReviewData();
+  data.logoDataUri = await getMonthlyReportLogoDataUri();
   const html = renderMonthlyReviewReportHtml(data);
   const root = document.getElementById('monthlyReportPrintRoot');
   root.innerHTML = html;
@@ -6525,14 +7231,42 @@ function getCapAheadPrintPlugin() {
 
 function getMonthlyReportPrintCss() {
   return `
-    body{font-family:Arial,sans-serif;color:#111827;background:#fff;margin:0}
-    .monthly-report-page{max-width:760px;margin:0 auto;padding:18mm 12mm}
-    h1{font-size:28px;margin:0 0 4px;line-height:1.15} h2{font-size:16px;margin:22px 0 8px}
-    p,li{font-size:12px;line-height:1.45}.report-print-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
-    .report-print-card{border:1px solid #d1d5db;border-radius:8px;padding:10px;page-break-inside:avoid}
-    .report-print-card span{display:block;color:#6b7280;font-size:10px;text-transform:uppercase;margin-bottom:4px}
-    .report-print-card strong{display:block;font-size:16px}.report-print-section{border-top:1px solid #e5e7eb;padding-top:8px;page-break-inside:avoid}
-    .report-privacy-note{border:1px solid #f59e0b;background:#fffbeb;border-radius:8px;padding:10px;font-size:12px;margin:14px 0}
+    @page{size:A4;margin:12mm}
+    *{box-sizing:border-box}
+    body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#111827;background:#fff;margin:0}
+    .monthly-report-page{max-width:780px;margin:0 auto;padding:0;background:#fff}
+    .report-page{break-after:page;page-break-after:always}
+    .report-print-section,.report-panel,.report-print-card{break-inside:avoid;page-break-inside:avoid}
+    .report-cover{background:#050912;color:#f8fafc;border-radius:18px;padding:20px;margin-bottom:18px;overflow:hidden}
+    .report-brand-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}
+    .report-logo{width:190px;height:auto;display:block}.report-logo-fallback{font-size:24px;font-weight:800;color:#b7ff2a}
+    .report-brand-row span{font-size:11px;text-transform:uppercase;color:#b7ff2a;font-weight:800;letter-spacing:.08em}
+    .report-cover-grid{display:grid;grid-template-columns:1.6fr .8fr;gap:18px;align-items:end}
+    .report-eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#b7ff2a;margin:0 0 8px}
+    h1{font-size:36px;line-height:1.05;margin:0 0 12px;letter-spacing:0}
+    h2{font-size:20px;margin:0 0 12px;color:#0f172a;line-height:1.2}
+    h3{font-size:13px;margin:0 0 10px;color:#111827;text-transform:uppercase;letter-spacing:.04em}
+    p,li{font-size:12px;line-height:1.55}.report-lede{max-width:520px;font-size:14px;color:#dbeafe;margin:0}
+    .report-score-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:14px}
+    .report-score-card span,.report-score-card small{display:block;color:#cbd5e1;font-size:11px}.report-score-card strong{display:block;font-size:46px;color:#b7ff2a;line-height:1;margin:8px 0}
+    .report-score-track,.report-bar-track{height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden}.report-score-track{background:rgba(255,255,255,.18);margin:8px 0}
+    .report-score-track span,.report-bar-track span{display:block;height:100%;background:#b7ff2a;border-radius:999px}
+    .report-privacy-note{border:1px solid #fde68a;background:#fffbeb;color:#78350f;border-radius:10px;padding:10px 12px;font-size:12px;margin:18px 0 0}
+    .report-print-grid,.report-trend-grid,.report-pill-grid{display:grid;gap:10px}.report-print-grid.hero{grid-template-columns:repeat(4,1fr);margin:18px 0 0}.report-trend-grid{grid-template-columns:repeat(3,1fr);margin-bottom:10px}.report-pill-grid{grid-template-columns:repeat(2,1fr)}.report-pill-grid.momentum{grid-template-columns:repeat(4,1fr);margin-top:12px}
+    .report-print-card,.report-pill,.report-panel,.report-baseline{border:1px solid #d9e1ea;border-radius:12px;background:#fff;padding:12px}
+    .report-print-card span,.report-pill span{display:block;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+    .report-print-card strong{display:block;color:#0f172a;font-size:18px;line-height:1.18}.report-print-card em{display:block;color:#64748b;font-style:normal;font-size:11px;margin-top:6px;line-height:1.35}
+    .report-print-card.tone-good{border-color:#86efac;background:#f0fdf4}.report-print-card.tone-watch{border-color:#fcd34d;background:#fffbeb}.report-print-card.tone-neutral{border-color:#cbd5e1;background:#f8fafc}
+    .report-print-section{border-top:4px solid #111827;padding-top:14px;margin:0 0 18px}
+    .report-two-col,.report-forecast-grid,.report-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}.report-breakdown{margin-top:14px}
+    .report-big-number{font-size:30px;line-height:1.1;font-weight:800;margin:0 0 6px;color:#111827}
+    .report-muted{color:#64748b;font-size:11px;margin:8px 0 0}.report-bars{display:grid;gap:9px}.report-bar-label{display:flex;justify-content:space-between;gap:8px;font-size:11px;margin-bottom:4px}.report-bar-label strong{font-size:11px}
+    .report-pill strong{display:block;font-size:15px;color:#111827}.report-pill small{display:block;color:#64748b;font-size:10px;margin-top:4px;line-height:1.35}
+    .report-sparkline{width:100%;height:118px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:10px}.report-empty-chart{border:1px dashed #cbd5e1;border-radius:10px;padding:20px;color:#64748b;text-align:center;font-size:12px}
+    .report-secondary-grid{margin-top:12px}.report-stack{display:flex;height:12px;overflow:hidden;border-radius:999px;margin:12px 0 8px;background:#e5e7eb}.report-stack span,.report-stack-legend i{display:block}.report-stack .cash,.report-stack-legend i.cash{background:#38bdf8}.report-stack .savings,.report-stack-legend i.savings{background:#b7ff2a}.report-stack .debt,.report-stack-legend i.debt{background:#fb7185}.report-stack-legend{display:flex;flex-wrap:wrap;gap:10px;color:#64748b;font-size:10px}.report-stack-legend span{display:inline-flex;align-items:center;gap:4px}.report-stack-legend i{width:8px;height:8px;border-radius:50%}
+    .report-week-bars{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;height:132px;align-items:end}.report-week-bar{display:grid;grid-template-rows:1fr auto auto;min-width:0;gap:4px;text-align:center}.report-week-column{display:flex;align-items:end;justify-content:center;min-height:82px;border-radius:8px;background:#f1f5f9;overflow:hidden}.report-week-column span{display:block;width:100%;background:linear-gradient(180deg,#b7ff2a,#22c55e);border-radius:8px 8px 0 0}.report-week-bar strong,.report-week-bar small,.report-mini-card small{display:block;color:#64748b;font-size:9px;line-height:1.25}.report-week-bar strong{color:#111827;font-size:10px}.report-goal-list{display:grid;gap:9px}.report-mini-card{border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc}
+    ul{padding-left:18px;margin:0}li+li{margin-top:5px}.report-footer{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #e5e7eb;margin-top:16px;padding-top:10px;color:#64748b;font-size:11px}
+    @media(max-width:700px){.report-cover-grid,.report-two-col,.report-forecast-grid,.report-breakdown{grid-template-columns:1fr}.report-print-grid.hero,.report-trend-grid,.report-pill-grid,.report-pill-grid.momentum{grid-template-columns:1fr 1fr}.report-brand-row{align-items:flex-start;flex-direction:column}h1{font-size:28px}}
   `;
 }
 

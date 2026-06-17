@@ -417,7 +417,37 @@ function reportHtml(summary, metadata) {
       await expectVisibleText(page, '#monthlyReportPrintRoot', 'CapAhead Monthly Review');
       await expectVisibleText(page, '#monthlyReportPrintRoot', 'This report contains personal finance data');
       await expectVisibleText(page, '#monthlyReportPrintRoot', '60-day forecast');
+      await expectVisibleText(page, '#monthlyReportPrintRoot', 'Net worth');
+      await expectVisibleText(page, '#monthlyReportPrintRoot', 'Cash + Savings - Debt');
+      await expectVisibleText(page, '#monthlyReportPrintRoot', 'Spending intelligence');
+      await expectVisibleText(page, '#monthlyReportPrintRoot', 'Goals, debt, and momentum');
+      const hasLogo = await page.locator('#monthlyReportPrintRoot img.report-logo').count();
+      if (!hasLogo) throw new Error('monthly report logo missing');
       await snap(page, '05-monthly-report-print-root');
+      const lowDataReport = await page.evaluate(() => {
+        const savedState = JSON.stringify(state);
+        const today = todayISO();
+        state.transactions = [
+          { id: 'qa_low_income', type: 'income', category: 'salary', amount: 1000, date: today, note: '' },
+        ];
+        state.savings = [];
+        state.loans = [];
+        state.recurringExpenses = [];
+        state.savingsGoals = [];
+        state.decisions = [];
+        state.monthlySnapshots = [
+          { month: previousCompletedMonthKey(), balance: 1000, savingsTotal: 0, debtTotal: 0, incomeTotal: 1000, expenseTotal: 0, categoryTotals: {}, createdAt: Date.now() },
+        ];
+        const data = buildMonthlyReviewData();
+        data.logoDataUri = '';
+        document.getElementById('monthlyReportPrintRoot').innerHTML = renderMonthlyReviewReportHtml(data);
+        const text = document.getElementById('monthlyReportPrintRoot').innerText;
+        Object.assign(state, JSON.parse(savedState));
+        renderStats();
+        return text;
+      });
+      if (!lowDataReport.includes('Your trend appears next month')) throw new Error('low-data baseline copy missing');
+      if (lowDataReport.includes('Net progress')) throw new Error('old Net progress wording appeared in monthly report');
     });
 
     await test('Theme toggle cycles and preserves readable contrast tokens', async () => {
