@@ -44,6 +44,68 @@ public class CapAheadBillingPlugin extends Plugin implements PurchasesUpdatedLis
   }
 
   @PluginMethod
+  public void getPrices(PluginCall call) {
+    ensureBillingReady(() -> queryPrices(call), () -> {
+      JSObject r = new JSObject();
+      r.put("available", false);
+      r.put("debugMessage", "Google Play Billing is not available.");
+      call.resolve(r);
+    });
+  }
+
+  private void queryPrices(PluginCall call) {
+    QueryProductDetailsParams.Product product = QueryProductDetailsParams.Product.newBuilder()
+      .setProductId(PRO_PRODUCT_ID)
+      .setProductType(BillingClient.ProductType.SUBS)
+      .build();
+    ArrayList<QueryProductDetailsParams.Product> products = new ArrayList<>();
+    products.add(product);
+    QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
+      .setProductList(products)
+      .build();
+
+    billingClient.queryProductDetailsAsync(params, (billingResult, productDetailsResult) -> {
+      JSObject r = new JSObject();
+      if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK) {
+        r.put("available", false);
+        r.put("debugMessage", billingResult.getDebugMessage());
+        call.resolve(r);
+        return;
+      }
+      List<ProductDetails> detailsList = productDetailsResult.getProductDetailsList();
+      if (detailsList == null || detailsList.isEmpty()) {
+        r.put("available", false);
+        r.put("debugMessage", "No product details returned.");
+        call.resolve(r);
+        return;
+      }
+      ProductDetails details = detailsList.get(0);
+      String monthly = formattedRecurringPrice(details, "pro-monthly");
+      String yearly = formattedRecurringPrice(details, "pro-yearly");
+      r.put("available", monthly != null || yearly != null);
+      if (monthly != null) r.put("monthly", monthly);
+      if (yearly != null) r.put("yearly", yearly);
+      call.resolve(r);
+    });
+  }
+
+  // Returns the formatted recurring price for a base plan (skips the free-trial phase).
+  private String formattedRecurringPrice(ProductDetails details, String basePlanId) {
+    List<ProductDetails.SubscriptionOfferDetails> offers = details.getSubscriptionOfferDetails();
+    if (offers == null) return null;
+    for (ProductDetails.SubscriptionOfferDetails offer : offers) {
+      if (!basePlanId.equals(offer.getBasePlanId())) continue;
+      if (offer.getPricingPhases() == null) continue;
+      List<ProductDetails.PricingPhase> phases = offer.getPricingPhases().getPricingPhaseList();
+      if (phases == null) continue;
+      for (ProductDetails.PricingPhase phase : phases) {
+        if (phase.getPriceAmountMicros() > 0) return phase.getFormattedPrice();
+      }
+    }
+    return null;
+  }
+
+  @PluginMethod
   public void purchase(PluginCall call) {
     String productId = call.getString("productId", PRO_PRODUCT_ID);
     String basePlanId = call.getString("basePlanId", "pro-monthly");
