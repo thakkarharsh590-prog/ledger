@@ -4,7 +4,7 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        HAC Labs
-  Version:      3.0.5
+  Version:      3.0.6
   Last edited:  2026-06-18
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   10
@@ -3363,7 +3363,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">CapAhead</span>
-    <span class="version-tag" id="versionTag">v3.0.5</span>
+    <span class="version-tag" id="versionTag">v3.0.6</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme" aria-label="Dark theme">
@@ -3614,7 +3614,7 @@
       <span class="profile-name" id="profileName">Set your name</span>
       <button class="profile-edit-btn" onclick="openNameModal()" title="Edit name">✏</button>
     </div>
-    <div class="profile-version">CapAhead v<span id="profileVersion">3.0.5</span></div>
+    <div class="profile-version">CapAhead v<span id="profileVersion">3.0.6</span></div>
   </div>
 
   <div id="profileContent"></div>
@@ -4318,7 +4318,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '3.0.5';
+const APP_VERSION = '3.0.6';
 const SCHEMA_VERSION = 10;
 const STORAGE_KEY = 'ledger_data_v1';
 const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1';
@@ -4327,10 +4327,11 @@ const BACKUP_PREFIX = 'ledger_backup_';
 const UI_PREFS_KEY = 'ledger_ui_prefs_v1';
 const SETUP_STATUS_KEY = 'ledger_setup_status_v1';
 const PRO_DEV_UNLOCK_KEY = 'ledger_pro_dev_unlocked_v1';
+const PRO_CACHE_KEY = 'ledger_pro_entitlement_v1';
 const PRO_PRODUCT_ID = 'capahead_pro';
 const PRO_MONTHLY_BASE_PLAN = 'pro-monthly';
 const PRO_YEARLY_BASE_PLAN = 'pro-yearly';
-const PRO_ENTITLEMENT_TIMEOUT_MS = 3500;
+const PRO_ENTITLEMENT_TIMEOUT_MS = 8000;
 const PRO_PRICE_MONTHLY = 'Google Play local price';
 const PRO_PRICE_YEARLY = 'Google Play local price';
 const PRO_TRIAL_TEXT = '7-day free trial';
@@ -5471,33 +5472,65 @@ async function loadProPrices() {
   }
 }
 
+// Remember the last entitlement Google Play actually confirmed, so a slow/failed
+// check on launch (common right after an app update) never drops a paying user to Free.
+function readProCache() {
+  try { return JSON.parse(localStorage.getItem(PRO_CACHE_KEY) || 'null'); } catch (e) { return null; }
+}
+function writeProCache(isPro, source) {
+  try {
+    if (isPro) localStorage.setItem(PRO_CACHE_KEY, JSON.stringify({ isPro: true, source: source || 'google_play', at: Date.now() }));
+    else localStorage.removeItem(PRO_CACHE_KEY);
+  } catch (e) { /* ignore storage errors */ }
+}
+
 async function syncProEntitlement(opts = {}) {
   billingState.checking = true;
   billingState.error = null;
   const plugin = getCapAheadBillingPlugin();
+  const cached = readProCache();
+  const cachedPro = !!(cached && cached.isPro);
   try {
     if (await hasValidOwnerLicense()) {
       billingState.isPro = true;
       billingState.source = 'owner_lifetime';
     } else if (plugin && typeof plugin.getEntitlement === 'function') {
-      const result = await withTimeout(
-        plugin.getEntitlement({ productId: PRO_PRODUCT_ID }),
-        PRO_ENTITLEMENT_TIMEOUT_MS,
-        'Google Play Billing entitlement check timed out.'
-      );
-      billingState.isPro = !!result?.isPro;
-      billingState.source = result?.source || 'google_play';
+      let result = null;
+      try {
+        result = await withTimeout(
+          plugin.getEntitlement({ productId: PRO_PRODUCT_ID }),
+          PRO_ENTITLEMENT_TIMEOUT_MS,
+          'Google Play Billing entitlement check timed out.'
+        );
+      } catch (e) {
+        result = null; // timeout or bridge error -> inconclusive
+      }
+      // A definitive answer is one Google Play actually returned (not a timeout / "unavailable").
+      const confirmed = result && result.source === 'google_play'
+        && (result.responseCode === 0 || result.responseCode === undefined);
+      if (confirmed) {
+        billingState.isPro = !!result.isPro;
+        billingState.source = 'google_play';
+        writeProCache(billingState.isPro, 'google_play'); // update the remembered state
+      } else {
+        // Inconclusive: keep the last confirmed Pro instead of revoking it.
+        billingState.isPro = cachedPro;
+        billingState.source = cachedPro ? 'cached' : (result?.source || 'google_play_unavailable');
+        if (!cachedPro) billingState.error = (result && result.debugMessage) || 'Could not confirm subscription.';
+      }
     } else if (allowQaProSimulation()) {
       billingState.isPro = localStorage.getItem(PRO_DEV_UNLOCK_KEY) === 'yes';
       billingState.source = billingState.isPro ? 'browser_test' : 'free';
     } else {
-      billingState.isPro = false;
-      billingState.source = 'google_play_unavailable';
-      billingState.error = 'Google Play Billing bridge not available.';
+      // No billing bridge (e.g. web/PWA): keep cached Pro rather than dropping it.
+      billingState.isPro = cachedPro;
+      billingState.source = cachedPro ? 'cached' : 'google_play_unavailable';
+      if (!cachedPro) billingState.error = 'Google Play Billing bridge not available.';
     }
   } catch (err) {
-    billingState.isPro = false;
-    billingState.source = 'error';
+    // Unexpected failure: never revoke a known-Pro user on an error.
+    billingState.isPro = cachedPro;
+    billingState.source = cachedPro ? 'cached' : 'error';
     billingState.error = err && err.message ? err.message : 'Could not check subscription.';
   } finally {
     billingState.checking = false;
@@ -5529,6 +5562,7 @@ async function purchasePro(plan) {
     const result = await plugin.purchase({ productId: PRO_PRODUCT_ID, basePlanId });
     billingState.isPro = !!result?.isPro;
     billingState.source = 'google_play';
+    writeProCache(billingState.isPro, 'google_play');
     closeModal('proModal');
     renderAll();
     showToast(billingState.isPro ? 'Pro unlocked' : 'Purchase not completed');
