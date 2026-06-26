@@ -4,7 +4,7 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        HAC Labs
-  Version:      3.0.8
+  Version:      3.0.9
   Last edited:  2026-06-18
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   10
@@ -3364,7 +3364,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">CapAhead</span>
-    <span class="version-tag" id="versionTag">v3.0.8</span>
+    <span class="version-tag" id="versionTag">v3.0.9</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme" aria-label="Dark theme">
@@ -3615,7 +3615,7 @@
       <span class="profile-name" id="profileName">Set your name</span>
       <button class="profile-edit-btn" onclick="openNameModal()" title="Edit name">✏</button>
     </div>
-    <div class="profile-version">CapAhead v<span id="profileVersion">3.0.8</span></div>
+    <div class="profile-version">CapAhead v<span id="profileVersion">3.0.9</span></div>
   </div>
 
   <div id="profileContent"></div>
@@ -4319,7 +4319,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '3.0.8';
+const APP_VERSION = '3.0.9';
 const SCHEMA_VERSION = 10;
 const STORAGE_KEY = 'ledger_data_v1';
 const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1';
@@ -8141,13 +8141,22 @@ async function downloadTextFile(filename, text, type = 'application/json') {
     });
     const uri = writeResult?.uri;
     if (!uri) throw new Error('Android file export did not return a file URI.');
-    await Share.share({
-      title: shareTitleForFilename(safeFilename),
-      text: safeFilename,
-      files: [uri],
-      dialogTitle: shareTitleForFilename(safeFilename),
-    });
-    return { ok: true, filename: safeFilename, native: true, uri };
+    // The file is already written. The share sheet is just delivery, and Android's chooser
+    // frequently reports CANCELED even after a successful save (and a real cancel isn't a
+    // failure either) — so a share rejection must NOT be treated as a backup failure.
+    let shared = true;
+    try {
+      await Share.share({
+        title: shareTitleForFilename(safeFilename),
+        text: safeFilename,
+        files: [uri],
+        dialogTitle: shareTitleForFilename(safeFilename),
+      });
+    } catch (shareErr) {
+      console.warn('Share sheet returned non-OK (often a false cancel):', shareErr);
+      shared = false;
+    }
+    return { ok: true, filename: safeFilename, native: true, uri, shared };
   }
 
   const blob = new Blob([text], { type });
