@@ -4,7 +4,7 @@
   LEDGER — Personal Finance App
   ============================================================
   Owner:        HAC Labs
-  Version:      3.0.7
+  Version:      3.0.8
   Last edited:  2026-06-18
   Storage:      localStorage (device-local, never sent to cloud)
   Schema ver:   10
@@ -3364,7 +3364,7 @@
       <circle cx="12" cy="12" r="1.3" fill="#0a0a0f"/>
     </svg>
     <span class="brand-word">CapAhead</span>
-    <span class="version-tag" id="versionTag">v3.0.7</span>
+    <span class="version-tag" id="versionTag">v3.0.8</span>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark theme" aria-label="Dark theme">
@@ -3615,7 +3615,7 @@
       <span class="profile-name" id="profileName">Set your name</span>
       <button class="profile-edit-btn" onclick="openNameModal()" title="Edit name">✏</button>
     </div>
-    <div class="profile-version">CapAhead v<span id="profileVersion">3.0.7</span></div>
+    <div class="profile-version">CapAhead v<span id="profileVersion">3.0.8</span></div>
   </div>
 
   <div id="profileContent"></div>
@@ -4319,7 +4319,7 @@
    LEDGER v1.0.0 — Schema v1
    ============================================================ */
 
-const APP_VERSION = '3.0.7';
+const APP_VERSION = '3.0.8';
 const SCHEMA_VERSION = 10;
 const STORAGE_KEY = 'ledger_data_v1';
 const LAST_GOOD_STORAGE_KEY = 'ledger_last_good_data_v1';
@@ -8120,7 +8120,7 @@ function sanitizeExportFilename(filename) {
 function shareTitleForFilename(filename) {
   if (filename.endsWith('.csv')) return 'Export CSV';
   if (filename.endsWith('.txt')) return 'Save recovery key';
-  if (filename.endsWith('.ledgerbackup')) return 'Save encrypted backup';
+  if (filename.includes('.ledgerbackup')) return 'Save encrypted backup';
   return 'Save CapAhead backup';
 }
 
@@ -8232,7 +8232,7 @@ async function createEncryptedBackup(recoveryKey = getSavedRecoveryKey()) {
   try {
     const data = buildAppDataPayload({ appVersion: APP_VERSION, exportedAt: new Date().toISOString() });
     const encrypted = await encryptBackupPayload(data, recoveryKey);
-    await downloadTextFile(`ledger-encrypted-backup-${todayISO()}.ledgerbackup`, JSON.stringify(encrypted, null, 2));
+    await downloadTextFile(`ledger-encrypted-backup-${todayISO()}.ledgerbackup.json`, JSON.stringify(encrypted, null, 2));
     const now = Date.now().toString();
     localStorage.setItem(LAST_ENCRYPTED_BACKUP_KEY, now);
     localStorage.setItem('ledger_last_export', now);
